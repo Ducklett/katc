@@ -85,13 +85,13 @@ parser_parse(parser *p, diagnosticContainer *d) {
 	parser_match_token(p, d, endOfFileToken);
 }
 
-void print_ast(char *text, node *root, int indent) {
+void print_ast(char *text, node *root, int indent, bool newline) {
 	if (root->data == 0) {
 		char *tokenText = (char*)malloc(sizeof(char) * (root->text_length) + 1);
 		tokenText[root->text_length] = '\0';
 		strncpy(tokenText, text + root->text_start, sizeof(char) * root->text_length);
 
-		printf ("%*s(%s :: %s)\n", indent, "", tokenText, syntaxKindText[root->kind]);
+		printf ("%*s(%s :: %s)%s", indent, "", tokenText, syntaxKindText[root->kind], newline?"\n":"");
 
 		free(tokenText);
 	} else {
@@ -99,17 +99,17 @@ void print_ast(char *text, node *root, int indent) {
 
 		// binary expression
 		binaryExpressionNode n = (binaryExpressionNode)*root->data;
-		print_ast(text, &(n.left), indent + 4);
-		print_ast(text, &n.operator, indent + 4);
-		print_ast(text, &n.right, indent + 4);
+		print_ast(text, &(n.left), indent + 4, true);
+		print_ast(text, &n.operator, indent + 4, true);
+		print_ast(text, &n.right, indent + 4, false);
 
-		printf ("%*s)\n", indent, "");
+		printf (" )");
 	}
 }
 
 int main()
 {
-	char text[] = "10 + 10 * 20 + 2 * 20 + 10 * 50 * 60 % 30";
+	char text[] = "10 + 10 * 20";
 
 	lexer l = {
 		.text = text,
@@ -130,7 +130,7 @@ int main()
 
 
 	if (diagnostics.index==0) {
-		print_ast(text, &p.root, 0);
+		print_ast(text, &p.root, 0, true);
 	} else {
 		for (int i = 0; i < diagnostics.index; i++)
 		{
