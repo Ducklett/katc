@@ -30,10 +30,12 @@ static const char *syntaxKindText[] = {
 enum diagnosticKind
 {
 	badTokenDiagnostic,
+	unexpectedTokenDiagnostic,
 };
 
 static const char *diagnosticText[] = {
 	"bad token '%c' (%d,%d)\n",
+	"unexpected token of kind '%s', expected '%s' (%d,%d)\n",
 };
 
 typedef struct diagnostic
@@ -68,9 +70,10 @@ void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, int sta
 	d->diagnostics[d->index++] = dia;
 }
 
-typedef struct token
+typedef struct node
 {
 	enum syntaxKind kind;
 	int text_start;
 	int text_length;
-} token;
+	void* data; 
+} node;

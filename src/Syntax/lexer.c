@@ -40,9 +40,9 @@ char lexer_move_next(lexer *l)
 	return l->text[l->index++];
 }
 
-inline token lex_basic_token(lexer *l, enum syntaxKind kind, int length)
+inline node lex_basic_token(lexer *l, enum syntaxKind kind, int length)
 {
-	token t = {
+	node t = {
 		.kind = kind,
 		.text_start = l->index,
 		.text_length = length,
@@ -56,9 +56,9 @@ inline token lex_basic_token(lexer *l, enum syntaxKind kind, int length)
 	return t;
 }
 
-token lexer_lex_token(lexer *l, diagnosticContainer *d)
+node lexer_lex_token(lexer *l, diagnosticContainer *d)
 {
-	token t = {0};
+	node t = {0};
 	char current = lexer_current(l);
 
 	switch (current)
