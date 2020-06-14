@@ -17,7 +17,7 @@ enum syntaxKind
 	binaryExpression
 };
 
-int getOperatorPrecedence(enum syntaxKind kind) {
+inline int getOperatorPrecedence(enum syntaxKind kind) {
 	switch(kind) {
 		case plusOperator: return 1;
 		case minusOperator: return 1;

@@ -46,6 +46,7 @@ inline node lex_basic_token(lexer *l, enum syntaxKind kind, int length)
 		.kind = kind,
 		.text_start = l->index,
 		.text_length = length,
+		.data = 0,
 	};
 
 	while (length > 0)
