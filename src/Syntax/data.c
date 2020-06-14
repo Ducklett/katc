@@ -2,6 +2,7 @@
 enum syntaxKind
 {
 	badToken,
+	errorToken,
 	endOfFileToken,
 	whitespaceToken,
 	newlineToken,
@@ -12,10 +13,24 @@ enum syntaxKind
 	multipliationOperator,
 	divisionOperator,
 	modulusOperator,
+
+	binaryExpression
 };
+
+int getOperatorPrecedence(enum syntaxKind kind) {
+	switch(kind) {
+		case plusOperator: return 1;
+		case minusOperator: return 1;
+		case multipliationOperator: return 2;
+		case divisionOperator: return 2;
+		case modulusOperator: return 2;
+		default: return -1;
+	}
+}
 
 static const char *syntaxKindText[] = {
 	"badToken",
+	"errorToken",
 	"endOfFileToken",
 	"whitespaceToken",
 	"newlineToken",
@@ -25,6 +40,7 @@ static const char *syntaxKindText[] = {
 	"multipliationOperator",
 	"divisionOperator",
 	"modulusOperator",
+	"binaryExpression",
 };
 
 enum diagnosticKind
@@ -77,3 +93,9 @@ typedef struct node
 	int text_length;
 	void* data; 
 } node;
+
+typedef struct binaryExpressionNode {
+	node left;
+	node operator;
+	node right;
+} binaryExpressionNode;
