@@ -1,7 +1,7 @@
 #include "header.c"
 
 int main() {
-	char text[] = "10 + 10 * (20 + 10)";
+	char text[] = "{ 10 20 30 + 3 * (3) }";
 
 	lexer l = { .text = text, .text_length = sizeof(text), .index = 0, };
 

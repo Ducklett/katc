@@ -15,9 +15,12 @@ enum syntaxKind {
 
 	openParenthesisToken,
 	closeParenthesisToken,
+	openCurlyToken,
+	closeCurlyToken,
 
 	binaryExpression,
 	parenthesizedExpression,
+	blockStatement,
 };
 
 static const char *syntaxKindText[] = {
@@ -34,8 +37,11 @@ static const char *syntaxKindText[] = {
 	"modulusOperator",
 	"openParenthesisToken",
 	"closeParenthesisToken",
+	"openCurlyToken",
+	"closeCurlyToken",
 	"binaryExpression",
 	"parenthesizedExpression",
+	"blockStatement",
 };
 
 
@@ -57,6 +63,13 @@ typedef struct parenthesizedExpressionNode {
 	node expression;
 	node closeParen;
 } parenthesizedExpressionNode;
+
+typedef struct blockStatementNode {
+	node openCurly;
+	node* statements;
+	u16 statementsCount;
+	node closeCurly;
+} blockStatementNode;
 
 char* ast_substring(char* text, node *n) {
 	char *tokenText = (char*)malloc(sizeof(char) * (n->text_length) + 1);
@@ -87,19 +100,35 @@ void print_syntaxtree(char *text, node *root, int indent, bool newline) {
 
 	printf ("%*s(%s\n", indent, "", syntaxKindText[root->kind]);
 
+	indent += 4;
+
 	switch(root->kind) {
+	case blockStatement: {
+		blockStatementNode bn = (blockStatementNode)*root->data;
+		print_syntaxtree(text, &bn.openCurly, indent, true);
+		for (int i = 0; i< bn.statementsCount; i++) {
+			print_syntaxtree(text, &bn.statements[i], indent, true);
+		}
+		print_syntaxtree(text, &bn.closeCurly, indent, false);
+		break;
+	}
 	case binaryExpression: {
 		binaryExpressionNode bn = (binaryExpressionNode)*root->data;
-		print_syntaxtree(text, &bn.left, indent + 4, true);
-		print_syntaxtree(text, &bn.operator, indent + 4, true);
-		print_syntaxtree(text, &bn.right, indent + 4, false);
+		print_syntaxtree(text, &bn.left, indent, true);
+		print_syntaxtree(text, &bn.operator, indent, true);
+		print_syntaxtree(text, &bn.right, indent, false);
 		break;
 	}
 	case parenthesizedExpression: {
 		parenthesizedExpressionNode pn = (parenthesizedExpressionNode)*root->data;
-		print_syntaxtree(text, &pn.openParen, indent + 4, true);
-		print_syntaxtree(text, &pn.expression, indent + 4, true);
-		print_syntaxtree(text, &pn.closeParen, indent + 4, false);
+		print_syntaxtree(text, &pn.openParen, indent, true);
+		print_syntaxtree(text, &pn.expression, indent, true);
+		print_syntaxtree(text, &pn.closeParen, indent, false);
+		break;
+	}
+	default: {
+		printf("ERROR: Unhandled case in print_syntaxTree for kind %s", syntaxKindText[root->kind]);
+		exit(1);
 		break;
 	}
 	}
