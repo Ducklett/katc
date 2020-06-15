@@ -58,16 +58,10 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, int paren
 
 		int precedence = getOperatorPrecedence(operator.kind);
 
-		// not an operator
-		if (precedence == -1) {
-			report_diagnostic(d, unexpectedTokenDiagnostic, operator.text_start, operator.text_length, operator.kind, endOfFileToken, 0);
-			return left;
-		}
-
-		if (precedence <= parentPrecedence) {
-			// go back to before the operator was lexed
-			// TODO: don't re-lex and handle multi-character operators
-			p->lexer.index--;
+		if (precedence == -1 || precedence <= parentPrecedence) {
+			// reached the end, go back to before the operator was lexed
+			// TODO: don't re-lex
+			p->lexer.index-= operator.text_length;
 			return left;
 		}
 
