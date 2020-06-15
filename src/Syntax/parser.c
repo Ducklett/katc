@@ -2,9 +2,15 @@ typedef struct parser {
 	lexer lexer;
 	node root;
 	binaryExpressionNode binaryExpressions[1024];
+	parenthesizedExpressionNode parenthesizedExpressions[1024];
 	int nodeIndex;
 	int binaryExpressionIndex;
+	int parenthesizedExpressionIndex;
 } parser;
+
+node parser_parse_expression(parser *p, diagnosticContainer *d);
+node parser_parse_binary_expression(parser *p, diagnosticContainer *d, int parentPrecedence);
+node parser_parse_primary_expression(parser *p, diagnosticContainer *d);
 
 node parser_next_token(parser *p, diagnosticContainer *d) {
 	while(true) {
@@ -27,8 +33,15 @@ node parser_match_token(parser *p, diagnosticContainer *d, enum syntaxKind expec
 	}
 }
 
+void parser_parse(parser *p, diagnosticContainer *d) {
+	p->root = parser_parse_expression(p, d);
+	parser_match_token(p, d, endOfFileToken);
+}
+
+node parser_parse_expression(parser *p, diagnosticContainer *d) { return parser_parse_binary_expression(p, d,-2); }
+
 node parser_parse_binary_expression(parser *p, diagnosticContainer *d, int parentPrecedence) {
-	node left = parser_match_token(p, d, numberLiteral);
+	node left = parser_parse_primary_expression(p, d);
 
 	if (left.kind == endOfFileToken || left.kind == errorToken) return left;
 
@@ -37,6 +50,11 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, int paren
 
 		// not a binary expression, return self
 		if (operator.kind == endOfFileToken || operator.kind == badToken) return left;
+
+		if (operator.kind == closeParenthesisToken) {
+			p->lexer.index--;
+			return left;
+		}
 
 		int precedence = getOperatorPrecedence(operator.kind);
 
@@ -73,7 +91,27 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, int paren
 	return left;
 }
 
-void parser_parse(parser *p, diagnosticContainer *d) {
-	p->root = parser_parse_binary_expression(p, d,-2);
-	parser_match_token(p, d, endOfFileToken);
+node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
+	node token = parser_next_token(p, d);
+
+	if (token.kind == numberLiteral) return token;
+
+	if (token.kind == openParenthesisToken) {
+		node expr = parser_parse_expression(p, d);
+		node closeParen = parser_match_token(p, d, closeParenthesisToken);
+
+		parenthesizedExpressionNode exprData = { token, expr, closeParen };
+
+		int index = p->parenthesizedExpressionIndex;
+		p->parenthesizedExpressions[p->parenthesizedExpressionIndex++] = exprData;
+
+		node exprNode = {
+			.kind = parenthesizedExpression,
+			.text_start = token.text_start,
+			.text_length = (closeParen.text_start - token.text_start) + closeParen.text_length,
+			.data = &(p->parenthesizedExpressions[index]), 
+		};
+
+		return exprNode;
+	}
 }

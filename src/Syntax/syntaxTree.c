@@ -13,7 +13,11 @@ enum syntaxKind {
 	divisionOperator,
 	modulusOperator,
 
-	binaryExpression
+	openParenthesisToken,
+	closeParenthesisToken,
+
+	binaryExpression,
+	parenthesizedExpression,
 };
 
 static const char *syntaxKindText[] = {
@@ -28,7 +32,10 @@ static const char *syntaxKindText[] = {
 	"multipliationOperator",
 	"divisionOperator",
 	"modulusOperator",
+	"openParenthesisToken",
+	"closeParenthesisToken",
 	"binaryExpression",
+	"parenthesizedExpression",
 };
 
 
@@ -44,6 +51,12 @@ typedef struct binaryExpressionNode {
 	node operator;
 	node right;
 } binaryExpressionNode;
+
+typedef struct parenthesizedExpressionNode {
+	node openParen;
+	node expression;
+	node closeParen;
+} parenthesizedExpressionNode;
 
 char* ast_substring(char* text, node *n) {
 	char *tokenText = (char*)malloc(sizeof(char) * (n->text_length) + 1);
@@ -63,22 +76,33 @@ inline int getOperatorPrecedence(enum syntaxKind kind) {
 	}
 }
 
-void print_ast(char *text, node *root, int indent, bool newline) {
+void print_syntaxtree(char *text, node *root, int indent, bool newline) {
 
 	if (root->data == 0) {
 		char* tokenText = ast_substring(text, root);
-		printf ("%*s(%s :: %s)%s", indent, "", tokenText, syntaxKindText[root->kind], newline?"\n":"");
+		printf ("%*s('%s' :: %s)%s", indent, "", tokenText, syntaxKindText[root->kind], newline?"\n":"");
 		free(tokenText);
 		return;
 	}
 
 	printf ("%*s(%s\n", indent, "", syntaxKindText[root->kind]);
 
-	// binary expression
-	binaryExpressionNode n = (binaryExpressionNode)*root->data;
-	print_ast(text, &(n.left), indent + 4, true);
-	print_ast(text, &n.operator, indent + 4, true);
-	print_ast(text, &n.right, indent + 4, false);
+	switch(root->kind) {
+	case binaryExpression: {
+		binaryExpressionNode bn = (binaryExpressionNode)*root->data;
+		print_syntaxtree(text, &bn.left, indent + 4, true);
+		print_syntaxtree(text, &bn.operator, indent + 4, true);
+		print_syntaxtree(text, &bn.right, indent + 4, false);
+		break;
+	}
+	case parenthesizedExpression: {
+		parenthesizedExpressionNode pn = (parenthesizedExpressionNode)*root->data;
+		print_syntaxtree(text, &pn.openParen, indent + 4, true);
+		print_syntaxtree(text, &pn.expression, indent + 4, true);
+		print_syntaxtree(text, &pn.closeParen, indent + 4, false);
+		break;
+	}
+	}
 
-	printf (" )");
+	printf (" )%s", newline?"\n":"");
 }

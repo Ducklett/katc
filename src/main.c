@@ -5,14 +5,14 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include "syntax/ast.c"
+#include "syntax/syntaxTree.c"
 #include "diagnostics.c"
 #include "syntax/lexer.c"
 #include "syntax/parser.c"
 
 int main()
 {
-	char text[] = "10 + 10 * 20";
+	char text[] = "10 + 10 * (20 + 10)";
 
 	lexer l = { .text = text, .text_length = sizeof(text), .index = 0, };
 
@@ -24,7 +24,7 @@ int main()
 	parser_parse(&p, &diagnostics);
 
 	if (diagnostics.index==0)
-		print_ast(text, &p.root, 0, true);
+		print_syntaxtree(text, &p.root, 0, true);
 	else
 		print_diagnostics(&diagnostics, text);
 

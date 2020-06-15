@@ -52,6 +52,9 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 	case '/': return lex_basic_token(l, divisionOperator, 1);
 	case '%': return lex_basic_token(l, modulusOperator, 1);
 
+	case '(': return lex_basic_token(l, openParenthesisToken, 1);
+	case ')': return lex_basic_token(l, closeParenthesisToken, 1);
+
 	case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
 		t.kind = numberLiteral;
 		t.text_start = l->index;
