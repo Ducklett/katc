@@ -41,8 +41,8 @@ static const char *syntaxKindText[] = {
 
 typedef struct node {
 	enum syntaxKind kind;
-	int text_start;
-	int text_length;
+	u32 text_start;
+	u16 text_length;
 	void* data; 
 } node;
 
@@ -65,7 +65,7 @@ char* ast_substring(char* text, node *n) {
 	return tokenText;
 }
 
-inline int getOperatorPrecedence(enum syntaxKind kind) {
+inline i8 getOperatorPrecedence(enum syntaxKind kind) {
 	switch(kind) {
 	case plusOperator: return 1;
 	case minusOperator: return 1;

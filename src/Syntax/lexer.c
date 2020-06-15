@@ -1,8 +1,8 @@
 
 typedef struct lexer {
 	char *text;
-	int text_length;
-	int index;
+	u16 text_length;
+	u32 index;
 } lexer;
 
 inline bool isWhitespace(char c) { return c == ' ' || c == '\t'; }
@@ -23,7 +23,7 @@ char lexer_move_next(lexer *l) {
 	return l->text[l->index++];
 }
 
-inline node lex_basic_token(lexer *l, enum syntaxKind kind, int length) {
+inline node lex_basic_token(lexer *l, enum syntaxKind kind, u8 length) {
 	node t = {
 		.kind = kind,
 		.text_start = l->index,

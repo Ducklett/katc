@@ -1,14 +1,14 @@
 typedef struct diagnostic {
-	int kind;
-	int start;
-	int length;
-	int param1;
-	int param2;
-	int param3;
+	u8 kind;
+	u32 start;
+	u16 length;
+	u32 param1;
+	u32 param2;
+	u32 param3;
 } diagnostic;
 
 typedef struct diagnosticContainer {
-	int index;
+	u8 index;
 	diagnostic diagnostics[10];
 } diagnosticContainer;
 
@@ -22,7 +22,7 @@ static const char *diagnosticText[] = {
 	"unexpected token of kind '%s', expected '%s' (%d,%d)\n",
 };
 
-void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, int start, int length, int param1, int param2, int param3) {
+void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, u32 start, u16 length, u32 param1, u32 param2, u32 param3) {
 	if (d->index >= 10) return;
 
 	diagnostic dia = { kind, start, length, param1, param2, param3, };

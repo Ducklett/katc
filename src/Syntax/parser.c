@@ -3,13 +3,13 @@ typedef struct parser {
 	node root;
 	binaryExpressionNode binaryExpressions[1024];
 	parenthesizedExpressionNode parenthesizedExpressions[1024];
-	int nodeIndex;
-	int binaryExpressionIndex;
-	int parenthesizedExpressionIndex;
+	u16 nodeIndex;
+	u16 binaryExpressionIndex;
+	u16 parenthesizedExpressionIndex;
 } parser;
 
 node parser_parse_expression(parser *p, diagnosticContainer *d);
-node parser_parse_binary_expression(parser *p, diagnosticContainer *d, int parentPrecedence);
+node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parentPrecedence);
 node parser_parse_primary_expression(parser *p, diagnosticContainer *d);
 
 node parser_next_token(parser *p, diagnosticContainer *d) {
@@ -40,7 +40,7 @@ void parser_parse(parser *p, diagnosticContainer *d) {
 
 node parser_parse_expression(parser *p, diagnosticContainer *d) { return parser_parse_binary_expression(p, d,-2); }
 
-node parser_parse_binary_expression(parser *p, diagnosticContainer *d, int parentPrecedence) {
+node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parentPrecedence) {
 	node left = parser_parse_primary_expression(p, d);
 
 	if (left.kind == endOfFileToken || left.kind == errorToken) return left;
@@ -56,7 +56,7 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, int paren
 			return left;
 		}
 
-		int precedence = getOperatorPrecedence(operator.kind);
+		i8 precedence = getOperatorPrecedence(operator.kind);
 
 		if (precedence == -1 || precedence <= parentPrecedence) {
 			// reached the end, go back to before the operator was lexed
@@ -69,7 +69,7 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, int paren
 
 		binaryExpressionNode exprData = { left, operator, right, };
 
-		int index = p->binaryExpressionIndex;
+		u16 index = p->binaryExpressionIndex;
 		p->binaryExpressions[p->binaryExpressionIndex++] = exprData;
 
 		node exprNode = {
@@ -96,7 +96,7 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 
 		parenthesizedExpressionNode exprData = { token, expr, closeParen };
 
-		int index = p->parenthesizedExpressionIndex;
+		u16 index = p->parenthesizedExpressionIndex;
 		p->parenthesizedExpressions[p->parenthesizedExpressionIndex++] = exprData;
 
 		node exprNode = {
