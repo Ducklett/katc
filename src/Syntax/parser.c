@@ -73,7 +73,7 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, int paren
 	return left;
 }
 
-parser_parse(parser *p, diagnosticContainer *d) {
+void parser_parse(parser *p, diagnosticContainer *d) {
 	p->root = parser_parse_binary_expression(p, d,-2);
 	parser_match_token(p, d, endOfFileToken);
 }
