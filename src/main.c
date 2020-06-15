@@ -1,18 +1,4 @@
-
-// https://en.wikipedia.org/wiki/Single_Compilation_Unit
-#include <stdio.h>
-#include <string.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <time.h>
-
-#include "syntax/syntaxTree.c"
-#include "diagnostics.c"
-#include "syntax/lexer.c"
-#include "syntax/parser.c"
-
-#define benchmark_start() clock_t t = clock(); int acc = 0;
-#define benchmark_end(name) t = clock() - t; printf("%s: %.0fms\n", name, ((double)t) / CLOCKS_PER_SEC * 1000);
+#include "header.c"
 
 int main() {
 	char text[] = "10 + 10 * (20 + 10)";
