@@ -18,6 +18,7 @@ enum syntaxKind {
 	openCurlyToken,
 	closeCurlyToken,
 
+	unaryExpression,
 	binaryExpression,
 	parenthesizedExpression,
 	blockStatement,
@@ -39,6 +40,7 @@ static const char *syntaxKindText[] = {
 	"closeParenthesisToken",
 	"openCurlyToken",
 	"closeCurlyToken",
+	"unaryExpression",
 	"binaryExpression",
 	"parenthesizedExpression",
 	"blockStatement",
@@ -51,6 +53,11 @@ typedef struct node {
 	u16 text_length;
 	void* data; 
 } node;
+
+typedef struct unaryExpressionNode {
+	node operator;
+	node operand;
+} unaryExpressionNode;
 
 typedef struct binaryExpressionNode {
 	node left;
@@ -78,13 +85,21 @@ char* ast_substring(char* text, node *n) {
 	return tokenText;
 }
 
-inline i8 getOperatorPrecedence(enum syntaxKind kind) {
+inline i8 getBinaryOperatorPrecedence(enum syntaxKind kind) {
 	switch(kind) {
 	case plusOperator: return 1;
 	case minusOperator: return 1;
 	case multipliationOperator: return 2;
 	case divisionOperator: return 2;
 	case modulusOperator: return 2;
+	default: return -1;
+	}
+}
+
+inline i8 getUnaryOperatorPrecedence(enum syntaxKind kind) {
+	switch(kind) {
+	case plusOperator: return 5;
+	case minusOperator: return 5;
 	default: return -1;
 	}
 }
@@ -116,6 +131,12 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 			print_syntaxtree_internal(text, &bn.statements[i], indent, verbose, true);
 		}
 		print_syntaxtree_internal(text, &bn.closeCurly, indent, verbose, false);
+		break;
+	}
+	case unaryExpression: {
+		unaryExpressionNode bn = (unaryExpressionNode)*root->data;
+		print_syntaxtree_internal(text, &bn.operator, indent, verbose, true);
+		print_syntaxtree_internal(text, &bn.operand, indent, verbose, false);
 		break;
 	}
 	case binaryExpression: {

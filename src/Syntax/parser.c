@@ -2,11 +2,13 @@ typedef struct parser {
 	lexer lexer;
 	node root;
 	node nodes[1024];	// stores the nodes from arbitrarily sized sequences like paramater lists and block statements
-	blockStatementNode blockStatements[1024];	// stores the nodes from arbitrarily sized sequences like paramater lists and block statements
+	blockStatementNode blockStatements[1024];
+	unaryExpressionNode unaryExpressions[1024];
 	binaryExpressionNode binaryExpressions[1024];
 	parenthesizedExpressionNode parenthesizedExpressions[1024];
 	u16 nodeIndex;
 	u16 blockIndex;
+	u16 unaryExpressionIndex;
 	u16 binaryExpressionIndex;
 	u16 parenthesizedExpressionIndex;
 } parser;
@@ -97,6 +99,13 @@ node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
 node parser_parse_expression(parser *p, diagnosticContainer *d) { return parser_parse_binary_expression(p, d,-2); }
 
 node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parentPrecedence) {
+	node unaryOp = parser_next_token(p, d);
+	i8 unaryPrecedence =  getUnaryOperatorPrecedence(unaryOp.kind);
+	// not a unary operator
+	if (unaryPrecedence == -1) {
+		p->lexer.index -= unaryOp.text_length;
+	} 
+
 	node left = parser_parse_primary_expression(p, d);
 
 	if (left.kind == endOfFileToken || left.kind == errorToken) return left;
@@ -104,15 +113,26 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 	while (true) {
 		node operator = parser_next_token(p, d);
 
-		// not a binary expression, return self
-		if (operator.kind == endOfFileToken || operator.kind == badToken) return left;
+		i8 precedence = getBinaryOperatorPrecedence(operator.kind);
 
-		if (operator.kind == closeParenthesisToken) {
-			p->lexer.index--;
-			return left;
+		if (unaryPrecedence != -1 && unaryPrecedence > precedence) {
+			// ensure it doesn't get used a second time
+			unaryPrecedence = -1;
+
+			unaryExpressionNode exprData = { unaryOp, left, };
+
+			u16 index = p->unaryExpressionIndex;
+			p->unaryExpressions[p->unaryExpressionIndex++] = exprData;
+
+			node exprNode = {
+				.kind = unaryExpression,
+				.text_start = unaryOp.text_start,
+				.text_length = (left.text_start - unaryOp.text_start) + left.text_length,
+				.data = &(p->unaryExpressions[index]), 
+			};
+
+			left = exprNode;
 		}
-
-		i8 precedence = getOperatorPrecedence(operator.kind);
 
 		if (precedence == -1 || precedence <= parentPrecedence) {
 			// reached the end, go back to before the operator was lexed
