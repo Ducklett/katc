@@ -2,11 +2,15 @@ typedef struct parser {
 	lexer lexer;
 	node root;
 	node nodes[1024];	// stores the nodes from arbitrarily sized sequences like paramater lists and block statements
+	variableDeclarationNode variableDeclarations[1024];
+	variableAssignmentNode variableAssignments[1024];
 	blockStatementNode blockStatements[1024];
 	unaryExpressionNode unaryExpressions[1024];
 	binaryExpressionNode binaryExpressions[1024];
 	parenthesizedExpressionNode parenthesizedExpressions[1024];
 	u16 nodeIndex;
+	u16 variableDeclaratonIndex;
+	u16 variableAssignmentIndex;
 	u16 blockIndex;
 	u16 unaryExpressionIndex;
 	u16 binaryExpressionIndex;
@@ -15,6 +19,9 @@ typedef struct parser {
 
 node parser_parse_statement(parser *p, diagnosticContainer *d);
 node parser_parse_block_statement(parser *p, diagnosticContainer *d);
+node parser_parse_variable_declaration(parser *p, diagnosticContainer *d);
+node parser_parse_variable_assignment(parser *p, diagnosticContainer *d);
+
 node parser_parse_expression(parser *p, diagnosticContainer *d);
 node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parentPrecedence);
 node parser_parse_primary_expression(parser *p, diagnosticContainer *d);
@@ -46,11 +53,18 @@ void parser_parse(parser *p, diagnosticContainer *d) {
 }
 
 node parser_parse_statement(parser *p, diagnosticContainer *d) {
-	node token = parser_next_token(p, d);
-	enum syntaxKind kind  = token.kind;
-	p->lexer.index-=token.text_length;
+	int index = p->lexer.index;
+	node l1 = parser_next_token(p, d);
+	enum syntaxKind l1kind  = l1.kind;
 
-	if (kind == openCurlyToken) return parser_parse_block_statement(p, d);
+	node l2 = parser_next_token(p, d);
+	enum syntaxKind l2kind  = l2.kind;
+
+	p->lexer.index = index;
+
+	if (l1kind == openCurlyToken) return parser_parse_block_statement(p, d);
+	if (l1kind == identifierToken && l2kind == colonToken) return parser_parse_variable_declaration(p, d);
+	if (l1kind == identifierToken && l2kind == equalsToken) return parser_parse_variable_assignment(p, d);
 	return parser_parse_expression(p, d);
 }
 
@@ -100,6 +114,47 @@ node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
 		.data = &(p->blockStatements[blockIndex]),
 	};
 	return blockNode;
+}
+
+node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
+	node identifier = parser_match_token(p, d, identifierToken);
+	node colon = parser_match_token(p, d, colonToken);
+	node equals = parser_match_token(p, d, equalsToken);
+	node expression = parser_parse_expression(p, d);
+
+	variableDeclarationNode declData = { identifier, colon, equals, expression };
+
+	u16 index = p->variableDeclaratonIndex;
+	p->variableDeclarations[p->variableDeclaratonIndex++] = declData;
+
+	node declNode = {
+		.kind = variableDeclaration,
+		.text_start = identifier.text_start,
+		.text_length = (expression.text_start - identifier.text_start) + expression.text_length,
+		.data = &(p->variableDeclarations[index]), 
+	};
+
+	return declNode;
+}
+
+node parser_parse_variable_assignment(parser *p, diagnosticContainer *d) {
+	node identifier = parser_match_token(p, d, identifierToken);
+	node equals = parser_match_token(p, d, equalsToken);
+	node expression = parser_parse_expression(p, d);
+
+	variableAssignmentNode assData = { identifier,  equals, expression };
+
+	u16 index = p->variableAssignmentIndex;
+	p->variableAssignments[p->variableAssignmentIndex++] = assData;
+
+	node assNode = {
+		.kind = variableAssignment,
+		.text_start = identifier.text_start,
+		.text_length = (expression.text_start - identifier.text_start) + expression.text_length,
+		.data = &(p->variableAssignments[index]), 
+	};
+
+	return assNode;
 }
 
 node parser_parse_expression(parser *p, diagnosticContainer *d) { return parser_parse_binary_expression(p, d,-2); }

@@ -55,6 +55,9 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 	case '/': return lex_basic_token(l, divisionOperator, 1);
 	case '%': return lex_basic_token(l, modulusOperator, 1);
 
+	case '=': return lex_basic_token(l, equalsToken, 1);
+	case ':': return lex_basic_token(l, colonToken, 1);
+
 	case '(': return lex_basic_token(l, openParenthesisToken, 1);
 	case ')': return lex_basic_token(l, closeParenthesisToken, 1);
 	case '{': return lex_basic_token(l, openCurlyToken, 1);

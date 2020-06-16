@@ -10,11 +10,15 @@ enum syntaxKind {
 	newlineToken,
 
 	numberLiteral,
+
 	plusOperator,
 	minusOperator,
 	multipliationOperator,
 	divisionOperator,
 	modulusOperator,
+
+	equalsToken,
+	colonToken,
 
 	openParenthesisToken,
 	closeParenthesisToken,
@@ -24,6 +28,8 @@ enum syntaxKind {
 	unaryExpression,
 	binaryExpression,
 	parenthesizedExpression,
+	variableDeclaration,
+	variableAssignment,
 	blockStatement,
 };
 
@@ -40,6 +46,8 @@ static const char *syntaxKindText[] = {
 	"multipliationOperator",
 	"divisionOperator",
 	"modulusOperator",
+	"equalsToken",
+	"colonToken",
 	"openParenthesisToken",
 	"closeParenthesisToken",
 	"openCurlyToken",
@@ -47,6 +55,8 @@ static const char *syntaxKindText[] = {
 	"unaryExpression",
 	"binaryExpression",
 	"parenthesizedExpression",
+	"variableDeclaration",
+	"variableAssignment",
 	"blockStatement",
 };
 
@@ -74,6 +84,19 @@ typedef struct parenthesizedExpressionNode {
 	node expression;
 	node closeParen;
 } parenthesizedExpressionNode;
+
+typedef struct variableDeclarationNode {
+	node identifier;
+	node colon;
+	node equals;
+	node expression;
+} variableDeclarationNode;
+
+typedef struct variableAssignmentNode {
+	node identifier;
+	node equals;
+	node expression;
+} variableAssignmentNode;
 
 typedef struct blockStatementNode {
 	node openCurly;
@@ -128,6 +151,21 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 	indent += 4;
 
 	switch(root->kind) {
+	case variableDeclaration: {
+		variableDeclarationNode dn = (variableDeclarationNode)*root->data;
+		print_syntaxtree_internal(text, &dn.identifier, indent, verbose, true);
+		print_syntaxtree_internal(text, &dn.colon, indent, verbose, true);
+		print_syntaxtree_internal(text, &dn.equals, indent, verbose, true);
+		print_syntaxtree_internal(text, &dn.expression, indent, verbose, false);
+		break;
+	}
+	case variableAssignment: {
+		variableAssignmentNode an = (variableAssignmentNode)*root->data;
+		print_syntaxtree_internal(text, &an.identifier, indent, verbose, true);
+		print_syntaxtree_internal(text, &an.equals, indent, verbose, true);
+		print_syntaxtree_internal(text, &an.expression, indent, verbose, false);
+		break;
+	}
 	case blockStatement: {
 		blockStatementNode bn = (blockStatementNode)*root->data;
 		print_syntaxtree_internal(text, &bn.openCurly, indent, verbose, true);
@@ -138,9 +176,9 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		break;
 	}
 	case unaryExpression: {
-		unaryExpressionNode bn = (unaryExpressionNode)*root->data;
-		print_syntaxtree_internal(text, &bn.operator, indent, verbose, true);
-		print_syntaxtree_internal(text, &bn.operand, indent, verbose, false);
+		unaryExpressionNode un = (unaryExpressionNode)*root->data;
+		print_syntaxtree_internal(text, &un.operator, indent, verbose, true);
+		print_syntaxtree_internal(text, &un.operand, indent, verbose, false);
 		break;
 	}
 	case binaryExpression: {

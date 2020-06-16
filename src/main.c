@@ -1,11 +1,12 @@
 #include "header.c"
 
 int main() {
-	char text[] = "{ -3 * (3) { xyz 20 30} }";
+	char text[] = "{ x := 3 x = -x { xyz 20 30} }";
 
 	lexer l = { .text = text, .text_length = sizeof(text), .index = 0, };
 
-	parser p = { .lexer = l, .nodeIndex = 0, .binaryExpressionIndex = 0, };
+	parser p = { 0 };
+	p.lexer = l;
 
 	diagnosticContainer diagnostics = {0};
 
@@ -15,7 +16,7 @@ int main() {
 	parser_parse(&p, &diagnostics);
 	benchmark_end("Parsing");
 
-	bool verbose = true;
+	bool verbose = false;
 
 	if (diagnostics.index==0)
 		print_syntaxtree(text, &p.root, 0, verbose);
