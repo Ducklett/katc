@@ -15,8 +15,10 @@ int main() {
 	parser_parse(&p, &diagnostics);
 	benchmark_end("Parsing");
 
+	bool verbose = false;
+
 	if (diagnostics.index==0)
-		print_syntaxtree(text, &p.root, 0, true);
+		print_syntaxtree(text, &p.root, 0, verbose);
 	else
 		print_diagnostics(&diagnostics, text);
 

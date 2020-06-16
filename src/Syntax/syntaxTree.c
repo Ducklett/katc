@@ -89,11 +89,17 @@ inline i8 getOperatorPrecedence(enum syntaxKind kind) {
 	}
 }
 
-void print_syntaxtree(char *text, node *root, int indent, bool newline) {
+void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose, bool newline);
+void print_syntaxtree(char *text, node *root, int indent, bool verbose) { print_syntaxtree_internal(text, root, indent, verbose, true); }
+void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose, bool newline) {
 
 	if (root->data == 0) {
 		char* tokenText = ast_substring(text, root);
-		printf ("%*s('%s' :: %s)%s", indent, "", tokenText, syntaxKindText[root->kind], newline?"\n":"");
+		if (verbose) {
+			printf ("%*s('%s' :: %s)%s", indent, "", tokenText, syntaxKindText[root->kind], newline?"\n":"");
+		} else {
+			printf ("%*s%s%s", indent, "", tokenText, newline?"\n":"");
+		}
 		free(tokenText);
 		return;
 	}
@@ -105,25 +111,25 @@ void print_syntaxtree(char *text, node *root, int indent, bool newline) {
 	switch(root->kind) {
 	case blockStatement: {
 		blockStatementNode bn = (blockStatementNode)*root->data;
-		print_syntaxtree(text, &bn.openCurly, indent, true);
+		print_syntaxtree_internal(text, &bn.openCurly, indent, verbose, true);
 		for (int i = 0; i< bn.statementsCount; i++) {
-			print_syntaxtree(text, &bn.statements[i], indent, true);
+			print_syntaxtree_internal(text, &bn.statements[i], indent, verbose, true);
 		}
-		print_syntaxtree(text, &bn.closeCurly, indent, false);
+		print_syntaxtree_internal(text, &bn.closeCurly, indent, verbose, false);
 		break;
 	}
 	case binaryExpression: {
 		binaryExpressionNode bn = (binaryExpressionNode)*root->data;
-		print_syntaxtree(text, &bn.left, indent, true);
-		print_syntaxtree(text, &bn.operator, indent, true);
-		print_syntaxtree(text, &bn.right, indent, false);
+		print_syntaxtree_internal(text, &bn.left, indent, verbose, true);
+		print_syntaxtree_internal(text, &bn.operator, indent, verbose, true);
+		print_syntaxtree_internal(text, &bn.right, indent, verbose, false);
 		break;
 	}
 	case parenthesizedExpression: {
 		parenthesizedExpressionNode pn = (parenthesizedExpressionNode)*root->data;
-		print_syntaxtree(text, &pn.openParen, indent, true);
-		print_syntaxtree(text, &pn.expression, indent, true);
-		print_syntaxtree(text, &pn.closeParen, indent, false);
+		print_syntaxtree_internal(text, &pn.openParen, indent, verbose, true);
+		print_syntaxtree_internal(text, &pn.expression, indent, verbose, true);
+		print_syntaxtree_internal(text, &pn.closeParen, indent, verbose, false);
 		break;
 	}
 	default: {
