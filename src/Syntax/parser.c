@@ -55,7 +55,11 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
 	node openCurly = parser_match_token(p, d, openCurlyToken);
 	node closeCurly;
-	u16 startIndex = p->nodeIndex;
+
+	// TODO: add dynamic arrays so this doesn't have to be fixed size
+	node nodes[100];
+	int nodeIndex = 0;
+
 	while (true) {
 		node token = parser_next_token(p, d);
 
@@ -66,12 +70,16 @@ node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
 
 		p->lexer.index-=token.text_length;
 
-		// TODO: make this work for nested block statements
-		// keep a local buffer and append everything at the end
-		node exprNode = parser_parse_expression(p, d);
-		p->nodes[p->nodeIndex++] = exprNode;
+		node exprNode = parser_parse_statement(p, d);
+		nodes[nodeIndex++] = exprNode;
 	}
-	u16 statementCount = p->nodeIndex - startIndex;
+
+	// TODO: some kind of memcpy is probably faster
+	u16 startIndex = p->nodeIndex;
+	u16 statementCount = nodeIndex;
+	for (int i = 0; i < statementCount; i++) {
+		p->nodes[p->nodeIndex++] = nodes[i];
+	}
 
 	u16 blockIndex = p->blockIndex;
 	blockStatementNode blockData = { openCurly, &(p->nodes[startIndex]), statementCount, closeCurly, };
