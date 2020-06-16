@@ -70,6 +70,12 @@ node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
 			break;
 		}
 
+		if (token.kind == endOfFileToken) {
+			report_diagnostic(d, unexpectedTokenDiagnostic, token.text_start, token.text_length, token.kind, closeCurlyToken, 0);
+			closeCurly = token;
+			break;
+		}
+
 		p->lexer.index-=token.text_length;
 
 		node exprNode = parser_parse_statement(p, d);
