@@ -1,7 +1,7 @@
 #include "header.c"
 
 int main() {
-	char text[] = "{ -3 * (3) { 10 20 30} }";
+	char text[] = "{ -3 * (3) { xyz 20 30} }";
 
 	lexer l = { .text = text, .text_length = sizeof(text), .index = 0, };
 
@@ -15,7 +15,7 @@ int main() {
 	parser_parse(&p, &diagnostics);
 	benchmark_end("Parsing");
 
-	bool verbose = false;
+	bool verbose = true;
 
 	if (diagnostics.index==0)
 		print_syntaxtree(text, &p.root, 0, verbose);

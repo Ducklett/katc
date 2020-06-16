@@ -13,6 +13,9 @@ inline bool isNumber(char c) { return c >= '0' && c <= '9'; }
 
 inline bool isLetter(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); }
 
+inline bool isIdentifierStart(char c) { return isLetter(c) || c == '_'; }
+inline bool isIdentifier(char c) { return isLetter(c) || isNumber(c) || c == '_'; }
+
 char lexer_current(lexer *l) {
 	if (l->index >= l->text_length) return '\0';
 	return l->text[l->index];
@@ -79,6 +82,13 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 		break;
 
 	default:
+		if (isIdentifierStart(current)) {
+			t.kind = identifierToken;
+			t.text_start = l->index;
+			while (isIdentifier(lexer_current(l))) lexer_move_next(l);
+			t.text_length = l->index - t.text_start;
+			break;
+		}
 		t.kind = badToken;
 		t.text_start = l->index;
 		t.text_length = 1;

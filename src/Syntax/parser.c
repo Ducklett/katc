@@ -172,6 +172,8 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 
 	if (token.kind == numberLiteral) return token;
 
+	if (token.kind == identifierToken) return token;
+
 	if (token.kind == openParenthesisToken) {
 		node expr = parser_parse_expression(p, d);
 		node closeParen = parser_match_token(p, d, closeParenthesisToken);

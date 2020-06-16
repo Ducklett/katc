@@ -3,6 +3,9 @@ enum syntaxKind {
 	badToken,
 	errorToken,
 	endOfFileToken,
+
+	identifierToken,
+
 	whitespaceToken,
 	newlineToken,
 
@@ -28,6 +31,7 @@ static const char *syntaxKindText[] = {
 	"badToken",
 	"errorToken",
 	"endOfFileToken",
+	"identifierToken",
 	"whitespaceToken",
 	"newlineToken",
 	"numberLiteral",
