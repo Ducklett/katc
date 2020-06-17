@@ -18,6 +18,16 @@ enum syntaxKind {
 	divisionOperator,
 	modulusOperator,
 
+	bangOperator,
+	euqualsEqualsOperator,
+	bangEqualsOperator,
+	lessOperator,
+	greaterOperator,
+	lessEqualsOperator,
+	greaterEqualsOperator,
+	ampersandAmpersandOperator,
+	pipePipeOperator,
+
 	equalsToken,
 	colonToken,
 
@@ -56,6 +66,15 @@ static const char *syntaxKindText[] = {
 	"multipliationOperator",
 	"divisionOperator",
 	"modulusOperator",
+	"bangOperator",
+	"euqualsEqualsOperator",
+	"bangEqualsOperator",
+	"lessOperator",
+	"greaterOperator",
+	"lessEqualsOperator",
+	"greaterEqualsOperator",
+	"ampersandAmpersandOperator",
+	"pipePipeOperator",
 	"equalsToken",
 	"colonToken",
 	"openParenthesisToken",
@@ -162,19 +181,29 @@ char* ast_substring(char* text, node *n) {
 
 inline i8 getBinaryOperatorPrecedence(enum syntaxKind kind) {
 	switch(kind) {
-	case plusOperator: return 1;
-	case minusOperator: return 1;
-	case multipliationOperator: return 2;
-	case divisionOperator: return 2;
-	case modulusOperator: return 2;
+	case plusOperator: return 12;
+	case minusOperator: return 12;
+	case multipliationOperator: return 13;
+	case divisionOperator: return 13;
+	case modulusOperator: return 13;
+
+	case greaterOperator: return 10;
+	case greaterEqualsOperator: return 10;
+	case lessOperator: return 10;
+	case lessEqualsOperator: return 10;
+	case euqualsEqualsOperator: return 9;
+	case bangEqualsOperator: return 9;
+	case ampersandAmpersandOperator: return 5;
+	case pipePipeOperator: return 4;
 	default: return -1;
 	}
 }
 
 inline i8 getUnaryOperatorPrecedence(enum syntaxKind kind) {
 	switch(kind) {
-	case plusOperator: return 5;
-	case minusOperator: return 5;
+	case bangOperator: return 14;
+	case plusOperator: return 14;
+	case minusOperator: return 14;
 	default: return -1;
 	}
 }
@@ -229,7 +258,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		print_syntaxtree_internal(text, &in.ifKeyword, indent, verbose, true);
 		print_syntaxtree_internal(text, &in.condition, indent, verbose, true);
 		print_syntaxtree_internal(text, &in.thenExpression, indent, verbose, true);
-		if (&in.elseKeyword.kind != emptyToken) {
+		if (in.elseKeyword.kind != emptyToken) {
 			print_syntaxtree_internal(text, &in.elseKeyword, indent, verbose, true);
 			print_syntaxtree_internal(text, &in.elseExpression, indent, verbose, false);
 		}

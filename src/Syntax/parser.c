@@ -155,7 +155,7 @@ node parser_parse_if_statement(parser *p, diagnosticContainer *d) {
 	if (parser_current(p, d).kind == elseKeyword) {
 		elseToken = parser_match_token(p, d, elseKeyword);
 		elseStatement = parser_parse_statement(p, d);
-	}
+	} 
 
 	ifStatementNode ifData = { ifToken, condition, thenStatement, elseToken, elseStatement };
 

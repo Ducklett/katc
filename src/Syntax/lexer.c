@@ -31,6 +31,11 @@ char lexer_current(lexer *l) {
 	return l->text[l->index];
 }
 
+char lexer_peek(lexer *l, int n) {
+	if (l->index + n >= l->text_length) return '\0';
+	return l->text[l->index + n];
+}
+
 char lexer_move_next(lexer *l) {
 	if (l->index >= l->text_length) return '\0';
 	return l->text[l->index++];
@@ -65,7 +70,23 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 	case '/': return lex_basic_token(l, divisionOperator, 1);
 	case '%': return lex_basic_token(l, modulusOperator, 1);
 
-	case '=': return lex_basic_token(l, equalsToken, 1);
+	case '!':
+		if (lexer_peek(l,1) == '=') return lex_basic_token(l, bangEqualsOperator, 2);
+		else return lex_basic_token(l, bangOperator, 1);
+	case '=':
+		if (lexer_peek(l,1) == '=') return lex_basic_token(l, euqualsEqualsOperator, 2);
+		else return lex_basic_token(l, equalsToken, 1);
+	case '<':
+		if (lexer_peek(l,1) == '=') return lex_basic_token(l, lessEqualsOperator, 2);
+		else return lex_basic_token(l, lessOperator, 1);
+	case '>':
+		if (lexer_peek(l,1) == '=') return lex_basic_token(l, greaterEqualsOperator, 2);
+		else return lex_basic_token(l, greaterOperator, 1);
+	case '&':
+		if (lexer_peek(l,1) == '&') return lex_basic_token(l, ampersandAmpersandOperator, 2);
+	case '|':
+		if (lexer_peek(l,1) == '|') return lex_basic_token(l, pipePipeOperator, 2);
+
 	case ':': return lex_basic_token(l, colonToken, 1);
 
 	case '(': return lex_basic_token(l, openParenthesisToken, 1);

@@ -1,7 +1,3 @@
-{
-	x := 3
-	if x {
-		x = -x
-	} else x = 10 * 10
-	while true x = x - 1
+if x || y && !true >= 10 {
+	10 * 10
 }
