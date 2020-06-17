@@ -1,9 +1,16 @@
 #include "header.c"
 
 int main() {
-	char text[] = "{ x := 3 x = -x { xyz 20 30} }";
+	u64 length;
+	char* text;
 
-	lexer l = { .text = text, .text_length = sizeof(text), .index = 0, };
+	{
+		benchmark_start();
+		text = read_file("test.kat", &length);
+		benchmark_end("File read");
+	}
+
+	lexer l = { .text = text, .text_length = length, .index = 0, };
 
 	parser p = { 0 };
 	p.lexer = l;
