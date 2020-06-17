@@ -197,6 +197,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		ifStatementNode in = (ifStatementNode)*root->data;
 		print_syntaxtree_internal(text, &in.ifKeyword, indent, verbose, true);
 		print_syntaxtree_internal(text, &in.condition, indent, verbose, true);
+		print_syntaxtree_internal(text, &in.thenExpression, indent, verbose, true);
 		if (&in.elseKeyword.kind != emptyToken) {
 			print_syntaxtree_internal(text, &in.elseKeyword, indent, verbose, true);
 			print_syntaxtree_internal(text, &in.elseExpression, indent, verbose, false);
