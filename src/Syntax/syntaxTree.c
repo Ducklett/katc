@@ -1,5 +1,6 @@
 
 enum syntaxKind {
+	emptyToken,
 	badToken,
 	errorToken,
 	endOfFileToken,
@@ -34,6 +35,7 @@ enum syntaxKind {
 };
 
 static const char *syntaxKindText[] = {
+	"emptyToken",
 	"badToken",
 	"errorToken",
 	"endOfFileToken",

@@ -1,5 +1,8 @@
+#define MAX_LOOKAHEAD 10
+
 typedef struct parser {
 	lexer lexer;
+	node token_buffer[MAX_LOOKAHEAD];	// ring buffer that caches token lookaheads
 	node root;
 	node nodes[1024];	// stores the nodes from arbitrarily sized sequences like paramater lists and block statements
 	variableDeclarationNode variableDeclarations[1024];
@@ -8,6 +11,7 @@ typedef struct parser {
 	unaryExpressionNode unaryExpressions[1024];
 	binaryExpressionNode binaryExpressions[1024];
 	parenthesizedExpressionNode parenthesizedExpressions[1024];
+	u8 tokenBufferIndex;
 	u16 nodeIndex;
 	u16 variableDeclaratonIndex;
 	u16 variableAssignmentIndex;
@@ -16,6 +20,8 @@ typedef struct parser {
 	u16 binaryExpressionIndex;
 	u16 parenthesizedExpressionIndex;
 } parser;
+
+node parser_next_token(parser *p, diagnosticContainer *d);
 
 node parser_parse_statement(parser *p, diagnosticContainer *d);
 node parser_parse_block_statement(parser *p, diagnosticContainer *d);
@@ -26,7 +32,7 @@ node parser_parse_expression(parser *p, diagnosticContainer *d);
 node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parentPrecedence);
 node parser_parse_primary_expression(parser *p, diagnosticContainer *d);
 
-node parser_next_token(parser *p, diagnosticContainer *d) {
+node parser_parse_token(parser *p, diagnosticContainer *d) {
 	while(true) {
 		node t = lexer_lex_token(&p->lexer, d);
 		if (t.kind == whitespaceToken || t.kind == newlineToken) continue;
@@ -34,17 +40,37 @@ node parser_next_token(parser *p, diagnosticContainer *d) {
 	}
 }
 
-node parser_match_token(parser *p, diagnosticContainer *d, enum syntaxKind expectedKind) {
-	while(true) {
-		node t = lexer_lex_token(&p->lexer, d);
-		if (t.kind == whitespaceToken || t.kind == newlineToken) continue;
-		if (t.kind != expectedKind) {
-			// badToken already gets reported by the lexer
-			if (t.kind != badToken) report_diagnostic(d, unexpectedTokenDiagnostic, t.text_start, t.text_length, t.kind, expectedKind, 0);
-			t.kind=errorToken;
+node parser_peek(parser *p, diagnosticContainer *d, u8 n) {
+	u8 index;
+	for (int i = 0; i <= n; i++) {
+		index = (p->tokenBufferIndex + i) % MAX_LOOKAHEAD;
+		if (p->token_buffer[index].kind == emptyToken) {
+			p->token_buffer[index] = parser_parse_token(p, d);
 		}
-		return t;
 	}
+	return p->token_buffer[index];
+}
+
+inline node parser_current(parser *p, diagnosticContainer *d) { return parser_peek(p, d, 0); }
+
+node parser_next_token(parser *p, diagnosticContainer *d) {
+	node t = parser_current(p, d);
+	p->token_buffer[p->tokenBufferIndex].kind = emptyToken;
+	p->tokenBufferIndex = (p->tokenBufferIndex + 1) % MAX_LOOKAHEAD;
+	return t;
+}
+
+node parser_match_token(parser *p, diagnosticContainer *d, enum syntaxKind expectedKind) {
+
+	node t = parser_current(p, d);
+	if (t.kind != expectedKind) {
+		// badToken already gets reported by the lexer
+		if (t.kind != badToken) report_diagnostic(d, unexpectedTokenDiagnostic, t.text_start, t.text_length, t.kind, expectedKind, 0);
+		t.kind=errorToken;
+	}
+	p->token_buffer[p->tokenBufferIndex].kind = emptyToken;
+	p->tokenBufferIndex = (p->tokenBufferIndex + 1) % MAX_LOOKAHEAD;
+	return t;
 }
 
 void parser_parse(parser *p, diagnosticContainer *d) {
@@ -53,14 +79,11 @@ void parser_parse(parser *p, diagnosticContainer *d) {
 }
 
 node parser_parse_statement(parser *p, diagnosticContainer *d) {
-	int index = p->lexer.index;
-	node l1 = parser_next_token(p, d);
+	node l1 = parser_peek(p, d, 0);
 	enum syntaxKind l1kind  = l1.kind;
 
-	node l2 = parser_next_token(p, d);
+	node l2 = parser_peek(p, d, 1);
 	enum syntaxKind l2kind  = l2.kind;
-
-	p->lexer.index = index;
 
 	if (l1kind == openCurlyToken) return parser_parse_block_statement(p, d);
 	if (l1kind == identifierToken && l2kind == colonToken) return parser_parse_variable_declaration(p, d);
@@ -77,20 +100,18 @@ node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
 	int nodeIndex = 0;
 
 	while (true) {
-		node token = parser_next_token(p, d);
+		node token = parser_current(p, d);
 
 		if (token.kind == closeCurlyToken) {
-			closeCurly = token;
+			closeCurly = parser_next_token(p, d);
 			break;
 		}
 
 		if (token.kind == endOfFileToken) {
 			report_diagnostic(d, unexpectedTokenDiagnostic, token.text_start, token.text_length, token.kind, closeCurlyToken, 0);
-			closeCurly = token;
+			closeCurly = parser_next_token(p, d);
 			break;
 		}
-
-		p->lexer.index-=token.text_length;
 
 		node exprNode = parser_parse_statement(p, d);
 		nodes[nodeIndex++] = exprNode;
@@ -160,19 +181,18 @@ node parser_parse_variable_assignment(parser *p, diagnosticContainer *d) {
 node parser_parse_expression(parser *p, diagnosticContainer *d) { return parser_parse_binary_expression(p, d,-2); }
 
 node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parentPrecedence) {
-	node unaryOp = parser_next_token(p, d);
+	node unaryOp = parser_current(p, d);
 	i8 unaryPrecedence =  getUnaryOperatorPrecedence(unaryOp.kind);
-	// not a unary operator
-	if (unaryPrecedence == -1) {
-		p->lexer.index -= unaryOp.text_length;
-	} 
+
+	// found a unary operator
+	if (unaryPrecedence != -1) parser_next_token(p, d);
 
 	node left = parser_parse_primary_expression(p, d);
 
 	if (left.kind == endOfFileToken || left.kind == errorToken) return left;
 
 	while (true) {
-		node operator = parser_next_token(p, d);
+		node operator = parser_current(p, d);
 
 		i8 precedence = getBinaryOperatorPrecedence(operator.kind);
 
@@ -196,11 +216,10 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 		}
 
 		if (precedence == -1 || precedence <= parentPrecedence) {
-			// reached the end, go back to before the operator was lexed
-			// TODO: don't re-lex
-			p->lexer.index-= operator.text_length;
 			return left;
 		}
+
+		operator = parser_next_token(p, d);
 
 		node right = parser_parse_binary_expression(p, d, precedence);
 
@@ -223,25 +242,25 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 }
 
 node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
-	node token = parser_next_token(p, d);
+	node current = parser_current(p, d);
 
-	if (token.kind == numberLiteral) return token;
+	if (current.kind == numberLiteral) return parser_next_token(p, d);
 
-	if (token.kind == identifierToken) return token;
+	if (current.kind == identifierToken) return parser_next_token(p, d);
 
-	if (token.kind == openParenthesisToken) {
+	if (current.kind == openParenthesisToken) {
 		node expr = parser_parse_expression(p, d);
 		node closeParen = parser_match_token(p, d, closeParenthesisToken);
 
-		parenthesizedExpressionNode exprData = { token, expr, closeParen };
+		parenthesizedExpressionNode exprData = { current, expr, closeParen };
 
 		u16 index = p->parenthesizedExpressionIndex;
 		p->parenthesizedExpressions[p->parenthesizedExpressionIndex++] = exprData;
 
 		node exprNode = {
 			.kind = parenthesizedExpression,
-			.text_start = token.text_start,
-			.text_length = (closeParen.text_start - token.text_start) + closeParen.text_length,
+			.text_start = current.text_start,
+			.text_length = (closeParen.text_start - current.text_start) + closeParen.text_length,
 			.data = &(p->parenthesizedExpressions[index]), 
 		};
 
@@ -249,6 +268,6 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 	}
 
 	// TODO: better error handling here
-	if (token.kind != badToken) report_diagnostic(d, unexpectedTokenDiagnostic, token.text_start, token.text_length, token.kind, numberLiteral, 0);
-	return token;
+	if (current.kind != badToken) report_diagnostic(d, unexpectedTokenDiagnostic, current.text_start, current.text_length, current.kind, numberLiteral, 0);
+	return parser_next_token(p, d);
 }
