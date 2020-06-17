@@ -295,11 +295,13 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 	node current = parser_current(p, d);
 
-	if (current.kind == numberLiteral) return parser_next_token(p, d);
-
-	if (current.kind == identifierToken) return parser_next_token(p, d);
-
-	if (current.kind == openParenthesisToken) {
+	switch (current.kind) {
+	case numberLiteral:
+	case trueKeyword:
+	case falseKeyword:
+	case identifierToken:
+		return parser_next_token(p, d); break;
+	case openParenthesisToken: {
 		node openParen = parser_next_token(p, d);
 		node expr = parser_parse_expression(p, d);
 		node closeParen = parser_match_token(p, d, closeParenthesisToken);
@@ -317,8 +319,9 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 
 		return exprNode;
 	}
-
-	// TODO: better error handling here
-	if (current.kind != badToken) report_diagnostic(d, unexpectedTokenDiagnostic, current.span, current.kind, numberLiteral, 0);
-	return parser_next_token(p, d);
+	default: 
+		// TODO: better error handling here
+		if (current.kind != badToken) report_diagnostic(d, unexpectedTokenDiagnostic, current.span, current.kind, numberLiteral, 0);
+		return parser_next_token(p, d);
+	}
 }

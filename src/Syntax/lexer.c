@@ -101,7 +101,9 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			while (isIdentifier(lexer_current(l))) lexer_move_next(l);
 			t.span = textspan_create(start, l->index - start);
 
-			if (span_compare(l->text, &t, "if")) t.kind = ifKeyword;
+			if (span_compare(l->text, &t, "true")) t.kind = trueKeyword;
+			else if (span_compare(l->text, &t, "false")) t.kind = falseKeyword;
+			else if (span_compare(l->text, &t, "if")) t.kind = ifKeyword;
 			else if (span_compare(l->text, &t, "else")) t.kind = elseKeyword;
 			else if (span_compare(l->text, &t, "while")) t.kind = whileKeyword;
 			break;

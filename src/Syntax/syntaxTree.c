@@ -26,6 +26,8 @@ enum syntaxKind {
 	openCurlyToken,
 	closeCurlyToken,
 
+	trueKeyword,
+	falseKeyword,
 	ifKeyword,
 	elseKeyword,
 	whileKeyword,
@@ -60,6 +62,8 @@ static const char *syntaxKindText[] = {
 	"closeParenthesisToken",
 	"openCurlyToken",
 	"closeCurlyToken",
+	"trueKeyword",
+	"falseKeyword",
 	"ifKeyword",
 	"elseKeyword",
 	"whileKeyword",
