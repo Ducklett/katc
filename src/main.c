@@ -23,7 +23,7 @@ int main() {
 	parser_parse(&p, &diagnostics);
 	benchmark_end("Parsing");
 
-	bool verbose = false;
+	bool verbose = true;
 
 	if (diagnostics.index==0)
 		print_syntaxtree(text, &p.root, 0, verbose);

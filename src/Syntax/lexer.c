@@ -18,10 +18,10 @@ inline bool isIdentifier(char c) { return isLetter(c) || isNumber(c) || c == '_'
 
 bool span_compare(char* text, node *token, char* comp) {
 
-	for (int i = 0; i < token->text_length; i++)
-		if (text[token->text_start + i] != comp[i]) return false;
+	for (int i = 0; i < token->span.length; i++)
+		if (text[token->span.start + i] != comp[i]) return false;
 
-	if (comp[token->text_length] != '\0') return false;
+	if (comp[token->span.length] != '\0') return false;
 
 	return true;
 }
@@ -39,8 +39,7 @@ char lexer_move_next(lexer *l) {
 inline node lex_basic_token(lexer *l, enum syntaxKind kind, u8 length) {
 	node t = {
 		.kind = kind,
-		.text_start = l->index,
-		.text_length = length,
+		.span = textspan_create(l->index, length),
 		.data = 0,
 	};
 
@@ -54,6 +53,7 @@ inline node lex_basic_token(lexer *l, enum syntaxKind kind, u8 length) {
 node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 	node t = {0};
 	char current = lexer_current(l);
+	int start;
 
 	switch (current) {
 
@@ -75,31 +75,31 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 
 	case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
 		t.kind = numberLiteral;
-		t.text_start = l->index;
+		start =  l->index;
 		while (isNumber(lexer_current(l))) lexer_move_next(l);
-		t.text_length = l->index - t.text_start;
+		t.span = textspan_create(start, l->index - start);
 		break;
 
 	case ' ': case '\t':
 		t.kind = whitespaceToken;
-		t.text_start = l->index;
+		start =  l->index;
 		while (isWhitespace(lexer_current(l))) lexer_move_next(l);
-		t.text_length = l->index - t.text_start;
+		t.span = textspan_create(start, l->index - start);
 		break;
 
 	case '\n': case '\r':
 		t.kind = newlineToken;
-		t.text_start = l->index;
+		start =  l->index;
 		while (isNewline(lexer_current(l))) lexer_move_next(l);
-		t.text_length = l->index - t.text_start;
+		t.span = textspan_create(start, l->index - start);
 		break;
 
 	default:
 		if (isIdentifierStart(current)) {
 			t.kind = identifierToken;
-			t.text_start = l->index;
+			start =  l->index;
 			while (isIdentifier(lexer_current(l))) lexer_move_next(l);
-			t.text_length = l->index - t.text_start;
+			t.span = textspan_create(start, l->index - start);
 
 			if (span_compare(l->text, &t, "if")) t.kind = ifKeyword;
 			else if (span_compare(l->text, &t, "else")) t.kind = elseKeyword;
@@ -107,10 +107,9 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			break;
 		}
 		t.kind = badToken;
-		t.text_start = l->index;
-		t.text_length = 1;
+		t.span = textspan_create(l->index, 1);
 		lexer_move_next(l);
-		report_diagnostic(d, badTokenDiagnostic, t.text_start, t.text_length, 0, 0, 0);
+		report_diagnostic(d, badTokenDiagnostic, t.span, 0, 0, 0);
 		break;
 	}
 

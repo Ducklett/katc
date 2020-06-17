@@ -74,10 +74,14 @@ static const char *syntaxKindText[] = {
 };
 
 
+typedef struct textspan {
+	u32 start;
+	u16 length;
+} textspan;
+
 typedef struct node {
 	enum syntaxKind kind;
-	u32 text_start;
-	u16 text_length;
+	textspan span;
 	void* data; 
 } node;
 
@@ -132,10 +136,23 @@ typedef struct whileLoopNode {
 	node block;
 } whileLoopNode;
 
+textspan textspan_create(u32 start, u16 length) {
+	textspan span = { start, length, };
+	return span;
+}
+
+textspan textspan_from_bounds(node *start, node *end) {
+	textspan span = {
+		.start = start->span.start,
+		.length = (end->span.start - start->span.start) + end->span.length,
+	};
+	return span;
+}
+
 char* ast_substring(char* text, node *n) {
-	char *tokenText = (char*)malloc(sizeof(char) * (n->text_length) + 1);
-	tokenText[n->text_length] = '\0';
-	strncpy(tokenText, text + n->text_start, sizeof(char) * n->text_length);
+	char *tokenText = (char*)malloc(sizeof(char) * (n->span.length) + 1);
+	tokenText[n->span.length] = '\0';
+	strncpy(tokenText, text + n->span.start, sizeof(char) * n->span.length);
 	return tokenText;
 }
 

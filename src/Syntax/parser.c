@@ -71,7 +71,7 @@ node parser_match_token(parser *p, diagnosticContainer *d, enum syntaxKind expec
 	node t = parser_current(p, d);
 	if (t.kind != expectedKind) {
 		// badToken already gets reported by the lexer
-		if (t.kind != badToken) report_diagnostic(d, unexpectedTokenDiagnostic, t.text_start, t.text_length, t.kind, expectedKind, 0);
+		if (t.kind != badToken) report_diagnostic(d, unexpectedTokenDiagnostic, t.span, t.kind, expectedKind, 0);
 		t.kind=errorToken;
 	}
 	p->token_buffer[p->tokenBufferIndex].kind = emptyToken;
@@ -117,7 +117,7 @@ node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
 		}
 
 		if (token.kind == endOfFileToken) {
-			report_diagnostic(d, unexpectedTokenDiagnostic, token.text_start, token.text_length, token.kind, closeCurlyToken, 0);
+			report_diagnostic(d, unexpectedTokenDiagnostic, token.span, token.kind, closeCurlyToken, 0);
 			closeCurly = parser_next_token(p, d);
 			break;
 		}
@@ -139,8 +139,7 @@ node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
 
 	node blockNode = {
 		.kind = blockStatement,
-		.text_start = openCurly.text_start,
-		.text_length = (closeCurly.text_start -  openCurly.text_start) - closeCurly.text_length,
+		.span = textspan_from_bounds(&openCurly, &closeCurly),
 		.data = &(p->blockStatements[blockIndex]),
 	};
 	return blockNode;
@@ -167,8 +166,7 @@ node parser_parse_if_statement(parser *p, diagnosticContainer *d) {
 
 	node ifNode = {
 		.kind = ifStatement,
-		.text_start = ifToken.text_start,
-		.text_length = (lastToken.text_start - ifToken.text_start) + lastToken.text_length,
+		.span = textspan_from_bounds(&ifToken, &lastToken),
 		.data = &(p->ifStatements[index]), 
 	};
 
@@ -187,8 +185,7 @@ node parser_parse_while_loop(parser *p, diagnosticContainer *d) {
 
 	node whileNode = {
 		.kind = whileLoop,
-		.text_start = whileToken.text_start,
-		.text_length = (block.text_start - whileToken.text_start) + block.text_length,
+		.span = textspan_from_bounds(&whileToken, &block),
 		.data = &(p->whileLoops[index]), 
 	};
 
@@ -208,8 +205,7 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 
 	node declNode = {
 		.kind = variableDeclaration,
-		.text_start = identifier.text_start,
-		.text_length = (expression.text_start - identifier.text_start) + expression.text_length,
+		.span = textspan_from_bounds(&identifier, &expression),
 		.data = &(p->variableDeclarations[index]), 
 	};
 
@@ -228,8 +224,7 @@ node parser_parse_variable_assignment(parser *p, diagnosticContainer *d) {
 
 	node assNode = {
 		.kind = variableAssignment,
-		.text_start = identifier.text_start,
-		.text_length = (expression.text_start - identifier.text_start) + expression.text_length,
+		.span = textspan_from_bounds(&identifier, &expression),
 		.data = &(p->variableAssignments[index]), 
 	};
 
@@ -265,8 +260,7 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 
 			node exprNode = {
 				.kind = unaryExpression,
-				.text_start = unaryOp.text_start,
-				.text_length = (left.text_start - unaryOp.text_start) + left.text_length,
+				.span = textspan_from_bounds(&unaryOp, &left),
 				.data = &(p->unaryExpressions[index]), 
 			};
 
@@ -288,8 +282,7 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 
 		node exprNode = {
 			.kind = binaryExpression,
-			.text_start = left.text_start,
-			.text_length = (right.text_start - left.text_start) + right.text_length,
+			.span = textspan_from_bounds(&left, &right),
 			.data = &(p->binaryExpressions[index]), 
 		};
 
@@ -318,8 +311,7 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 
 		node exprNode = {
 			.kind = parenthesizedExpression,
-			.text_start = current.text_start,
-			.text_length = (closeParen.text_start - current.text_start) + closeParen.text_length,
+			.span = textspan_from_bounds(&current, &closeParen),
 			.data = &(p->parenthesizedExpressions[index]), 
 		};
 
@@ -327,6 +319,6 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 	}
 
 	// TODO: better error handling here
-	if (current.kind != badToken) report_diagnostic(d, unexpectedTokenDiagnostic, current.text_start, current.text_length, current.kind, numberLiteral, 0);
+	if (current.kind != badToken) report_diagnostic(d, unexpectedTokenDiagnostic, current.span, current.kind, numberLiteral, 0);
 	return parser_next_token(p, d);
 }
