@@ -32,11 +32,13 @@ void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, u32 sta
 void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 	for (int i = 0; i < diagnostics->index; i++) {
 		diagnostic d = diagnostics->diagnostics[i];
+		TERMRED();
 		switch (d.kind) {
 		case badTokenDiagnostic:
 			printf(diagnosticText[d.kind], sourceText[d.start], d.start, d.length); break;
 		case unexpectedTokenDiagnostic:
 			printf(diagnosticText[d.kind], syntaxKindText[d.param1], syntaxKindText[d.param2], d.start, d.length); break;
 		}
+		TERMRESET();
 	}
 }

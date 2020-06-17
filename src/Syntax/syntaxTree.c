@@ -140,9 +140,19 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 	if (root->data == 0) {
 		char* tokenText = ast_substring(text, root);
 		if (verbose) {
-			printf ("%*s('%s' :: %s)%s", indent, "", tokenText, syntaxKindText[root->kind], newline?"\n":"");
+			printf ("%*s(", indent, "");
+			TERMBLUE();
+			printf ("'%s'", tokenText);
+			TERMRESET();
+			printf (" :: ");
+			TERMYELLOW();
+			printf ("%s", syntaxKindText[root->kind]);
+			TERMRESET();
+			printf (")%s", newline?"\n":"");
 		} else {
+			TERMCYAN();
 			printf ("%*s%s%s", indent, "", tokenText, newline?"\n":"");
+			TERMRESET();
 		}
 		free(tokenText);
 		return;
