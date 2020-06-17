@@ -303,6 +303,7 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 
 	switch (current.kind) {
 	case numberLiteral:
+	case stringLiteral:
 	case trueKeyword:
 	case falseKeyword:
 	case identifierToken:

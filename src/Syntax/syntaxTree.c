@@ -11,6 +11,7 @@ enum syntaxKind {
 	newlineToken,
 
 	numberLiteral,
+	stringLiteral,
 
 	plusOperator,
 	minusOperator,
@@ -61,6 +62,7 @@ static const char *syntaxKindText[] = {
 	"whitespaceToken",
 	"newlineToken",
 	"numberLiteral",
+	"stringLiteral",
 	"plusOperator",
 	"minusOperator",
 	"multipliationOperator",

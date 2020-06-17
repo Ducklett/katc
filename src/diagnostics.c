@@ -12,11 +12,13 @@ typedef struct diagnosticContainer {
 } diagnosticContainer;
 
 enum diagnosticKind {
+	unexpectedCharacterDiagnostic,
 	badTokenDiagnostic,
 	unexpectedTokenDiagnostic,
 };
 
 static const char *diagnosticText[] = {
+	"Unexpected character '%c', expected '%c' (%d,%d)\n",
 	"bad token '%c' (%d,%d)\n",
 	"unexpected token of kind '%s', expected '%s' (%d,%d)\n",
 };
@@ -33,6 +35,11 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		diagnostic d = diagnostics->diagnostics[i];
 		TERMRED();
 		switch (d.kind) {
+		case unexpectedCharacterDiagnostic: {
+			char param1 = d.param1;
+			if (param1 == '\r' || param1 == '\n' || param1 == '\0') param1 = ' ';
+			printf(diagnosticText[d.kind], param1, d.param2, d.span.start, d.span.length); break;
+		}
 		case badTokenDiagnostic:
 			printf(diagnosticText[d.kind], sourceText[d.span.start], d.span.start, d.span.length); break;
 		case unexpectedTokenDiagnostic:

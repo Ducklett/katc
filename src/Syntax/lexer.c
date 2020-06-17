@@ -41,6 +41,13 @@ char lexer_move_next(lexer *l) {
 	return l->text[l->index++];
 }
 
+char lexer_match(lexer *l, diagnosticContainer *d,  char expected) {
+	if (l->index >= l->text_length) return '\0';
+	char matched = l->text[l->index++];
+	if (matched != expected) report_diagnostic(d, unexpectedCharacterDiagnostic, textspan_create(l->index - 1, 1), matched, expected, 0);
+	return matched;
+}
+
 inline node lex_basic_token(lexer *l, enum syntaxKind kind, u8 length) {
 	node t = {
 		.kind = kind,
@@ -93,6 +100,31 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 	case ')': return lex_basic_token(l, closeParenthesisToken, 1);
 	case '{': return lex_basic_token(l, openCurlyToken, 1);
 	case '}': return lex_basic_token(l, closeCurlyToken, 1);
+
+	case '"':
+		t.kind = stringLiteral;
+		start =  l->index;
+
+		// TODO: store the value
+		lexer_match(l, d, '"'); // open "
+
+		while (true) {
+			char current = lexer_current(l);
+			char lookahead = lexer_peek(l, 1);
+			switch(current) {
+				case '\\':
+					lexer_move_next(l);
+					lexer_move_next(l);
+					break;
+				case '\0': case '\r': case '\n': case '"': goto end;
+				default: lexer_move_next(l); break;
+			}
+		}
+		end:
+
+		lexer_match(l, d, '"'); // close "
+		t.span = textspan_create(start, l->index - start);
+		break;
 
 	case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
 		t.kind = numberLiteral;

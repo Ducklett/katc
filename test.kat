@@ -1,4 +1,5 @@
 {
+	name:string = "khello world"
 	n:int = 10
 	flag:bool = true
 }
