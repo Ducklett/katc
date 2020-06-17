@@ -31,6 +31,7 @@ enum syntaxKind {
 
 	equalsToken,
 	colonToken,
+	dotDotToken,
 
 	openParenthesisToken,
 	closeParenthesisToken,
@@ -46,6 +47,7 @@ enum syntaxKind {
 	unaryExpression,
 	binaryExpression,
 	parenthesizedExpression,
+	rangeExpression,
 	variableDeclaration,
 	variableAssignment,
 	blockStatement,
@@ -79,6 +81,7 @@ static const char *syntaxKindText[] = {
 	"pipePipeOperator",
 	"equalsToken",
 	"colonToken",
+	"dotDotToken",
 	"openParenthesisToken",
 	"closeParenthesisToken",
 	"openCurlyToken",
@@ -91,6 +94,7 @@ static const char *syntaxKindText[] = {
 	"unaryExpression",
 	"binaryExpression",
 	"parenthesizedExpression",
+	"rangeExpression",
 	"variableDeclaration",
 	"variableAssignment",
 	"blockStatement",
@@ -126,6 +130,12 @@ typedef struct parenthesizedExpressionNode {
 	node expression;
 	node closeParen;
 } parenthesizedExpressionNode;
+
+typedef struct rangeExpressionNode {
+	node start;
+	node dotDot;
+	node end;
+} rangeExpressionNode;
 
 typedef struct variableDeclarationNode {
 	node identifier;
@@ -302,6 +312,13 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		print_syntaxtree_internal(text, &pn.openParen, indent, verbose, true);
 		print_syntaxtree_internal(text, &pn.expression, indent, verbose, true);
 		print_syntaxtree_internal(text, &pn.closeParen, indent, verbose, false);
+		break;
+	}
+	case rangeExpression: {
+		rangeExpressionNode rn = (rangeExpressionNode)*root->data;
+		print_syntaxtree_internal(text, &rn.start, indent, verbose, true);
+		print_syntaxtree_internal(text, &rn.dotDot, indent, verbose, true);
+		print_syntaxtree_internal(text, &rn.end, indent, verbose, false);
 		break;
 	}
 	default: {

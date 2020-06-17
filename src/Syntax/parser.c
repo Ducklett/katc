@@ -13,6 +13,7 @@ typedef struct parser {
 	unaryExpressionNode unaryExpressions[1024];
 	binaryExpressionNode binaryExpressions[1024];
 	parenthesizedExpressionNode parenthesizedExpressions[1024];
+	rangeExpressionNode rangeExpressions[1024];
 	u8 tokenBufferIndex;
 	u16 nodeIndex;
 	u16 variableDeclaratonIndex;
@@ -23,6 +24,7 @@ typedef struct parser {
 	u16 unaryExpressionIndex;
 	u16 binaryExpressionIndex;
 	u16 parenthesizedExpressionIndex;
+	u16 rangeExpressionIndex;
 } parser;
 
 node parser_next_token(parser *p, diagnosticContainer *d);
@@ -300,6 +302,26 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 
 node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 	node current = parser_current(p, d);
+	node lookahead = parser_peek(p, d, 1);
+
+	if (current.kind == numberLiteral && lookahead.kind == dotDotToken) {
+		node from  = parser_match_token(p, d, numberLiteral);
+		node dotDot  = parser_match_token(p, d, dotDotToken);
+		node to  = parser_match_token(p, d, numberLiteral);
+
+		rangeExpressionNode exprData = { from, dotDot, to };
+
+		u16 index = p->rangeExpressionIndex;
+		p->rangeExpressions[p->rangeExpressionIndex++] = exprData;
+
+		node exprNode = {
+			.kind = rangeExpression,
+			.span = textspan_from_bounds(&from, &to),
+			.data = &(p->rangeExpressions[index]), 
+		};
+
+		return exprNode;
+	}
 
 	switch (current.kind) {
 	case numberLiteral:

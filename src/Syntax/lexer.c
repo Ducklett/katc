@@ -77,24 +77,20 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 	case '/': return lex_basic_token(l, divisionOperator, 1);
 	case '%': return lex_basic_token(l, modulusOperator, 1);
 
-	case '!':
-		if (lexer_peek(l,1) == '=') return lex_basic_token(l, bangEqualsOperator, 2);
-		else return lex_basic_token(l, bangOperator, 1);
-	case '=':
-		if (lexer_peek(l,1) == '=') return lex_basic_token(l, euqualsEqualsOperator, 2);
-		else return lex_basic_token(l, equalsToken, 1);
-	case '<':
-		if (lexer_peek(l,1) == '=') return lex_basic_token(l, lessEqualsOperator, 2);
-		else return lex_basic_token(l, lessOperator, 1);
-	case '>':
-		if (lexer_peek(l,1) == '=') return lex_basic_token(l, greaterEqualsOperator, 2);
-		else return lex_basic_token(l, greaterOperator, 1);
-	case '&':
-		if (lexer_peek(l,1) == '&') return lex_basic_token(l, ampersandAmpersandOperator, 2);
-	case '|':
-		if (lexer_peek(l,1) == '|') return lex_basic_token(l, pipePipeOperator, 2);
+	case '!': if (lexer_peek(l,1) == '=') return lex_basic_token(l, bangEqualsOperator, 2);
+			  else return lex_basic_token(l, bangOperator, 1);
+	case '=': if (lexer_peek(l,1) == '=') return lex_basic_token(l, euqualsEqualsOperator, 2);
+			  else return lex_basic_token(l, equalsToken, 1);
+	case '<': if (lexer_peek(l,1) == '=') return lex_basic_token(l, lessEqualsOperator, 2);
+			  else return lex_basic_token(l, lessOperator, 1);
+	case '>': if (lexer_peek(l,1) == '=') return lex_basic_token(l, greaterEqualsOperator, 2);
+			  else return lex_basic_token(l, greaterOperator, 1);
+
+	case '&': if (lexer_peek(l,1) == '&') return lex_basic_token(l, ampersandAmpersandOperator, 2);
+	case '|': if (lexer_peek(l,1) == '|') return lex_basic_token(l, pipePipeOperator, 2);
 
 	case ':': return lex_basic_token(l, colonToken, 1);
+	case '.': if (lexer_peek(l,1) == '.') return lex_basic_token(l, dotDotToken, 2);
 
 	case '(': return lex_basic_token(l, openParenthesisToken, 1);
 	case ')': return lex_basic_token(l, closeParenthesisToken, 1);
