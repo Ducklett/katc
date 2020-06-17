@@ -235,7 +235,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		whileLoopNode wn = (whileLoopNode)*root->data;
 		print_syntaxtree_internal(text, &wn.whileKeyword, indent, verbose, true);
 		print_syntaxtree_internal(text, &wn.condition, indent, verbose, true);
-		print_syntaxtree_internal(text, &wn.block, indent, verbose, true);
+		print_syntaxtree_internal(text, &wn.block, indent, verbose, false);
 		break;
 	}
 	case blockStatement: {
