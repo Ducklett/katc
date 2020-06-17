@@ -195,10 +195,16 @@ node parser_parse_while_loop(parser *p, diagnosticContainer *d) {
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 	node identifier = parser_match_token(p, d, identifierToken);
 	node colon = parser_match_token(p, d, colonToken);
+
+	node type = {0};
+	if (parser_current(p, d).kind == identifierToken) {
+		type = parser_next_token(p, d);
+	}
+
 	node equals = parser_match_token(p, d, equalsToken);
 	node expression = parser_parse_expression(p, d);
 
-	variableDeclarationNode declData = { identifier, colon, equals, expression };
+	variableDeclarationNode declData = { identifier, colon, type, equals, expression };
 
 	u16 index = p->variableDeclaratonIndex;
 	p->variableDeclarations[p->variableDeclaratonIndex++] = declData;

@@ -128,6 +128,7 @@ typedef struct parenthesizedExpressionNode {
 typedef struct variableDeclarationNode {
 	node identifier;
 	node colon;
+	node type;				// optional
 	node equals;
 	node expression;
 } variableDeclarationNode;
@@ -149,8 +150,8 @@ typedef struct ifStatementNode {
 	node ifKeyword;
 	node condition;
 	node thenExpression;
-	node elseKeyword;		// emptyToken if not available
-	node elseExpression;	// emptyToken if not available
+	node elseKeyword;		// optional
+	node elseExpression;	// optional
 } ifStatementNode;
 
 typedef struct whileLoopNode {
@@ -242,6 +243,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		variableDeclarationNode dn = (variableDeclarationNode)*root->data;
 		print_syntaxtree_internal(text, &dn.identifier, indent, verbose, true);
 		print_syntaxtree_internal(text, &dn.colon, indent, verbose, true);
+		if (dn.type.kind != emptyToken)	print_syntaxtree_internal(text, &dn.type, indent, verbose, true);
 		print_syntaxtree_internal(text, &dn.equals, indent, verbose, true);
 		print_syntaxtree_internal(text, &dn.expression, indent, verbose, false);
 		break;

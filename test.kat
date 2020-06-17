@@ -1,3 +1,4 @@
-if x || y && !true >= 10 {
-	10 * 10
+{
+	n:int = 10
+	flag:bool = true
 }
