@@ -8,6 +8,7 @@ typedef struct parser {
 	variableDeclarationNode variableDeclarations[1024];
 	variableAssignmentNode variableAssignments[1024];
 	blockStatementNode blockStatements[1024];
+	ifStatementNode ifStatements[1024];
 	unaryExpressionNode unaryExpressions[1024];
 	binaryExpressionNode binaryExpressions[1024];
 	parenthesizedExpressionNode parenthesizedExpressions[1024];
@@ -16,6 +17,7 @@ typedef struct parser {
 	u16 variableDeclaratonIndex;
 	u16 variableAssignmentIndex;
 	u16 blockIndex;
+	u16 ifStatementIndex;
 	u16 unaryExpressionIndex;
 	u16 binaryExpressionIndex;
 	u16 parenthesizedExpressionIndex;
@@ -25,6 +27,7 @@ node parser_next_token(parser *p, diagnosticContainer *d);
 
 node parser_parse_statement(parser *p, diagnosticContainer *d);
 node parser_parse_block_statement(parser *p, diagnosticContainer *d);
+node parser_parse_if_statement(parser *p, diagnosticContainer *d);
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_variable_assignment(parser *p, diagnosticContainer *d);
 
@@ -86,8 +89,12 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	enum syntaxKind l2kind  = l2.kind;
 
 	if (l1kind == openCurlyToken) return parser_parse_block_statement(p, d);
+	if (l1kind == ifKeyword) {
+		return parser_parse_if_statement(p, d);
+	}
 	if (l1kind == identifierToken && l2kind == colonToken) return parser_parse_variable_declaration(p, d);
 	if (l1kind == identifierToken && l2kind == equalsToken) return parser_parse_variable_assignment(p, d);
+
 	return parser_parse_expression(p, d);
 }
 
@@ -135,6 +142,35 @@ node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
 		.data = &(p->blockStatements[blockIndex]),
 	};
 	return blockNode;
+}
+
+node parser_parse_if_statement(parser *p, diagnosticContainer *d) {
+	node ifToken = parser_match_token(p, d, ifKeyword);
+	node condition = parser_parse_expression(p, d);
+	node thenStatement = parser_parse_statement(p, d);
+
+	node elseToken = {0};
+	node elseStatement = {0};
+	if (parser_current(p, d).kind == elseKeyword) {
+		elseToken = parser_match_token(p, d, elseKeyword);
+		elseStatement = parser_parse_statement(p, d);
+	}
+
+	ifStatementNode ifData = { ifToken, condition, thenStatement, elseToken, elseStatement };
+
+	u16 index = p->ifStatementIndex;
+	p->ifStatements[p->ifStatementIndex++] = ifData;
+
+	node lastToken = elseToken.kind == emptyToken ? thenStatement : elseStatement;
+
+	node ifNode = {
+		.kind = ifStatement,
+		.text_start = ifToken.text_start,
+		.text_length = (lastToken.text_start - ifToken.text_start) + lastToken.text_length,
+		.data = &(p->ifStatements[index]), 
+	};
+
+	return ifNode;
 }
 
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
@@ -249,10 +285,11 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 	if (current.kind == identifierToken) return parser_next_token(p, d);
 
 	if (current.kind == openParenthesisToken) {
+		node openParen = parser_next_token(p, d);
 		node expr = parser_parse_expression(p, d);
 		node closeParen = parser_match_token(p, d, closeParenthesisToken);
 
-		parenthesizedExpressionNode exprData = { current, expr, closeParen };
+		parenthesizedExpressionNode exprData = { openParen, expr, closeParen };
 
 		u16 index = p->parenthesizedExpressionIndex;
 		p->parenthesizedExpressions[p->parenthesizedExpressionIndex++] = exprData;

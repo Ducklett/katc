@@ -26,12 +26,16 @@ enum syntaxKind {
 	openCurlyToken,
 	closeCurlyToken,
 
+	ifKeyword,
+	elseKeyword,
+
 	unaryExpression,
 	binaryExpression,
 	parenthesizedExpression,
 	variableDeclaration,
 	variableAssignment,
 	blockStatement,
+	ifStatement,
 };
 
 static const char *syntaxKindText[] = {
@@ -54,12 +58,15 @@ static const char *syntaxKindText[] = {
 	"closeParenthesisToken",
 	"openCurlyToken",
 	"closeCurlyToken",
+	"ifKeyword",
+	"elseKeyword",
 	"unaryExpression",
 	"binaryExpression",
 	"parenthesizedExpression",
 	"variableDeclaration",
 	"variableAssignment",
 	"blockStatement",
+	"ifStatement",
 };
 
 
@@ -106,6 +113,14 @@ typedef struct blockStatementNode {
 	u16 statementsCount;
 	node closeCurly;
 } blockStatementNode;
+
+typedef struct ifStatementNode {
+	node ifKeyword;
+	node condition;
+	node thenExpression;
+	node elseKeyword;		// emptyToken if not available
+	node elseExpression;	// emptyToken if not available
+} ifStatementNode;
 
 char* ast_substring(char* text, node *n) {
 	char *tokenText = (char*)malloc(sizeof(char) * (n->text_length) + 1);
@@ -176,6 +191,16 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		print_syntaxtree_internal(text, &an.identifier, indent, verbose, true);
 		print_syntaxtree_internal(text, &an.equals, indent, verbose, true);
 		print_syntaxtree_internal(text, &an.expression, indent, verbose, false);
+		break;
+	}
+	case ifStatement: {
+		ifStatementNode in = (ifStatementNode)*root->data;
+		print_syntaxtree_internal(text, &in.ifKeyword, indent, verbose, true);
+		print_syntaxtree_internal(text, &in.condition, indent, verbose, true);
+		if (&in.elseKeyword.kind != emptyToken) {
+			print_syntaxtree_internal(text, &in.elseKeyword, indent, verbose, true);
+			print_syntaxtree_internal(text, &in.elseExpression, indent, verbose, false);
+		}
 		break;
 	}
 	case blockStatement: {
