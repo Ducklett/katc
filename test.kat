@@ -3,4 +3,5 @@
 	if x {
 		x = -x
 	} else x = 10 * 10
+	while x x = x - 1
 }

@@ -28,6 +28,7 @@ enum syntaxKind {
 
 	ifKeyword,
 	elseKeyword,
+	whileKeyword,
 
 	unaryExpression,
 	binaryExpression,
@@ -36,6 +37,7 @@ enum syntaxKind {
 	variableAssignment,
 	blockStatement,
 	ifStatement,
+	whileLoop,
 };
 
 static const char *syntaxKindText[] = {
@@ -60,6 +62,7 @@ static const char *syntaxKindText[] = {
 	"closeCurlyToken",
 	"ifKeyword",
 	"elseKeyword",
+	"whileKeyword",
 	"unaryExpression",
 	"binaryExpression",
 	"parenthesizedExpression",
@@ -67,6 +70,7 @@ static const char *syntaxKindText[] = {
 	"variableAssignment",
 	"blockStatement",
 	"ifStatement",
+	"whileLoop",
 };
 
 
@@ -121,6 +125,12 @@ typedef struct ifStatementNode {
 	node elseKeyword;		// emptyToken if not available
 	node elseExpression;	// emptyToken if not available
 } ifStatementNode;
+
+typedef struct whileLoopNode {
+	node whileKeyword;
+	node condition;
+	node block;
+} whileLoopNode;
 
 char* ast_substring(char* text, node *n) {
 	char *tokenText = (char*)malloc(sizeof(char) * (n->text_length) + 1);
@@ -204,6 +214,13 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		}
 		break;
 	}
+	case whileLoop: {
+		whileLoopNode wn = (whileLoopNode)*root->data;
+		print_syntaxtree_internal(text, &wn.whileKeyword, indent, verbose, true);
+		print_syntaxtree_internal(text, &wn.condition, indent, verbose, true);
+		print_syntaxtree_internal(text, &wn.block, indent, verbose, true);
+		break;
+	}
 	case blockStatement: {
 		blockStatementNode bn = (blockStatementNode)*root->data;
 		print_syntaxtree_internal(text, &bn.openCurly, indent, verbose, true);
@@ -234,7 +251,9 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		break;
 	}
 	default: {
+		TERMRED();
 		printf("ERROR: Unhandled case in print_syntaxTree for kind %s", syntaxKindText[root->kind]);
+		TERMRESET();
 		exit(1);
 		break;
 	}

@@ -103,6 +103,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 
 			if (span_compare(l->text, &t, "if")) t.kind = ifKeyword;
 			else if (span_compare(l->text, &t, "else")) t.kind = elseKeyword;
+			else if (span_compare(l->text, &t, "while")) t.kind = whileKeyword;
 			break;
 		}
 		t.kind = badToken;

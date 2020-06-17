@@ -9,6 +9,7 @@ typedef struct parser {
 	variableAssignmentNode variableAssignments[1024];
 	blockStatementNode blockStatements[1024];
 	ifStatementNode ifStatements[1024];
+	whileLoopNode whileLoops[1024];
 	unaryExpressionNode unaryExpressions[1024];
 	binaryExpressionNode binaryExpressions[1024];
 	parenthesizedExpressionNode parenthesizedExpressions[1024];
@@ -18,6 +19,7 @@ typedef struct parser {
 	u16 variableAssignmentIndex;
 	u16 blockIndex;
 	u16 ifStatementIndex;
+	u16 whileLoopIndex;
 	u16 unaryExpressionIndex;
 	u16 binaryExpressionIndex;
 	u16 parenthesizedExpressionIndex;
@@ -28,6 +30,7 @@ node parser_next_token(parser *p, diagnosticContainer *d);
 node parser_parse_statement(parser *p, diagnosticContainer *d);
 node parser_parse_block_statement(parser *p, diagnosticContainer *d);
 node parser_parse_if_statement(parser *p, diagnosticContainer *d);
+node parser_parse_while_loop(parser *p, diagnosticContainer *d);
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_variable_assignment(parser *p, diagnosticContainer *d);
 
@@ -89,9 +92,8 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	enum syntaxKind l2kind  = l2.kind;
 
 	if (l1kind == openCurlyToken) return parser_parse_block_statement(p, d);
-	if (l1kind == ifKeyword) {
-		return parser_parse_if_statement(p, d);
-	}
+	if (l1kind == ifKeyword) return parser_parse_if_statement(p, d);
+	if (l1kind == whileKeyword) return parser_parse_while_loop(p, d);
 	if (l1kind == identifierToken && l2kind == colonToken) return parser_parse_variable_declaration(p, d);
 	if (l1kind == identifierToken && l2kind == equalsToken) return parser_parse_variable_assignment(p, d);
 
@@ -171,6 +173,26 @@ node parser_parse_if_statement(parser *p, diagnosticContainer *d) {
 	};
 
 	return ifNode;
+}
+
+node parser_parse_while_loop(parser *p, diagnosticContainer *d) {
+	node whileToken = parser_match_token(p, d, whileKeyword);
+	node condition = parser_parse_expression(p, d);
+	node block = parser_parse_statement(p, d);
+
+	whileLoopNode whileData = { whileToken, condition, block };
+
+	u16 index = p->whileLoopIndex;
+	p->whileLoops[p->whileLoopIndex++] = whileData;
+
+	node whileNode = {
+		.kind = whileLoop,
+		.text_start = whileToken.text_start,
+		.text_length = (block.text_start - whileToken.text_start) + block.text_length,
+		.data = &(p->whileLoops[index]), 
+	};
+
+	return whileNode;
 }
 
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
