@@ -90,6 +90,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 	case '|': if (lexer_peek(l,1) == '|') return lex_basic_token(l, pipePipeOperator, 2);
 
 	case ':': return lex_basic_token(l, colonToken, 1);
+	case ';': return lex_basic_token(l, semicolonToken, 1);
 	case '.': if (lexer_peek(l,1) == '.') return lex_basic_token(l, dotDotToken, 2);
 
 	case '(': return lex_basic_token(l, openParenthesisToken, 1);

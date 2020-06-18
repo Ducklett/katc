@@ -93,13 +93,27 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	node l2 = parser_peek(p, d, 1);
 	enum syntaxKind l2kind  = l2.kind;
 
-	if (l1kind == openCurlyToken) return parser_parse_block_statement(p, d);
-	if (l1kind == ifKeyword) return parser_parse_if_statement(p, d);
-	if (l1kind == whileKeyword) return parser_parse_while_loop(p, d);
-	if (l1kind == identifierToken && l2kind == colonToken) return parser_parse_variable_declaration(p, d);
-	if (l1kind == identifierToken && l2kind == equalsToken) return parser_parse_variable_assignment(p, d);
+	node res;
 
-	return parser_parse_expression(p, d);
+	switch(l1kind) {
+	case openCurlyToken: res = parser_parse_block_statement(p, d); break;
+	case ifKeyword: res = parser_parse_if_statement(p, d); break;
+	case whileKeyword: res = parser_parse_while_loop(p, d); break;
+	case identifierToken:
+		if  (l2kind == colonToken) {
+			res = parser_parse_variable_declaration(p, d);
+			break;
+		}
+		else if (l2kind == equalsToken) {
+			res = parser_parse_variable_assignment(p, d);
+			break;
+		}
+	default: res = parser_parse_expression(p, d); break;
+	}
+
+	while (parser_current(p, d).kind == semicolonToken) parser_next_token(p, d);
+
+	return res;
 }
 
 node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
