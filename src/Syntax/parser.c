@@ -10,6 +10,7 @@ typedef struct parser {
 	blockStatementNode blockStatements[1024];
 	ifStatementNode ifStatements[1024];
 	whileLoopNode whileLoops[1024];
+	forLoopNode forLoops[1024];
 	unaryExpressionNode unaryExpressions[1024];
 	binaryExpressionNode binaryExpressions[1024];
 	parenthesizedExpressionNode parenthesizedExpressions[1024];
@@ -21,6 +22,7 @@ typedef struct parser {
 	u16 blockIndex;
 	u16 ifStatementIndex;
 	u16 whileLoopIndex;
+	u16 forLoopIndex;
 	u16 unaryExpressionIndex;
 	u16 binaryExpressionIndex;
 	u16 parenthesizedExpressionIndex;
@@ -33,12 +35,14 @@ node parser_parse_statement(parser *p, diagnosticContainer *d);
 node parser_parse_block_statement(parser *p, diagnosticContainer *d);
 node parser_parse_if_statement(parser *p, diagnosticContainer *d);
 node parser_parse_while_loop(parser *p, diagnosticContainer *d);
+node parser_parse_for_loop(parser *p, diagnosticContainer *d);
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_variable_assignment(parser *p, diagnosticContainer *d);
 
 node parser_parse_expression(parser *p, diagnosticContainer *d);
 node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parentPrecedence);
 node parser_parse_primary_expression(parser *p, diagnosticContainer *d);
+node parser_parse_range_expression(parser *p, diagnosticContainer *d);
 
 node parser_parse_token(parser *p, diagnosticContainer *d) {
 	while(true) {
@@ -99,6 +103,7 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	case openCurlyToken: res = parser_parse_block_statement(p, d); break;
 	case ifKeyword: res = parser_parse_if_statement(p, d); break;
 	case whileKeyword: res = parser_parse_while_loop(p, d); break;
+	case forKeyword: res = parser_parse_for_loop(p, d); break;
 	case identifierToken:
 		if  (l2kind == colonToken) {
 			res = parser_parse_variable_declaration(p, d);
@@ -208,6 +213,49 @@ node parser_parse_while_loop(parser *p, diagnosticContainer *d) {
 	return whileNode;
 }
 
+node parser_parse_for_loop(parser *p, diagnosticContainer *d) {
+	node openParen = {0};
+	node closeParen = {0};
+	node comma = {0};
+	node key = {0};
+
+	node forToken = parser_match_token(p, d, forKeyword);
+
+	bool hasParens = parser_current(p, d).kind == openParenthesisToken;
+
+	if (hasParens) openParen = parser_match_token(p, d, openParenthesisToken);
+
+	node value = parser_match_token(p, d, identifierToken);
+
+	bool hasKey = parser_current(p, d).kind == commaToken;
+
+	if (hasKey) {
+		node comma = parser_match_token(p, d, commaToken);
+		node key = parser_match_token(p, d, identifierToken);
+	}
+
+	node inToken = parser_match_token(p, d, inKeyword);
+
+	node range = parser_parse_range_expression(p, d);
+
+	if (hasParens) closeParen = parser_match_token(p, d, closeParenthesisToken);
+
+	node block = parser_parse_statement(p, d);
+
+	forLoopNode forData = { forToken, openParen, value, comma, key, inToken, range, closeParen, block };
+
+	u16 index = p->forLoopIndex;
+	p->forLoops[p->forLoopIndex++] = forData;
+
+	node forNode = {
+		.kind = forLoop,
+		.span = textspan_from_bounds(&forToken, &block),
+		.data = &(p->forLoops[index]), 
+	};
+
+	return forNode;
+}
+
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 	node identifier = parser_match_token(p, d, identifierToken);
 	node colon = parser_match_token(p, d, colonToken);
@@ -314,28 +362,31 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 	return left;
 }
 
+node parser_parse_range_expression(parser *p, diagnosticContainer *d) {
+	node from  = parser_match_token(p, d, numberLiteral);
+	node dotDot  = parser_match_token(p, d, dotDotToken);
+	node to  = parser_match_token(p, d, numberLiteral);
+
+	rangeExpressionNode exprData = { from, dotDot, to };
+
+	u16 index = p->rangeExpressionIndex;
+	p->rangeExpressions[p->rangeExpressionIndex++] = exprData;
+
+	node exprNode = {
+		.kind = rangeExpression,
+		.span = textspan_from_bounds(&from, &to),
+		.data = &(p->rangeExpressions[index]), 
+	};
+
+	return exprNode;
+}
+
 node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 	node current = parser_current(p, d);
 	node lookahead = parser_peek(p, d, 1);
 
-	if (current.kind == numberLiteral && lookahead.kind == dotDotToken) {
-		node from  = parser_match_token(p, d, numberLiteral);
-		node dotDot  = parser_match_token(p, d, dotDotToken);
-		node to  = parser_match_token(p, d, numberLiteral);
-
-		rangeExpressionNode exprData = { from, dotDot, to };
-
-		u16 index = p->rangeExpressionIndex;
-		p->rangeExpressions[p->rangeExpressionIndex++] = exprData;
-
-		node exprNode = {
-			.kind = rangeExpression,
-			.span = textspan_from_bounds(&from, &to),
-			.data = &(p->rangeExpressions[index]), 
-		};
-
-		return exprNode;
-	}
+	if (current.kind == numberLiteral && lookahead.kind == dotDotToken)
+		return parser_parse_range_expression(p, d);
 
 	switch (current.kind) {
 	case numberLiteral:

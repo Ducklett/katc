@@ -32,6 +32,7 @@ enum syntaxKind {
 
 	equalsToken,
 	colonToken,
+	commaToken,
 	dotDotToken,
 
 	openParenthesisToken,
@@ -44,6 +45,8 @@ enum syntaxKind {
 	ifKeyword,
 	elseKeyword,
 	whileKeyword,
+	forKeyword,
+	inKeyword,
 
 	unaryExpression,
 	binaryExpression,
@@ -54,6 +57,7 @@ enum syntaxKind {
 	blockStatement,
 	ifStatement,
 	whileLoop,
+	forLoop,
 };
 
 static const char *syntaxKindText[] = {
@@ -83,6 +87,7 @@ static const char *syntaxKindText[] = {
 	"pipePipeOperator",
 	"equalsToken",
 	"colonToken",
+	"commaToken",
 	"dotDotToken",
 	"openParenthesisToken",
 	"closeParenthesisToken",
@@ -93,6 +98,8 @@ static const char *syntaxKindText[] = {
 	"ifKeyword",
 	"elseKeyword",
 	"whileKeyword",
+	"forKeyword",
+	"inKeyword",
 	"unaryExpression",
 	"binaryExpression",
 	"parenthesizedExpression",
@@ -102,6 +109,7 @@ static const char *syntaxKindText[] = {
 	"blockStatement",
 	"ifStatement",
 	"whileLoop",
+	"forLoop",
 };
 
 
@@ -165,7 +173,7 @@ typedef struct ifStatementNode {
 	node condition;
 	node thenExpression;
 	node elseKeyword;		// optional
-	node elseExpression;	// optional
+	node elseExpression;	// if elseKeyword exists
 } ifStatementNode;
 
 typedef struct whileLoopNode {
@@ -173,6 +181,18 @@ typedef struct whileLoopNode {
 	node condition;
 	node block;
 } whileLoopNode;
+
+typedef struct forLoopNode {
+	node forKeyword;
+	node openParen;			// optional
+	node value;
+	node comma;				// optional
+	node key;				// if comma exists
+	node inKeyword;
+	node range;
+	node closeParen;		// if openParen exists
+	node block;
+} forLoopNode;
 
 textspan textspan_create(u32 start, u16 length) {
 	textspan span = { start, length, };
@@ -285,6 +305,21 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		print_syntaxtree_internal(text, &wn.whileKeyword, indent, verbose, true);
 		print_syntaxtree_internal(text, &wn.condition, indent, verbose, true);
 		print_syntaxtree_internal(text, &wn.block, indent, verbose, false);
+		break;
+	}
+	case forLoop: {
+		forLoopNode fn = (forLoopNode)*root->data;
+		print_syntaxtree_internal(text, &fn.forKeyword, indent, verbose, true);
+		if (fn.openParen.kind != emptyToken) print_syntaxtree_internal(text, &fn.openParen, indent, verbose, true);
+		print_syntaxtree_internal(text, &fn.value, indent, verbose, true);
+		if (fn.comma.kind != emptyToken) {
+			print_syntaxtree_internal(text, &fn.comma, indent, verbose, true);
+			print_syntaxtree_internal(text, &fn.key, indent, verbose, true);
+		}
+		print_syntaxtree_internal(text, &fn.inKeyword, indent, verbose, true);
+		print_syntaxtree_internal(text, &fn.range, indent, verbose, true);
+		if (fn.closeParen.kind != emptyToken) print_syntaxtree_internal(text, &fn.closeParen, indent, verbose, true);
+		print_syntaxtree_internal(text, &fn.block, indent, verbose, false);
 		break;
 	}
 	case blockStatement: {
