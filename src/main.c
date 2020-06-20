@@ -6,7 +6,7 @@ int main() {
 
 	{
 		benchmark_start();
-		text = read_file("test.kat", &length);
+		text = read_file("test.es", &length);
 		benchmark_end("File read");
 	}
 
