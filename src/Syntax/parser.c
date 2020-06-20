@@ -528,3 +528,18 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 		return parser_next_token(p, d);
 	}
 }
+
+int create_syntaxtree(char* text, u64 length, parser* p, diagnosticContainer* d)  {
+
+	lexer l = { .text = text, .text_length = length, .index = 0, };
+	p->lexer = l;
+
+	printf("Input: %s\n", text);
+	{
+		benchmark_start();
+		parser_parse(p, d);
+		benchmark_end("Parsing");
+	}
+
+	return d->index==0;
+}
