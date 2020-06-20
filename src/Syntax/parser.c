@@ -7,6 +7,7 @@ typedef struct parser {
 	node nodes[1024];	// stores the nodes from arbitrarily sized sequences like paramater lists and block statements
 	variableDeclarationNode variableDeclarations[1024];
 	variableAssignmentNode variableAssignments[1024];
+	functionCallNode functionCalls[1024];
 	blockStatementNode blockStatements[1024];
 	ifStatementNode ifStatements[1024];
 	whileLoopNode whileLoops[1024];
@@ -19,6 +20,7 @@ typedef struct parser {
 	u16 nodeIndex;
 	u16 variableDeclaratonIndex;
 	u16 variableAssignmentIndex;
+	u16 functionCallIndex;
 	u16 blockIndex;
 	u16 ifStatementIndex;
 	u16 whileLoopIndex;
@@ -38,6 +40,7 @@ node parser_parse_while_loop(parser *p, diagnosticContainer *d);
 node parser_parse_for_loop(parser *p, diagnosticContainer *d);
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_variable_assignment(parser *p, diagnosticContainer *d);
+node parser_parse_function_call(parser *p, diagnosticContainer *d);
 
 node parser_parse_expression(parser *p, diagnosticContainer *d);
 node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parentPrecedence);
@@ -111,6 +114,10 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 		}
 		else if (l2kind == equalsToken) {
 			res = parser_parse_variable_assignment(p, d);
+			break;
+		}
+		else if  (l2kind == openParenthesisToken) {
+			res = parser_parse_function_call(p, d);
 			break;
 		}
 	default: res = parser_parse_expression(p, d); break;
@@ -301,6 +308,45 @@ node parser_parse_variable_assignment(parser *p, diagnosticContainer *d) {
 	return assNode;
 }
 
+node parser_parse_function_call(parser *p, diagnosticContainer *d) {
+	node arguments[20];
+	u8 argumentCount = 0;
+
+	node identifier = parser_match_token(p, d, identifierToken);
+	node openParen = parser_match_token(p, d, openParenthesisToken);
+
+	if (parser_current(p,d).kind == closeParenthesisToken) goto end;
+	while (true) {
+
+		arguments[argumentCount++] = parser_parse_expression(p, d);
+
+		node cur = parser_current(p,d);
+		if (cur.kind == closeParenthesisToken || cur.kind == endOfFileToken) break;
+
+		arguments[argumentCount++] = parser_match_token(p, d, commaToken);
+	}
+	end:
+	if (true) {}
+	node closeParen = parser_match_token(p, d, closeParenthesisToken);
+
+	int argStart = p->nodeIndex;
+	for (int i = 0; i<argumentCount;i++) p->nodes[p->nodeIndex++] = arguments[i];
+
+
+	functionCallNode fnData = { identifier,  openParen, &(p->nodes[argStart]), argumentCount, closeParen };
+
+	u16 index = p->functionCallIndex;
+	p->functionCalls[p->functionCallIndex++] = fnData;
+
+	node fnNode = {
+		.kind = callExpression,
+		.span = textspan_from_bounds(&identifier, &closeParen),
+		.data = &(p->functionCalls[index]), 
+	};
+
+	return fnNode;
+}
+
 node parser_parse_expression(parser *p, diagnosticContainer *d) { return parser_parse_binary_expression(p, d,-2); }
 
 node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parentPrecedence) {
@@ -389,12 +435,17 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 		return parser_parse_range_expression(p, d);
 
 	switch (current.kind) {
+	case identifierToken: {
+		if (lookahead.kind == openParenthesisToken) return parser_parse_function_call(p, d);
+		else return parser_next_token(p, d);
+	}
+
 	case numberLiteral:
 	case stringLiteral:
 	case trueKeyword:
 	case falseKeyword:
-	case identifierToken:
-		return parser_next_token(p, d); break;
+		return parser_next_token(p, d);
+
 	case openParenthesisToken: {
 		node openParen = parser_next_token(p, d);
 		node expr = parser_parse_expression(p, d);

@@ -1,1 +1,6 @@
-for x in 1..100 { }
+for (x in 1..100) {
+  if (x % 3 && x % 5) print("fizzbuzz")
+  else if (x % 3) print("fizz")
+  else if (x % 5) print("buzz")
+  else print(x)
+}

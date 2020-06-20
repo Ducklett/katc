@@ -52,6 +52,7 @@ enum syntaxKind {
 	binaryExpression,
 	parenthesizedExpression,
 	rangeExpression,
+	callExpression,
 	variableDeclaration,
 	variableAssignment,
 	blockStatement,
@@ -104,6 +105,7 @@ static const char *syntaxKindText[] = {
 	"binaryExpression",
 	"parenthesizedExpression",
 	"rangeExpression",
+	"callExpression",
 	"variableDeclaration",
 	"variableAssignment",
 	"blockStatement",
@@ -146,6 +148,15 @@ typedef struct rangeExpressionNode {
 	node dotDot;
 	node end;
 } rangeExpressionNode;
+
+typedef struct functionCallNode {
+	node identifier;
+	node openParen;
+	node* arguments;
+	u16 argumentCount;
+	node closeParen;
+} functionCallNode;
+
 
 typedef struct variableDeclarationNode {
 	node identifier;
@@ -287,6 +298,16 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		print_syntaxtree_internal(text, &an.identifier, indent, verbose, true);
 		print_syntaxtree_internal(text, &an.equals, indent, verbose, true);
 		print_syntaxtree_internal(text, &an.expression, indent, verbose, false);
+		break;
+	}
+	case callExpression: {
+		functionCallNode fn = (functionCallNode)*root->data;
+		print_syntaxtree_internal(text, &fn.identifier, indent, verbose, true);
+		print_syntaxtree_internal(text, &fn.openParen, indent, verbose, true);
+		for (int i = 0; i< fn.argumentCount; i++) {
+			print_syntaxtree_internal(text, &fn.arguments[i], indent, verbose, true);
+		}
+		print_syntaxtree_internal(text, &fn.closeParen, indent, verbose, false);
 		break;
 	}
 	case ifStatement: {
