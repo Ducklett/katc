@@ -156,6 +156,8 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			else if (span_compare(l->text, &t, "false")) t.kind = falseKeyword;
 			else if (span_compare(l->text, &t, "if")) t.kind = ifKeyword;
 			else if (span_compare(l->text, &t, "else")) t.kind = elseKeyword;
+			else if (span_compare(l->text, &t, "case")) t.kind = caseKeyword;
+			else if (span_compare(l->text, &t, "default")) t.kind = defaultKeyword;
 			else if (span_compare(l->text, &t, "while")) t.kind = whileKeyword;
 			else if (span_compare(l->text, &t, "for")) t.kind = forKeyword;
 			else if (span_compare(l->text, &t, "in")) t.kind = inKeyword;

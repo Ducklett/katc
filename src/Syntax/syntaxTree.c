@@ -44,6 +44,8 @@ enum syntaxKind {
 	falseKeyword,
 	ifKeyword,
 	elseKeyword,
+	caseKeyword,
+	defaultKeyword,
 	whileKeyword,
 	forKeyword,
 	inKeyword,
@@ -57,6 +59,8 @@ enum syntaxKind {
 	variableAssignment,
 	blockStatement,
 	ifStatement,
+	caseStatement,
+	caseBranch,
 	whileLoop,
 	forLoop,
 };
@@ -98,6 +102,8 @@ static const char *syntaxKindText[] = {
 	"falseKeyword",
 	"ifKeyword",
 	"elseKeyword",
+	"caseKeyword",
+	"defaultKeyword",
 	"whileKeyword",
 	"forKeyword",
 	"inKeyword",
@@ -110,6 +116,8 @@ static const char *syntaxKindText[] = {
 	"variableAssignment",
 	"blockStatement",
 	"ifStatement",
+	"caseStatement",
+	"caseBranch",
 	"whileLoop",
 	"forLoop",
 };
@@ -186,6 +194,20 @@ typedef struct ifStatementNode {
 	node elseKeyword;		// optional
 	node elseExpression;	// if elseKeyword exists
 } ifStatementNode;
+
+typedef struct caseBranchNode {
+	node condition;
+	node colon;
+	node thenExpression;
+} caseBranchNode;
+
+typedef struct caseStatementNode {
+	node caseKeyword;
+	node openCurly;
+	node* branches;
+	u16 branchCount;
+	node closeCurly;
+} caseStatementNode;
 
 typedef struct whileLoopNode {
 	node whileKeyword;
@@ -319,6 +341,23 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 			print_syntaxtree_internal(text, &in.elseKeyword, indent, verbose, true);
 			print_syntaxtree_internal(text, &in.elseExpression, indent, verbose, false);
 		}
+		break;
+	}
+	case caseStatement: {
+		caseStatementNode cn = (caseStatementNode)*root->data;
+		print_syntaxtree_internal(text, &cn.caseKeyword, indent, verbose, true);
+		print_syntaxtree_internal(text, &cn.openCurly, indent, verbose, true);
+		for (int i = 0; i< cn.branchCount; i++) {
+			print_syntaxtree_internal(text, &cn.branches[i], indent, verbose, true);
+		}
+		print_syntaxtree_internal(text, &cn.closeCurly, indent, verbose, false);
+		break;
+	}
+	case caseBranch: {
+		caseBranchNode cb = (caseBranchNode)*root->data;
+		print_syntaxtree_internal(text, &cb.condition, indent, verbose, true);
+		print_syntaxtree_internal(text, &cb.colon, indent, verbose, true);
+		print_syntaxtree_internal(text, &cb.thenExpression, indent, verbose, false);
 		break;
 	}
 	case whileLoop: {

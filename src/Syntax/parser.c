@@ -10,6 +10,8 @@ typedef struct parser {
 	functionCallNode functionCalls[1024];
 	blockStatementNode blockStatements[1024];
 	ifStatementNode ifStatements[1024];
+	caseStatementNode caseStatements[1024];
+	caseBranchNode caseBranches[1024];
 	whileLoopNode whileLoops[1024];
 	forLoopNode forLoops[1024];
 	unaryExpressionNode unaryExpressions[1024];
@@ -23,6 +25,8 @@ typedef struct parser {
 	u16 functionCallIndex;
 	u16 blockIndex;
 	u16 ifStatementIndex;
+	u16 caseStatementIndex;
+	u16 caseBranchIndex;
 	u16 whileLoopIndex;
 	u16 forLoopIndex;
 	u16 unaryExpressionIndex;
@@ -36,6 +40,8 @@ node parser_next_token(parser *p, diagnosticContainer *d);
 node parser_parse_statement(parser *p, diagnosticContainer *d);
 node parser_parse_block_statement(parser *p, diagnosticContainer *d);
 node parser_parse_if_statement(parser *p, diagnosticContainer *d);
+node parser_parse_case_statement(parser *p, diagnosticContainer *d);
+node parser_parse_case_branch(parser *p, diagnosticContainer *d);
 node parser_parse_while_loop(parser *p, diagnosticContainer *d);
 node parser_parse_for_loop(parser *p, diagnosticContainer *d);
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d);
@@ -105,6 +111,7 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	switch(l1kind) {
 	case openCurlyToken: res = parser_parse_block_statement(p, d); break;
 	case ifKeyword: res = parser_parse_if_statement(p, d); break;
+	case caseKeyword: res = parser_parse_case_statement(p, d); break;
 	case whileKeyword: res = parser_parse_while_loop(p, d); break;
 	case forKeyword: res = parser_parse_for_loop(p, d); break;
 	case identifierToken:
@@ -199,6 +206,57 @@ node parser_parse_if_statement(parser *p, diagnosticContainer *d) {
 	};
 
 	return ifNode;
+}
+
+node parser_parse_case_branch(parser *p, diagnosticContainer *d) {
+	node condition = parser_current(p,d).kind == defaultKeyword
+		? parser_next_token(p, d)
+		: parser_parse_expression(p, d);
+
+	node colon = parser_match_token(p, d, colonToken);
+	node thenStatement = parser_parse_statement(p, d);
+
+	caseBranchNode bData = { condition, colon, thenStatement };
+
+	u16 index = p->caseBranchIndex;
+	p->caseBranches[p->caseBranchIndex++] = bData;
+
+	node bNode = {
+		.kind = caseBranch,
+		.span = textspan_from_bounds(&condition, &thenStatement),
+		.data = &(p->caseBranches[index]), 
+	};
+
+	return bNode;
+}
+
+node parser_parse_case_statement(parser *p, diagnosticContainer *d) {
+	node caseToken = parser_match_token(p, d, caseKeyword);
+	node openCurly = parser_match_token(p, d, openCurlyToken);
+
+	node branches[100];
+	u8 branchCount=0;
+	while(parser_current(p, d).kind != closeCurlyToken)
+		branches[branchCount++] = parser_parse_case_branch(p, d);
+
+	node closeCurly = parser_match_token(p, d, closeCurlyToken);
+
+	node* branchesStart = &(p->nodes[p->nodeIndex]);
+	for (int i=0; i<branchCount; i++)
+		p->nodes[p->nodeIndex++] = branches[i];
+
+	caseStatementNode caseData = { caseToken, openCurly, branchesStart, branchCount, closeCurly };
+
+	u16 index = p->caseStatementIndex;
+	p->caseStatements[p->caseStatementIndex++] = caseData;
+
+	node caseNode = {
+		.kind = caseStatement,
+		.span = textspan_from_bounds(&caseToken, &closeCurly),
+		.data = &(p->caseStatements[index]), 
+	};
+
+	return caseNode;
 }
 
 node parser_parse_while_loop(parser *p, diagnosticContainer *d) {
