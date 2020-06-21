@@ -30,5 +30,14 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 			printf(diagnosticText[d.kind], syntaxKindText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
 		}
 		TERMRESET();
+
+		int lineStart;
+		for (lineStart = d.span.start; sourceText[lineStart] != '\n' && lineStart > 0; lineStart--) {}
+		for (int i=lineStart;i<d.span.start;i++) printf("%c", sourceText[i]);
+		TERMRED();
+		for (int i=0;i<d.span.length;i++) printf("%c", sourceText[d.span.start + i]);
+		TERMRESET();
+		for (int i=(d.span.start + d.span.length); sourceText[i] != '\n' && sourceText[i] != '\0';i++) printf("%c", sourceText[i]);
+		printf("\n");
 	}
 }
