@@ -1,5 +1,6 @@
 astNode bind_expression(node *n, ast *tree);
 astNode bind_unary_expression(node *n, ast *tree);
+astNode bind_binary_expression(node *n, ast *tree);
 
 int bind_tree(ast* tree) {
     tree->root = bind_expression(&tree->parser.root, tree);
@@ -24,6 +25,7 @@ astNode bind_expression(node *n, ast* tree) {
         }
 
         case unaryExpression: return bind_unary_expression(n, tree);
+        case binaryExpression: return bind_binary_expression(n, tree);
 
         default: {
             TERMRED();
@@ -54,4 +56,26 @@ astNode bind_unary_expression(node *n, ast *tree) {
     astNode unaryNode = { unaryExpressionKind , boundOperand.type, .data = &tree->unaryExpressions[index] };
 
     return unaryNode;
+}
+
+astNode bind_binary_expression(node *n, ast *tree) {
+	binaryExpressionNode bn = *(binaryExpressionNode*)n->data;
+
+    astNode boundLeft = bind_expression(&bn.left, tree);
+    astNode boundRight = bind_expression(&bn.right, tree);
+
+    enum astBinaryOperator op = get_binary_operator(bn.operator.kind, boundLeft.type, boundRight.type);
+
+    if (!op) {
+        report_diagnostic(&tree->diagnostics, undefinedBinaryOperatorDiagnostic, n->span, bn.operator.kind, boundLeft.type, boundRight.type);
+    }
+
+    int index = tree->binaryExpressionsIndex;
+    binaryExpressionAst binaryData = { op, boundLeft, boundRight };
+    tree->binaryExpressions[tree->binaryExpressionsIndex++] = binaryData;
+
+    // TODO: actually have a return type for the operator
+    astNode binaryNode = { binaryExpressionKind , boundLeft.type, .data = &tree->binaryExpressions[index] };
+
+    return binaryNode;
 }

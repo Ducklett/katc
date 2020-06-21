@@ -3,6 +3,7 @@ static const char *diagnosticText[] = {
 	"bad token '%c' (%d,%d)\n",
 	"unexpected token of kind '%s', expected '%s' (%d,%d)\n",
 	"undefined unary operator '%s' for value of type '%s' (%d,%d)\n",
+	"undefined binary operator '%s' for values of type '%s' and '%s' (%d,%d)\n",
 };
 
 void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u32 param1, u32 param2, u32 param3) {
@@ -28,6 +29,13 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 			printf(diagnosticText[d.kind], syntaxKindText[d.param1], syntaxKindText[d.param2], d.span.start, d.span.length); break;
 		case undefinedUnaryOperatorDiagnostic:
 			printf(diagnosticText[d.kind], syntaxKindText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
+		case undefinedBinaryOperatorDiagnostic:
+			printf(diagnosticText[d.kind], syntaxKindText[d.param1], astTypeText[d.param2], astTypeText[d.param3], d.span.start, d.span.length); break;
+		default: {
+			printf("Unhandled case %s in print_diagnostics\n", diagnosticMetaText[d.kind]);
+			TERMRESET();
+			exit(1);
+		}
 		}
 		TERMRESET();
 

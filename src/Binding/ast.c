@@ -18,22 +18,22 @@ enum astKind {
 };
 
 static const char *astKindText[] = {
-	"missingKind",
-	"errorKind",
-	"literalKind",
-	"unaryExpressionKind",
-	"binaryExpressionKind",
-	"rangeExpressionKind",
-	"callExpressionKind",
-	"variableDeclarationKind",
-	"variableAssignmentKind",
-	"blockStatementKind",
-	"ifStatementKind",
-	"caseStatementKind",
-	"caseBranchKind",
-	"whileLoopKind",
-	"forLoopKind",
-	"jumpKind",
+	"missing",
+	"error",
+	"literal",
+	"unaryExpression",
+	"binaryExpression",
+	"rangeExpression",
+	"callExpression",
+	"variableDeclaration",
+	"variableAssignment",
+	"blockStatement",
+	"ifStatement",
+	"caseStatement",
+	"caseBranch",
+	"whileLoop",
+	"forLoop",
+	"jump",
 };
 
 enum astType {
@@ -66,7 +66,48 @@ enum astBinaryOperator {
 	greaterOp,
 	lessOrEqualOp,
 	greaterOrEqualOp,
+
+	logicalAndOp,
+	logicalOrOp,
 };
+
+static const char *astBinaryText[] = {
+	"missingBinary",
+	"add",
+	"subtract",
+	"multiply",
+	"divide",
+	"modulo",
+	"equal",
+	"inEqual",
+	"less",
+	"greater",
+	"lessOrEqual",
+	"greaterOrEqual",
+	"logicalAndOp",
+	"logicalOrOp",
+};
+
+enum astBinaryOperator get_binary_operator(enum syntaxKind operatorToken, enum astType left, enum astType right) {
+	if (operatorToken == plusOperator && left == intType && right == intType) return addOp;
+	if (operatorToken == minusOperator && left == intType && right == intType) return subtractOp;
+	if (operatorToken == multipliationOperator && left == intType && right == intType) return multiplyOp;
+	if (operatorToken == divisionOperator && left == intType && right == intType) return divideOp;
+	if (operatorToken == modulusOperator && left == intType && right == intType) return moduloOp;
+
+	if (operatorToken == euqualsEqualsOperator && left == boolType && right == boolType) return equalOp;
+	if (operatorToken == bangEqualsOperator && left == boolType && right == boolType) return inEqualOp;
+
+	if (operatorToken == lessOperator && left == intType && right == intType) return lessOp;
+	if (operatorToken == greaterOperator && left == intType && right == intType) return greaterOp;
+	if (operatorToken == lessEqualsOperator && left == intType && right == intType) return lessOrEqualOp;
+	if (operatorToken == greaterEqualsOperator && left == intType && right == intType) return greaterOrEqualOp;
+
+	if (operatorToken == ampersandAmpersandOperator && left == boolType && right == boolType) return logicalAndOp;
+	if (operatorToken == pipePipeOperator && left == boolType && right == boolType) return logicalOrOp;
+
+	return missingBinaryOp;
+}
 
 enum astUnaryOperator {
 	missingUnaryOp,
@@ -81,7 +122,6 @@ static const char *astUnaryText[] = {
 	"negation",
 	"identity",
 };
-
 
 enum astUnaryOperator get_unary_operator(enum syntaxKind operatorToken, enum astType type) {
 	if (type == intType && operatorToken == plusOperator) return identityOp;
@@ -180,7 +220,9 @@ typedef struct ast {
 	diagnosticContainer diagnostics;
 	astNode root;
 	unaryExpressionAst unaryExpressions[1024];
+	binaryExpressionAst binaryExpressions[1024];
 	int unaryExpressionsIndex;
+	int binaryExpressionsIndex;
 } ast;
 
 int bind_tree(ast* tree);
@@ -239,6 +281,14 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 
 		printf ("%*s%s\n", indent, "", astUnaryText[un.operator]);
 		print_ast_internal(text, &un.operand, indent, verbose, false);
+		break;
+	}
+	case binaryExpressionKind: {
+		binaryExpressionAst un = *(binaryExpressionAst*)root->data;
+
+		printf ("%*s%s\n", indent, "", astBinaryText[un.operator]);
+		print_ast_internal(text, &un.left, indent, verbose, true);
+		print_ast_internal(text, &un.right, indent, verbose, false);
 		break;
 	}
 	default: {

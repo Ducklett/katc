@@ -1,1 +1,1 @@
-gcc -Wall src/main.c && ./a.out ; rm ./a.out
+clear ; gcc -Wall src/main.c && ./a.out ; rm ./a.out
