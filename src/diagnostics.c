@@ -1,26 +1,8 @@
-typedef struct diagnostic {
-	u8 kind;
-	textspan span;
-	u32 param1;
-	u32 param2;
-	u32 param3;
-} diagnostic;
-
-typedef struct diagnosticContainer {
-	u8 index;
-	diagnostic diagnostics[10];
-} diagnosticContainer;
-
-enum diagnosticKind {
-	unexpectedCharacterDiagnostic,
-	badTokenDiagnostic,
-	unexpectedTokenDiagnostic,
-};
-
 static const char *diagnosticText[] = {
 	"Unexpected character '%c', expected '%c' (%d,%d)\n",
 	"bad token '%c' (%d,%d)\n",
 	"unexpected token of kind '%s', expected '%s' (%d,%d)\n",
+	"undefined unary operator '%s' for value of type '%s' (%d,%d)\n",
 };
 
 void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u32 param1, u32 param2, u32 param3) {
@@ -44,6 +26,8 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 			printf(diagnosticText[d.kind], sourceText[d.span.start], d.span.start, d.span.length); break;
 		case unexpectedTokenDiagnostic:
 			printf(diagnosticText[d.kind], syntaxKindText[d.param1], syntaxKindText[d.param2], d.span.start, d.span.length); break;
+		case undefinedUnaryOperatorDiagnostic:
+			printf(diagnosticText[d.kind], syntaxKindText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
 		}
 		TERMRESET();
 	}

@@ -7,8 +7,9 @@
 #include <time.h>
 #include "util.c"
 #include "syntax/syntaxTree.c"
-#include "diagnostics.c"
+#include "diagnostics.h"
 #include "syntax/lexer.c"
 #include "syntax/parser.c"
 #include "Binding/ast.c"
 #include "Binding/binder.c"
+#include "diagnostics.c"
