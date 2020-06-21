@@ -18,6 +18,11 @@ astNode bind_expression(node *n, ast* tree) {
             return num;
         }
 
+        case parenthesizedExpression: {
+		    parenthesizedExpressionNode pn = *(parenthesizedExpressionNode*)n->data;
+            return bind_expression(&pn.expression, tree);
+        }
+
         case unaryExpression: return bind_unary_expression(n, tree);
 
         default: {
