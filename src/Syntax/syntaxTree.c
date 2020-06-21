@@ -250,7 +250,7 @@ char* ast_substring(char* text, node *n) {
 	return tokenText;
 }
 
-inline i8 getBinaryOperatorPrecedence(enum syntaxKind kind) {
+static inline i8 getBinaryOperatorPrecedence(enum syntaxKind kind) {
 	switch(kind) {
 	case plusOperator: return 12;
 	case minusOperator: return 12;
@@ -270,7 +270,7 @@ inline i8 getBinaryOperatorPrecedence(enum syntaxKind kind) {
 	}
 }
 
-inline i8 getUnaryOperatorPrecedence(enum syntaxKind kind) {
+static inline i8 getUnaryOperatorPrecedence(enum syntaxKind kind) {
 	switch(kind) {
 	case bangOperator: return 14;
 	case plusOperator: return 14;
@@ -310,7 +310,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 
 	switch(root->kind) {
 	case variableDeclaration: {
-		variableDeclarationNode dn = (variableDeclarationNode)*root->data;
+		variableDeclarationNode dn = *(variableDeclarationNode*)root->data;
 		print_syntaxtree_internal(text, &dn.identifier, indent, verbose, true);
 		print_syntaxtree_internal(text, &dn.colon, indent, verbose, true);
 		if (dn.type.kind != emptyToken)	print_syntaxtree_internal(text, &dn.type, indent, verbose, true);
@@ -319,14 +319,14 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		break;
 	}
 	case variableAssignment: {
-		variableAssignmentNode an = (variableAssignmentNode)*root->data;
+		variableAssignmentNode an = *(variableAssignmentNode*)root->data;
 		print_syntaxtree_internal(text, &an.identifier, indent, verbose, true);
 		print_syntaxtree_internal(text, &an.equals, indent, verbose, true);
 		print_syntaxtree_internal(text, &an.expression, indent, verbose, false);
 		break;
 	}
 	case callExpression: {
-		functionCallNode fn = (functionCallNode)*root->data;
+		functionCallNode fn = *(functionCallNode*)root->data;
 		print_syntaxtree_internal(text, &fn.identifier, indent, verbose, true);
 		print_syntaxtree_internal(text, &fn.openParen, indent, verbose, true);
 		for (int i = 0; i< fn.argumentCount; i++) {
@@ -336,7 +336,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		break;
 	}
 	case ifStatement: {
-		ifStatementNode in = (ifStatementNode)*root->data;
+		ifStatementNode in = *(ifStatementNode*)root->data;
 		print_syntaxtree_internal(text, &in.ifKeyword, indent, verbose, true);
 		print_syntaxtree_internal(text, &in.condition, indent, verbose, true);
 		print_syntaxtree_internal(text, &in.thenExpression, indent, verbose, true);
@@ -347,7 +347,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		break;
 	}
 	case caseStatement: {
-		caseStatementNode cn = (caseStatementNode)*root->data;
+		caseStatementNode cn = *(caseStatementNode*)root->data;
 		print_syntaxtree_internal(text, &cn.caseKeyword, indent, verbose, true);
 		print_syntaxtree_internal(text, &cn.openCurly, indent, verbose, true);
 		for (int i = 0; i< cn.branchCount; i++) {
@@ -357,21 +357,21 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		break;
 	}
 	case caseBranch: {
-		caseBranchNode cb = (caseBranchNode)*root->data;
+		caseBranchNode cb = *(caseBranchNode*)root->data;
 		print_syntaxtree_internal(text, &cb.condition, indent, verbose, true);
 		print_syntaxtree_internal(text, &cb.colon, indent, verbose, true);
 		print_syntaxtree_internal(text, &cb.thenExpression, indent, verbose, false);
 		break;
 	}
 	case whileLoop: {
-		whileLoopNode wn = (whileLoopNode)*root->data;
+		whileLoopNode wn = *(whileLoopNode*)root->data;
 		print_syntaxtree_internal(text, &wn.whileKeyword, indent, verbose, true);
 		print_syntaxtree_internal(text, &wn.condition, indent, verbose, true);
 		print_syntaxtree_internal(text, &wn.block, indent, verbose, false);
 		break;
 	}
 	case forLoop: {
-		forLoopNode fn = (forLoopNode)*root->data;
+		forLoopNode fn = *(forLoopNode*)root->data;
 		print_syntaxtree_internal(text, &fn.forKeyword, indent, verbose, true);
 		if (fn.openParen.kind != emptyToken) print_syntaxtree_internal(text, &fn.openParen, indent, verbose, true);
 		print_syntaxtree_internal(text, &fn.value, indent, verbose, true);
@@ -386,7 +386,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		break;
 	}
 	case blockStatement: {
-		blockStatementNode bn = (blockStatementNode)*root->data;
+		blockStatementNode bn = *(blockStatementNode*)root->data;
 		print_syntaxtree_internal(text, &bn.openCurly, indent, verbose, true);
 		for (int i = 0; i< bn.statementsCount; i++) {
 			print_syntaxtree_internal(text, &bn.statements[i], indent, verbose, true);
@@ -395,27 +395,27 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		break;
 	}
 	case unaryExpression: {
-		unaryExpressionNode un = (unaryExpressionNode)*root->data;
+		unaryExpressionNode un = *(unaryExpressionNode*)root->data;
 		print_syntaxtree_internal(text, &un.operator, indent, verbose, true);
 		print_syntaxtree_internal(text, &un.operand, indent, verbose, false);
 		break;
 	}
 	case binaryExpression: {
-		binaryExpressionNode bn = (binaryExpressionNode)*root->data;
+		binaryExpressionNode bn = *(binaryExpressionNode*)root->data;
 		print_syntaxtree_internal(text, &bn.left, indent, verbose, true);
 		print_syntaxtree_internal(text, &bn.operator, indent, verbose, true);
 		print_syntaxtree_internal(text, &bn.right, indent, verbose, false);
 		break;
 	}
 	case parenthesizedExpression: {
-		parenthesizedExpressionNode pn = (parenthesizedExpressionNode)*root->data;
+		parenthesizedExpressionNode pn = *(parenthesizedExpressionNode*)root->data;
 		print_syntaxtree_internal(text, &pn.openParen, indent, verbose, true);
 		print_syntaxtree_internal(text, &pn.expression, indent, verbose, true);
 		print_syntaxtree_internal(text, &pn.closeParen, indent, verbose, false);
 		break;
 	}
 	case rangeExpression: {
-		rangeExpressionNode rn = (rangeExpressionNode)*root->data;
+		rangeExpressionNode rn = *(rangeExpressionNode*)root->data;
 		print_syntaxtree_internal(text, &rn.start, indent, verbose, true);
 		print_syntaxtree_internal(text, &rn.dotDot, indent, verbose, true);
 		print_syntaxtree_internal(text, &rn.end, indent, verbose, false);

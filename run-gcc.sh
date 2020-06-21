@@ -1,0 +1,1 @@
+gcc -Wall src/main.c && ./a.out ; rm ./a.out

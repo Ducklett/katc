@@ -1,22 +1,23 @@
 
+
 typedef struct lexer {
 	char *text;
 	u16 text_length;
 	u32 index;
 } lexer;
 
-inline bool isWhitespace(char c) { return c == ' ' || c == '\t'; }
+static inline bool isWhitespace(char c) { return c == ' ' || c == '\t'; }
 
-inline bool isNewline(char c) { return c == '\n' || c == '\r'; }
+static inline bool isNewline(char c) { return c == '\n' || c == '\r'; }
 
-inline bool isNumber(char c) { return c >= '0' && c <= '9'; }
+static inline bool isNumber(char c) { return c >= '0' && c <= '9'; }
 
-inline bool isLetter(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); }
+static inline bool isLetter(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); }
 
-inline bool isIdentifierStart(char c) { return isLetter(c) || c == '_'; }
-inline bool isIdentifier(char c) { return isLetter(c) || isNumber(c) || c == '_'; }
+static inline bool isIdentifierStart(char c) { return isLetter(c) || c == '_'; }
+static inline bool isIdentifier(char c) { return isLetter(c) || isNumber(c) || c == '_'; }
 
-inline int parse_numeric_char(char c) { return c - 48; }
+static inline int parse_numeric_char(char c) { return c - 48; }
 
 bool span_compare(char* text, node *token, char* comp) {
 
@@ -50,7 +51,7 @@ char lexer_match(lexer *l, diagnosticContainer *d,  char expected) {
 	return matched;
 }
 
-inline node lex_basic_token(lexer *l, enum syntaxKind kind, u8 length) {
+static inline node lex_basic_token(lexer *l, enum syntaxKind kind, u8 length) {
 	node t = {
 		.kind = kind,
 		.span = textspan_create(l->index, length),

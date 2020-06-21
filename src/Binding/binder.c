@@ -30,7 +30,7 @@ astNode bind_expression(node *n, ast* tree) {
 }
 
 astNode bind_unary_expression(node *n, ast *tree) {
-	unaryExpressionNode un = (unaryExpressionNode)*n->data;
+	unaryExpressionNode un = *(unaryExpressionNode*)n->data;
 
     astNode boundOperand = bind_expression(&un.operand, tree);
 

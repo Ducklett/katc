@@ -235,9 +235,9 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 
 	switch(root->kind) {
 	case unaryExpressionKind: {
-		unaryExpressionAst un = (unaryExpressionAst)*root->data;
+		unaryExpressionAst un = *(unaryExpressionAst*)root->data;
 
-		printf ("%*s%s\n", indent, "", astUnaryText[un.operator], newline?"\n":"");
+		printf ("%*s%s\n", indent, "", astUnaryText[un.operator]);
 		print_ast_internal(text, &un.operand, indent, verbose, false);
 		break;
 	}

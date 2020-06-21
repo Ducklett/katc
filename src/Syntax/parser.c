@@ -72,7 +72,7 @@ node parser_peek(parser *p, diagnosticContainer *d, u8 n) {
 	return p->token_buffer[index];
 }
 
-inline node parser_current(parser *p, diagnosticContainer *d) { return parser_peek(p, d, 0); }
+static inline node parser_current(parser *p, diagnosticContainer *d) { return parser_peek(p, d, 0); }
 
 node parser_next_token(parser *p, diagnosticContainer *d) {
 	node t = parser_current(p, d);
@@ -295,8 +295,8 @@ node parser_parse_for_loop(parser *p, diagnosticContainer *d) {
 	bool hasKey = parser_current(p, d).kind == commaToken;
 
 	if (hasKey) {
-		node comma = parser_match_token(p, d, commaToken);
-		node key = parser_match_token(p, d, identifierToken);
+		comma = parser_match_token(p, d, commaToken);
+		key = parser_match_token(p, d, identifierToken);
 	}
 
 	node inToken = parser_match_token(p, d, inKeyword);
