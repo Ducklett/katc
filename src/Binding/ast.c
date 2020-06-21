@@ -1,5 +1,6 @@
 enum astKind {
     missingKind,
+    literalKind,
 	unaryExpressionKind,
 	binaryExpressionKind,
 	rangeExpressionKind,
@@ -15,12 +16,38 @@ enum astKind {
 	jumpKind,
 };
 
+static const char *astKindText[] = {
+    "missingKind",
+    "literalKind",
+	"unaryExpressionKind",
+	"binaryExpressionKind",
+	"rangeExpressionKind",
+	"callExpressionKind",
+	"variableDeclarationKind",
+	"variableAssignmentKind",
+	"blockStatementKind",
+	"ifStatementKind",
+	"caseStatementKind",
+	"caseBranchKind",
+	"whileLoopKind",
+	"forLoopKind",
+	"jumpKind",
+};
+
 enum astType {
     unresolvedType,
     voidType,
     intType,
     boolType,
     stringType,
+};
+
+static const char *astTypeText[] = {
+    "unresolvedType",
+    "voidType",
+    "intType",
+    "boolType",
+    "stringType",
 };
 
 enum astBinaryOperator {
@@ -46,7 +73,11 @@ enum astUnaryOperator {
 typedef struct astNode {
     enum astKind kind;
     enum astType type;
-	void* data; 
+	union {
+		void* data; 
+		int numValue; 
+		bool boolValue; 
+	};
 } astNode;
 
 typedef struct variableSymbol {
@@ -55,6 +86,8 @@ typedef struct variableSymbol {
 } variableSymbol;
 
 typedef struct ast {
+	u64 length;
+	char* text;
     parser parser;
     diagnosticContainer diagnostics;
     astNode root;
@@ -128,22 +161,65 @@ typedef struct jumpAst {
 
 } jumpAst;
 
+int bind_tree(ast* tree);
+
 int create_ast(char* filename, ast* tree) {
-	u64 length;
-	char* text;
 	{
 		benchmark_start();
-		text = read_file(filename, &length);
+		tree->text = read_file(filename, &tree->length);
 		benchmark_end("File read");
 	}
 
-    if (!create_syntaxtree(text, length, &tree->parser, &tree->diagnostics)) {
-		print_diagnostics(&tree->diagnostics, text);
+    if (!create_syntaxtree(tree->text, tree->length, &tree->parser, &tree->diagnostics)) {
         return 0;
     }
 
-    bool verbose = true;
-	print_syntaxtree(text, &tree->parser.root, 0, verbose);
+	return bind_tree(tree);
+}
 
-	return 1;
+void print_ast_internal(char *text, astNode *root, int indent, bool verbose, bool newline);
+void print_ast(char *text, astNode *root, int indent, bool verbose) { print_ast_internal(text, root, indent, verbose, true); }
+void print_ast_internal(char *text, astNode *root, int indent, bool verbose, bool newline) {
+
+	if (root->kind == literalKind) {
+        if (root->type == voidType) return;
+		if (verbose) {
+			printf ("%*s(", indent, "");
+			TERMBLUE();
+            switch (root->type) {
+                case intType: printf ("%d", root->numValue); break;
+                case boolType: printf ("%s", root->boolValue ? "true" : "false"); break;
+            }
+			TERMRESET();
+			printf (" :: ");
+			TERMYELLOW();
+			printf ("%s", astTypeText[root->type]);
+			TERMRESET();
+			printf (")%s", newline?"\n":"");
+		} else {
+			TERMCYAN();
+            switch (root->type) {
+                case intType: printf ("%*s%d%s", indent, "", root->numValue, newline?"\n":"");
+                case boolType: printf ("%*s%s%s", indent, "", root->boolValue?"true":"false", newline?"\n":"");
+            }
+			TERMRESET();
+		}
+		return;
+	}
+
+	printf ("%*s(%s\n", indent, "", astKindText[root->kind]);
+
+	indent += 4;
+
+	switch(root->kind) {
+	default: {
+		TERMRED();
+		printf("ERROR: Unhandled case in print_ast for kind %s", astKindText[root->kind]);
+		TERMRESET();
+		exit(1);
+		break;
+	}
+	}
+
+	printf (" )%s", newline?"\n":"");
 }

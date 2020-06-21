@@ -131,7 +131,11 @@ typedef struct textspan {
 typedef struct node {
 	enum syntaxKind kind;
 	textspan span;
-	void* data; 
+	union {
+		void* data; 
+		int numValue; 
+		bool boolValue; 
+	};
 } node;
 
 typedef struct unaryExpressionNode {
@@ -280,7 +284,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 void print_syntaxtree(char *text, node *root, int indent, bool verbose) { print_syntaxtree_internal(text, root, indent, verbose, true); }
 void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose, bool newline) {
 
-	if (root->data == 0) {
+	if (root->data == 0 || root->kind == numberLiteral || root->kind == stringLiteral || root->kind == trueKeyword || root->kind == falseKeyword) {
 		char* tokenText = ast_substring(text, root);
 		if (verbose) {
 			printf ("%*s(", indent, "");

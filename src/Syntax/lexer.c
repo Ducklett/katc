@@ -16,6 +16,8 @@ inline bool isLetter(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <
 inline bool isIdentifierStart(char c) { return isLetter(c) || c == '_'; }
 inline bool isIdentifier(char c) { return isLetter(c) || isNumber(c) || c == '_'; }
 
+inline int parse_numeric_char(char c) { return c - 48; }
+
 bool span_compare(char* text, node *token, char* comp) {
 
 	for (int i = 0; i < token->span.length; i++)
@@ -124,12 +126,18 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 		t.span = textspan_create(start, l->index - start);
 		break;
 
-	case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+	case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': {
+		int value = 0;
 		t.kind = numberLiteral;
 		start =  l->index;
-		while (isNumber(lexer_current(l))) lexer_move_next(l);
+		while (isNumber(lexer_current(l))) {
+			char nextNum = lexer_move_next(l);
+			value = value * 10 + parse_numeric_char(nextNum);
+		}
 		t.span = textspan_create(start, l->index - start);
+		t.numValue = value;
 		break;
+	}
 
 	case ' ': case '\t':
 		t.kind = whitespaceToken;
@@ -152,8 +160,14 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			while (isIdentifier(lexer_current(l))) lexer_move_next(l);
 			t.span = textspan_create(start, l->index - start);
 
-			if (span_compare(l->text, &t, "true")) t.kind = trueKeyword;
-			else if (span_compare(l->text, &t, "false")) t.kind = falseKeyword;
+			if (span_compare(l->text, &t, "true")) {
+				t.kind = trueKeyword;
+				t.boolValue = true;
+			}
+			else if (span_compare(l->text, &t, "false")) {
+				t.kind = falseKeyword;
+				t.boolValue = false;
+			}
 			else if (span_compare(l->text, &t, "if")) t.kind = ifKeyword;
 			else if (span_compare(l->text, &t, "else")) t.kind = elseKeyword;
 			else if (span_compare(l->text, &t, "case")) t.kind = caseKeyword;

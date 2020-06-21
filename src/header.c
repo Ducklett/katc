@@ -11,3 +11,4 @@
 #include "syntax/lexer.c"
 #include "syntax/parser.c"
 #include "Binding/ast.c"
+#include "Binding/binder.c"
