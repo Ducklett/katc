@@ -1,4 +1,5 @@
 astNode bind_expression(node *n, ast *tree);
+astNode bind_block_statement(node *n, ast *tree);
 astNode bind_unary_expression(node *n, ast *tree);
 astNode bind_binary_expression(node *n, ast *tree);
 
@@ -9,6 +10,8 @@ int bind_tree(ast* tree) {
 
 astNode bind_expression(node *n, ast* tree) {
     switch(n->kind) {
+        case blockStatement: return bind_block_statement(n, tree);
+
         case falseKeyword:
         case trueKeyword: {
             astNode num = { literalKind, boolType, .boolValue = n->boolValue };
@@ -34,6 +37,30 @@ astNode bind_expression(node *n, ast* tree) {
             exit(1);
         }
     }
+}
+
+astNode bind_block_statement(node *n, ast *tree) {
+    astNode boundStatements[100];
+    int statementCount = 0;
+
+	blockStatementNode bn = *(blockStatementNode*)n->data;
+
+    for (int i = 0; i < bn.statementsCount; i++) {
+        boundStatements[statementCount++] = bind_expression(&bn.statements[i], tree);
+    }
+
+    astNode* nodesStart = &tree->nodes[tree->nodesIndex];
+    for (int i = 0; i < statementCount; i++) {
+        tree->nodes[tree->nodesIndex++] = boundStatements[i];
+    }
+
+    int index = tree->blockStatementsIndex;
+    blockStatementAst blockData = { nodesStart, statementCount };
+    tree->blockStatements[tree->blockStatementsIndex++] = blockData;
+
+    astNode blockNode = { blockStatementKind,  .data = &tree->blockStatements[index] };
+
+    return blockNode;
 }
 
 astNode bind_unary_expression(node *n, ast *tree) {

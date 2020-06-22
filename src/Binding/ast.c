@@ -84,8 +84,8 @@ static const char *astBinaryText[] = {
 	"greater",
 	"lessOrEqual",
 	"greaterOrEqual",
-	"logicalAndOp",
-	"logicalOrOp",
+	"logicalAnd",
+	"logicalOr",
 };
 
 enum astBinaryOperator get_binary_operator(enum syntaxKind operatorToken, enum astType left, enum astType right) {
@@ -219,8 +219,12 @@ typedef struct ast {
 	parser parser;
 	diagnosticContainer diagnostics;
 	astNode root;
+	astNode nodes[1024];
+	blockStatementAst blockStatements[1024];
 	unaryExpressionAst unaryExpressions[1024];
 	binaryExpressionAst binaryExpressions[1024];
+	int nodesIndex;
+	int blockStatementsIndex;
 	int unaryExpressionsIndex;
 	int binaryExpressionsIndex;
 } ast;
@@ -276,17 +280,29 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	indent += 4;
 
 	switch(root->kind) {
+	case blockStatementKind: {
+		blockStatementAst bn = *(blockStatementAst*)root->data;
+
+		for(int i=0;i<bn.statementsCount;i++) {
+			print_ast_internal(text, &bn.statements[i], indent, verbose, i!=bn.statementsCount-1);
+		}
+		break;
+	}
 	case unaryExpressionKind: {
 		unaryExpressionAst un = *(unaryExpressionAst*)root->data;
 
+		TERMMAGENTA();
 		printf ("%*s%s\n", indent, "", astUnaryText[un.operator]);
+		TERMRESET();
 		print_ast_internal(text, &un.operand, indent, verbose, false);
 		break;
 	}
 	case binaryExpressionKind: {
 		binaryExpressionAst un = *(binaryExpressionAst*)root->data;
 
+		TERMMAGENTA();
 		printf ("%*s%s\n", indent, "", astBinaryText[un.operator]);
+		TERMRESET();
 		print_ast_internal(text, &un.left, indent, verbose, true);
 		print_ast_internal(text, &un.right, indent, verbose, false);
 		break;
