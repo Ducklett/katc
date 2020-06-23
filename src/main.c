@@ -4,7 +4,7 @@ int main() {
 
 	ast result = {0};
 
-	if (!create_ast("test.es", &result)) {
+	if (!create_ast("test.kc", &result)) {
 		print_diagnostics(&result.diagnostics, result.text);
 		return 1;
 	} 

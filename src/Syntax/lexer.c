@@ -19,12 +19,12 @@ static inline bool isIdentifier(char c) { return isLetter(c) || isNumber(c) || c
 
 static inline int parse_numeric_char(char c) { return c - 48; }
 
-bool span_compare(char* text, node *token, char* comp) {
+bool span_compare(char* text, textspan span, char* comp) {
 
-	for (int i = 0; i < token->span.length; i++)
-		if (text[token->span.start + i] != comp[i]) return false;
+	for (int i = 0; i < span.length; i++)
+		if (text[span.start + i] != comp[i]) return false;
 
-	if (comp[token->span.length] != '\0') return false;
+	if (comp[span.length] != '\0') return false;
 
 	return true;
 }
@@ -161,21 +161,21 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			while (isIdentifier(lexer_current(l))) lexer_move_next(l);
 			t.span = textspan_create(start, l->index - start);
 
-			if (span_compare(l->text, &t, "true")) {
+			if (span_compare(l->text, t.span, "true")) {
 				t.kind = trueKeyword;
 				t.boolValue = true;
 			}
-			else if (span_compare(l->text, &t, "false")) {
+			else if (span_compare(l->text, t.span, "false")) {
 				t.kind = falseKeyword;
 				t.boolValue = false;
 			}
-			else if (span_compare(l->text, &t, "if")) t.kind = ifKeyword;
-			else if (span_compare(l->text, &t, "else")) t.kind = elseKeyword;
-			else if (span_compare(l->text, &t, "case")) t.kind = caseKeyword;
-			else if (span_compare(l->text, &t, "default")) t.kind = defaultKeyword;
-			else if (span_compare(l->text, &t, "while")) t.kind = whileKeyword;
-			else if (span_compare(l->text, &t, "for")) t.kind = forKeyword;
-			else if (span_compare(l->text, &t, "in")) t.kind = inKeyword;
+			else if (span_compare(l->text, t.span, "if")) t.kind = ifKeyword;
+			else if (span_compare(l->text, t.span, "else")) t.kind = elseKeyword;
+			else if (span_compare(l->text, t.span, "case")) t.kind = caseKeyword;
+			else if (span_compare(l->text, t.span, "default")) t.kind = defaultKeyword;
+			else if (span_compare(l->text, t.span, "while")) t.kind = whileKeyword;
+			else if (span_compare(l->text, t.span, "for")) t.kind = forKeyword;
+			else if (span_compare(l->text, t.span, "in")) t.kind = inKeyword;
 			break;
 		}
 		t.kind = badToken;

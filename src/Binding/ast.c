@@ -213,6 +213,12 @@ typedef struct jumpAst {
 
 } jumpAst;
 
+typedef struct scope {
+	struct scope* parentScope;
+	variableSymbol variables[10];
+	u8 variableCount;
+} scope;
+
 typedef struct ast {
 	char* text;
 	u64 length;
@@ -220,13 +226,18 @@ typedef struct ast {
 	diagnosticContainer diagnostics;
 	astNode root;
 	astNode nodes[1024];
+	scope scopes[20];
 	blockStatementAst blockStatements[1024];
 	unaryExpressionAst unaryExpressions[1024];
 	binaryExpressionAst binaryExpressions[1024];
+	variableDeclarationAst variableDeclarations[1024];
 	int nodesIndex;
+	int scopesIndex;
+	int currentScopeIndex;
 	int blockStatementsIndex;
 	int unaryExpressionsIndex;
 	int binaryExpressionsIndex;
+	int variableDeclarationIndex;
 } ast;
 
 int bind_tree(ast* tree);
@@ -305,6 +316,15 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		TERMRESET();
 		print_ast_internal(text, &un.left, indent, verbose, true);
 		print_ast_internal(text, &un.right, indent, verbose, false);
+		break;
+	}
+	case variableDeclarationKind: {
+		variableDeclarationAst vn = *(variableDeclarationAst*)root->data;
+
+		TERMMAGENTA();
+		printf ("%*s%s %s\n", indent, "", vn.variable->name, astTypeText[vn.variable->type]);
+		TERMRESET();
+		print_ast_internal(text, &vn.initalizer, indent, verbose, false);
 		break;
 	}
 	default: {

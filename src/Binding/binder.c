@@ -2,6 +2,7 @@ astNode bind_expression(node *n, ast *tree);
 astNode bind_block_statement(node *n, ast *tree);
 astNode bind_unary_expression(node *n, ast *tree);
 astNode bind_binary_expression(node *n, ast *tree);
+astNode bind_variable_declaration(node *n, ast *tree);
 
 int bind_tree(ast* tree) {
     tree->root = bind_expression(&tree->parser.root, tree);
@@ -29,6 +30,7 @@ astNode bind_expression(node *n, ast* tree) {
 
         case unaryExpression: return bind_unary_expression(n, tree);
         case binaryExpression: return bind_binary_expression(n, tree);
+        case variableDeclaration: return bind_variable_declaration(n, tree);
 
         default: {
             TERMRED();
@@ -45,9 +47,16 @@ astNode bind_block_statement(node *n, ast *tree) {
 
 	blockStatementNode bn = *(blockStatementNode*)n->data;
 
+    int parentScopeIndex = tree->currentScopeIndex;
+    scope*  newScope = &tree->scopes[tree->scopesIndex++];
+    if (parentScopeIndex != 0) newScope->parentScope = &tree->scopes[parentScopeIndex];
+    tree->currentScopeIndex = tree->scopesIndex;
+
     for (int i = 0; i < bn.statementsCount; i++) {
         boundStatements[statementCount++] = bind_expression(&bn.statements[i], tree);
     }
+    
+    tree->currentScopeIndex = parentScopeIndex;
 
     astNode* nodesStart = &tree->nodes[tree->nodesIndex];
     for (int i = 0; i < statementCount; i++) {
@@ -105,4 +114,48 @@ astNode bind_binary_expression(node *n, ast *tree) {
     astNode binaryNode = { binaryExpressionKind , boundLeft.type, .data = &tree->binaryExpressions[index] };
 
     return binaryNode;
+}
+
+astNode bind_variable_declaration(node *n, ast *tree) {
+
+	variableDeclarationNode vn = *(variableDeclarationNode*)n->data;
+
+    astNode boundInitializer = bind_expression(&vn.expression, tree);
+
+    if (vn.type.kind != 0) {
+        printf("No explicit types for now\n");
+        exit(1);
+    } 
+
+    scope *currentScope = &tree->scopes[tree->currentScopeIndex];
+    textspan nameSpan = vn.identifier.span;
+
+    variableSymbol *variable = 0;
+
+    bool success=true;
+    for (int i = 0; i < currentScope->variableCount; i++) {
+        if (span_compare(tree->text, nameSpan, currentScope->variables[i].name)) {
+            report_diagnostic(&tree->diagnostics, redeclarationOfVariableDiagnostic, n->span, (u32)currentScope->variables[i].name, 0, 0);
+            success=false;
+            break;
+        }
+    }
+
+    if (success) {
+        variable = &currentScope->variables[currentScope->variableCount++];
+
+        for (int i= 0;i<nameSpan.length;i++) {
+            variable->name[i] = tree->text[i+nameSpan.start];
+        }
+        variable->type = boundInitializer.type;
+    }
+
+    int index = tree->variableDeclarationIndex;
+    variableDeclarationAst varData = { variable, boundInitializer };
+
+    tree->variableDeclarations[tree->variableDeclarationIndex++] = varData;
+
+    astNode varNode = { variableDeclarationKind , boundInitializer.type, .data = &tree->variableDeclarations[index] };
+
+    return varNode;
 }
