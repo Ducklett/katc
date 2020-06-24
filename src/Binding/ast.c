@@ -235,6 +235,7 @@ typedef struct ast {
 	unaryExpressionAst unaryExpressions[1024];
 	binaryExpressionAst binaryExpressions[1024];
 	variableDeclarationAst variableDeclarations[1024];
+	variableAssignmentAst variableAssignments[1024];
 	int nodesIndex;
 	int scopesIndex;
 	int currentScopeIndex;
@@ -242,6 +243,7 @@ typedef struct ast {
 	int unaryExpressionsIndex;
 	int binaryExpressionsIndex;
 	int variableDeclarationIndex;
+	int variableAssignmentIndex;
 } ast;
 
 int bind_tree(ast* tree);
@@ -329,6 +331,15 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		printf ("%*s%s %s\n", indent, "", vn.variable->name, astTypeText[vn.variable->type]);
 		TERMRESET();
 		print_ast_internal(text, &vn.initalizer, indent, verbose, false);
+		break;
+	}
+	case variableAssignmentKind: {
+		variableAssignmentAst va = *(variableAssignmentAst*)root->data;
+
+		TERMMAGENTA();
+		printf ("%*s%s %s\n", indent, "", va.variable->name, astTypeText[va.variable->type]);
+		TERMRESET();
+		print_ast_internal(text, &va.expression, indent, verbose, false);
 		break;
 	}
 	case variableReferenceKind: {

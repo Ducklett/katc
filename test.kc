@@ -1,7 +1,4 @@
 {
-	a := true 
-	b := 4 + ( 3 * a + a * 1)
-	{
-		a := 8 + a
-	}
+	a := true
+	b := a && !false
 }

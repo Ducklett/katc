@@ -6,6 +6,7 @@ static const char *diagnosticText[] = {
 	"undefined binary operator '%s' for values of type '%s' and '%s' (%d,%d)\n",
 	"redeclaration of variable '%s' is not allowed. (%d,%d)\n",
 	"variable '%s' is undefined. (%d,%d)\n",
+	"cannot assign expression of type '%s' to variable '%s' of type '%s'. (%d,%d)\n",
 };
 
 void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u32 param1, u32 param2, u32 param3) {
@@ -38,6 +39,11 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		case referenceToUndefinedVariableDiagnostic: {
 			char* identifierText = ast_substring(sourceText, d.span);
 			printf(diagnosticText[d.kind], identifierText, d.span.start, d.span.length); break;
+			free(identifierText);
+		}
+		case cannotAssignDiagnostic: {
+			char* identifierText = ast_substring(sourceText, d.span);
+			printf(diagnosticText[d.kind], astTypeText[d.param2], identifierText, astTypeText[d.param1], d.span.start, d.span.length); break;
 			free(identifierText);
 		}
 		default: {

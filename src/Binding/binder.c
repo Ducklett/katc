@@ -3,6 +3,7 @@ astNode bind_block_statement(node *n, ast *tree);
 astNode bind_unary_expression(node *n, ast *tree);
 astNode bind_binary_expression(node *n, ast *tree);
 astNode bind_variable_declaration(node *n, ast *tree);
+astNode bind_variable_assignment(node *n, ast *tree);
 variableSymbol* find_variable_in_scope(textspan nameSpan, ast *tree);
 
 int bind_tree(ast* tree) {
@@ -38,6 +39,7 @@ astNode bind_expression(node *n, ast* tree) {
         case unaryExpression: return bind_unary_expression(n, tree);
         case binaryExpression: return bind_binary_expression(n, tree);
         case variableDeclaration: return bind_variable_declaration(n, tree);
+        case variableAssignment: return bind_variable_assignment(n, tree);
 
         default: {
             TERMRED();
@@ -171,6 +173,30 @@ astNode bind_variable_declaration(node *n, ast *tree) {
     tree->variableDeclarations[tree->variableDeclarationIndex++] = varData;
 
     astNode varNode = { variableDeclarationKind , boundInitializer.type, .data = &tree->variableDeclarations[index] };
+
+    return varNode;
+}
+
+astNode bind_variable_assignment(node *n, ast *tree) {
+
+	variableAssignmentNode an = *(variableAssignmentNode*)n->data;
+
+    astNode boundExpression = bind_expression(&an.expression, tree);
+
+    variableSymbol *variable = find_variable_in_scope(an.identifier.span, tree);
+
+    if (variable != 0) {
+        if (variable->type != boundExpression.type) {
+            report_diagnostic(&tree->diagnostics, cannotAssignDiagnostic, an.identifier.span, variable->type, boundExpression.type, 0);
+        }
+    }
+
+    int index = tree->variableAssignmentIndex;
+    variableAssignmentAst varData = { variable, boundExpression };
+
+    tree->variableAssignments[tree->variableAssignmentIndex++] = varData;
+
+    astNode varNode = { variableAssignmentKind , variable == 0 ? errorType : variable->type, .data = &tree->variableAssignments[index] };
 
     return varNode;
 }
