@@ -8,6 +8,7 @@ enum astKind {
 	callExpressionKind,
 	variableDeclarationKind,
 	variableAssignmentKind,
+	variableReferenceKind,
 	blockStatementKind,
 	ifStatementKind,
 	caseStatementKind,
@@ -27,6 +28,7 @@ static const char *astKindText[] = {
 	"callExpression",
 	"variableDeclaration",
 	"variableAssignment",
+	"variableReferenceKind",
 	"blockStatement",
 	"ifStatement",
 	"caseStatement",
@@ -37,6 +39,7 @@ static const char *astKindText[] = {
 };
 
 enum astType {
+	errorType,
 	unresolvedType,
 	voidType,
 	intType,
@@ -45,6 +48,7 @@ enum astType {
 };
 
 static const char *astTypeText[] = {
+	"errorType",
 	"unresolved",
 	"void",
 	"int",
@@ -325,6 +329,14 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		printf ("%*s%s %s\n", indent, "", vn.variable->name, astTypeText[vn.variable->type]);
 		TERMRESET();
 		print_ast_internal(text, &vn.initalizer, indent, verbose, false);
+		break;
+	}
+	case variableReferenceKind: {
+		variableSymbol vs = *(variableSymbol*)root->data;
+
+		TERMMAGENTA();
+		printf ("%*s%s %s", indent, "", vs.name, astTypeText[vs.type]);
+		TERMRESET();
 		break;
 	}
 	default: {

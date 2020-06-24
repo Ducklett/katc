@@ -243,10 +243,10 @@ textspan textspan_from_bounds(node *start, node *end) {
 	return span;
 }
 
-char* ast_substring(char* text, node *n) {
-	char *tokenText = (char*)malloc(sizeof(char) * (n->span.length) + 1);
-	tokenText[n->span.length] = '\0';
-	strncpy(tokenText, text + n->span.start, sizeof(char) * n->span.length);
+char* ast_substring(char* text, textspan span) {
+	char *tokenText = (char*)malloc(sizeof(char) * (span.length) + 1);
+	tokenText[span.length] = '\0';
+	strncpy(tokenText, text + span.start, sizeof(char) * span.length);
 	return tokenText;
 }
 
@@ -284,7 +284,7 @@ void print_syntaxtree(char *text, node *root, int indent, bool verbose) { print_
 void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose, bool newline) {
 
 	if (root->data == 0 || root->kind == numberLiteral || root->kind == stringLiteral || root->kind == trueKeyword || root->kind == falseKeyword) {
-		char* tokenText = ast_substring(text, root);
+		char* tokenText = ast_substring(text, root->span);
 		if (verbose) {
 			printf ("%*s(", indent, "");
 			TERMBLUE();

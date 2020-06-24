@@ -3,6 +3,7 @@ astNode bind_block_statement(node *n, ast *tree);
 astNode bind_unary_expression(node *n, ast *tree);
 astNode bind_binary_expression(node *n, ast *tree);
 astNode bind_variable_declaration(node *n, ast *tree);
+variableSymbol* find_variable_in_scope(textspan nameSpan, ast *tree);
 
 int bind_tree(ast* tree) {
     tree->root = bind_expression(&tree->parser.root, tree);
@@ -28,6 +29,12 @@ astNode bind_expression(node *n, ast* tree) {
             return bind_expression(&pn.expression, tree);
         }
 
+        case identifierToken: {
+            variableSymbol *variable = find_variable_in_scope(n->span, tree);
+            astNode varRef = { variableReferenceKind, variable == 0 ? errorType : variable->type, .data = variable };
+            return varRef;
+        }
+
         case unaryExpression: return bind_unary_expression(n, tree);
         case binaryExpression: return bind_binary_expression(n, tree);
         case variableDeclaration: return bind_variable_declaration(n, tree);
@@ -48,9 +55,12 @@ astNode bind_block_statement(node *n, ast *tree) {
 	blockStatementNode bn = *(blockStatementNode*)n->data;
 
     int parentScopeIndex = tree->currentScopeIndex;
-    scope*  newScope = &tree->scopes[tree->scopesIndex++];
-    if (parentScopeIndex != 0) newScope->parentScope = &tree->scopes[parentScopeIndex];
     tree->currentScopeIndex = tree->scopesIndex;
+    scope*  newScope = &tree->scopes[tree->scopesIndex++];
+
+    if (parentScopeIndex != tree->currentScopeIndex) {
+        newScope->parentScope = &tree->scopes[parentScopeIndex];
+    } 
 
     for (int i = 0; i < bn.statementsCount; i++) {
         boundStatements[statementCount++] = bind_expression(&bn.statements[i], tree);
@@ -102,7 +112,11 @@ astNode bind_binary_expression(node *n, ast *tree) {
 
     enum astBinaryOperator op = get_binary_operator(bn.operator.kind, boundLeft.type, boundRight.type);
 
-    if (!op) {
+    // silence errors if the problem lies elsewhere
+    bool hasErrors = boundLeft.type == errorType || boundLeft.type == unresolvedType ||
+                    boundRight.type == errorType || boundRight.type == unresolvedType;
+
+    if (!op && !hasErrors) {
         report_diagnostic(&tree->diagnostics, undefinedBinaryOperatorDiagnostic, n->span, bn.operator.kind, boundLeft.type, boundRight.type);
     }
 
@@ -158,4 +172,23 @@ astNode bind_variable_declaration(node *n, ast *tree) {
     astNode varNode = { variableDeclarationKind , boundInitializer.type, .data = &tree->variableDeclarations[index] };
 
     return varNode;
+}
+
+variableSymbol* find_variable_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope);
+variableSymbol* find_variable_in_scope(textspan nameSpan, ast *tree) {
+    return find_variable_in_scope_internal(nameSpan, tree, &tree->scopes[tree->currentScopeIndex]);
+}
+variableSymbol* find_variable_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope) {
+
+    for (int i = 0; i < currentScope->variableCount; i++) {
+        if (span_compare(tree->text, nameSpan, currentScope->variables[i].name)) {
+            return &currentScope->variables[i];
+        }
+    }
+
+    if (currentScope->parentScope == 0) {
+        report_diagnostic(&tree->diagnostics, referenceToUndefinedVariableDiagnostic, nameSpan, 0, 0, 0);
+        return 0;
+    }
+    return find_variable_in_scope_internal(nameSpan, tree, currentScope->parentScope);
 }

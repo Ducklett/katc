@@ -18,6 +18,7 @@ enum diagnosticKind {
 	undefinedUnaryOperatorDiagnostic,
 	undefinedBinaryOperatorDiagnostic,
     redeclarationOfVariableDiagnostic,
+    referenceToUndefinedVariableDiagnostic,
 };
 
 static const char *diagnosticMetaText[] = {
@@ -27,6 +28,7 @@ static const char *diagnosticMetaText[] = {
 	"undefinedUnaryOperatorDiagnostic",
 	"undefinedBinaryOperatorDiagnostic",
     "redeclarationOfVariableDiagnostic",
+    "referenceToUndefinedVariableDiagnostic",
 };
 
 void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u32 param1, u32 param2, u32 param3);
