@@ -118,6 +118,7 @@ astNode bind_binary_expression(node *n, ast *tree) {
 
     if (!op && !hasErrors) {
         report_diagnostic(&tree->diagnostics, undefinedBinaryOperatorDiagnostic, n->span, bn.operator.kind, boundLeft.type, boundRight.type);
+        hasErrors = true;
     }
 
     int index = tree->binaryExpressionsIndex;
@@ -125,7 +126,7 @@ astNode bind_binary_expression(node *n, ast *tree) {
     tree->binaryExpressions[tree->binaryExpressionsIndex++] = binaryData;
 
     // TODO: actually have a return type for the operator
-    astNode binaryNode = { binaryExpressionKind , boundLeft.type, .data = &tree->binaryExpressions[index] };
+    astNode binaryNode = { binaryExpressionKind , hasErrors ? errorType : boundLeft.type, .data = &tree->binaryExpressions[index] };
 
     return binaryNode;
 }
