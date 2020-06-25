@@ -2,15 +2,15 @@
 
 int main() {
 
-	ast result = {0};
+	ast *result = calloc(1, sizeof(ast));
 
-	if (!create_ast("test.kc", &result)) {
-		print_diagnostics(&result.diagnostics, result.text);
+	if (!create_ast("test.kc", result)) {
+		print_diagnostics(&result->diagnostics, result->text);
 		return 1;
 	} 
 
     bool verbose = true;
-	print_ast(result.text, &result.root, 0, verbose);
+	print_ast(result->text, &result->root, 0, verbose);
 
 	return 0;
 }
