@@ -238,6 +238,7 @@ typedef struct ast {
 	scope scopes[20];
 	blockStatementAst blockStatements[1024];
 	ifStatementAst ifStatements[1024];
+	whileLoopAst whileLoops[1024];
 	unaryExpressionAst unaryExpressions[1024];
 	binaryExpressionAst binaryExpressions[1024];
 	variableDeclarationAst variableDeclarations[1024];
@@ -247,6 +248,7 @@ typedef struct ast {
 	int currentScopeIndex;
 	int blockStatementsIndex;
 	int ifStatementsIndex;
+	int whileLoopIndex;
 	int unaryExpressionsIndex;
 	int binaryExpressionsIndex;
 	int variableDeclarationIndex;
@@ -318,6 +320,12 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		bool hasElse = in.elseStatement.kind != 0;
 		print_ast_internal(text, &in.thenStatement, indent, verbose, hasElse);
 		if (hasElse) print_ast_internal(text, &in.elseStatement, indent, verbose, false);
+		break;
+	}
+	case whileLoopKind: {
+		whileLoopAst wn = *(whileLoopAst*)root->data;
+		print_ast_internal(text, &wn.condition, indent, verbose, true);
+		print_ast_internal(text, &wn.block, indent, verbose, false);
 		break;
 	}
 	case unaryExpressionKind: {

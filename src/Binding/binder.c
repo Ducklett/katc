@@ -1,6 +1,7 @@
 astNode bind_expression(node *n, ast *tree);
 astNode bind_block_statement(node *n, ast *tree);
 astNode bind_if_statement(node *n, ast *tree);
+astNode bind_while_loop(node *n, ast *tree);
 astNode bind_unary_expression(node *n, ast *tree);
 astNode bind_binary_expression(node *n, ast *tree);
 astNode bind_variable_declaration(node *n, ast *tree);
@@ -16,6 +17,7 @@ astNode bind_expression(node *n, ast* tree) {
     switch(n->kind) {
         case blockStatement: return bind_block_statement(n, tree);
         case ifStatement: return bind_if_statement(n, tree);
+        case whileLoop: return bind_while_loop(n, tree);
 
         case falseKeyword:
         case trueKeyword: {
@@ -104,9 +106,29 @@ astNode bind_if_statement(node *n, ast *tree) {
     tree->ifStatements[tree->ifStatementsIndex++] = ifData;
 
     enum astType ifType = boundthen.type == boundElse.type ? boundthen.type : voidType;
-    astNode varNode = { ifStatementKind , ifType, .data = &tree->ifStatements[index] };
+    astNode ifNode = { ifStatementKind , ifType, .data = &tree->ifStatements[index] };
 
-    return varNode;
+    return ifNode;
+}
+
+astNode bind_while_loop(node *n, ast *tree) {
+
+	whileLoopNode wn = *(whileLoopNode*)n->data;
+
+    astNode boundCondition = bind_expression(&wn.condition, tree);
+    if (boundCondition.type != boolType) {
+        report_diagnostic(&tree->diagnostics, cannotConvertDiagnostic, wn.condition.span, boundCondition.type, boolType, 0);
+    }
+    astNode boundBlock = bind_expression(&wn.block, tree);
+
+    int index = tree->whileLoopIndex;
+    whileLoopAst whileData = { boundCondition, boundBlock };
+
+    tree->whileLoops[tree->whileLoopIndex++] = whileData;
+
+    astNode whileNode = { whileLoopKind , voidType, .data = &tree->whileLoops[index] };
+
+    return whileNode;
 }
 
 astNode bind_unary_expression(node *n, ast *tree) {

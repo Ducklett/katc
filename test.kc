@@ -1,10 +1,7 @@
 {
-	a := 18
-	flag := 1
-
-	if (1 + 2 * a > 20) {
-		flag = 2
-		a = flag;
+	i := 0
+	while (i<10) {
+		i := true
+		i = !i
 	}
-	else flag = 3
 }
