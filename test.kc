@@ -1,4 +1,10 @@
 {
-	a := true
-	b := a && !false
+	a := 18
+	flag := 1
+
+	if (1 + 2 * a > 20) {
+		flag = 2
+		a = flag;
+	}
+	else flag = 3
 }

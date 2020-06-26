@@ -1,5 +1,6 @@
 astNode bind_expression(node *n, ast *tree);
 astNode bind_block_statement(node *n, ast *tree);
+astNode bind_if_statement(node *n, ast *tree);
 astNode bind_unary_expression(node *n, ast *tree);
 astNode bind_binary_expression(node *n, ast *tree);
 astNode bind_variable_declaration(node *n, ast *tree);
@@ -14,6 +15,7 @@ int bind_tree(ast* tree) {
 astNode bind_expression(node *n, ast* tree) {
     switch(n->kind) {
         case blockStatement: return bind_block_statement(n, tree);
+        case ifStatement: return bind_if_statement(n, tree);
 
         case falseKeyword:
         case trueKeyword: {
@@ -84,6 +86,29 @@ astNode bind_block_statement(node *n, ast *tree) {
     return blockNode;
 }
 
+astNode bind_if_statement(node *n, ast *tree) {
+
+	ifStatementNode in = *(ifStatementNode*)n->data;
+
+    astNode boundCondition = bind_expression(&in.condition, tree);
+    if (boundCondition.type != boolType) {
+        report_diagnostic(&tree->diagnostics, cannotConvertDiagnostic, in.condition.span, boundCondition.type, boolType, 0);
+    }
+    astNode boundthen = bind_expression(&in.thenExpression, tree);
+    astNode boundElse =  {0};
+    if (in.elseExpression.kind != 0 )  boundElse = bind_expression(&in.elseExpression, tree);
+
+    int index = tree->ifStatementsIndex;
+    ifStatementAst ifData = { boundCondition, boundthen, boundElse };
+
+    tree->ifStatements[tree->ifStatementsIndex++] = ifData;
+
+    enum astType ifType = boundthen.type == boundElse.type ? boundthen.type : voidType;
+    astNode varNode = { ifStatementKind , ifType, .data = &tree->ifStatements[index] };
+
+    return varNode;
+}
+
 astNode bind_unary_expression(node *n, ast *tree) {
 	unaryExpressionNode un = *(unaryExpressionNode*)n->data;
 
@@ -112,23 +137,22 @@ astNode bind_binary_expression(node *n, ast *tree) {
     astNode boundLeft = bind_expression(&bn.left, tree);
     astNode boundRight = bind_expression(&bn.right, tree);
 
-    enum astBinaryOperator op = get_binary_operator(bn.operator.kind, boundLeft.type, boundRight.type);
+    typedOperator op = get_binary_operator(bn.operator.kind, boundLeft.type, boundRight.type);
 
     // silence errors if the problem lies elsewhere
     bool hasErrors = boundLeft.type == errorType || boundLeft.type == unresolvedType ||
                     boundRight.type == errorType || boundRight.type == unresolvedType;
 
-    if (!op && !hasErrors) {
+    if (!op.operator && !hasErrors) {
         report_diagnostic(&tree->diagnostics, undefinedBinaryOperatorDiagnostic, n->span, bn.operator.kind, boundLeft.type, boundRight.type);
         hasErrors = true;
     }
 
     int index = tree->binaryExpressionsIndex;
-    binaryExpressionAst binaryData = { op, boundLeft, boundRight };
+    binaryExpressionAst binaryData = { op.operator, boundLeft, boundRight };
     tree->binaryExpressions[tree->binaryExpressionsIndex++] = binaryData;
 
-    // TODO: actually have a return type for the operator
-    astNode binaryNode = { binaryExpressionKind , hasErrors ? errorType : boundLeft.type, .data = &tree->binaryExpressions[index] };
+    astNode binaryNode = { binaryExpressionKind , hasErrors ? errorType : op.type, .data = &tree->binaryExpressions[index] };
 
     return binaryNode;
 }

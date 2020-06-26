@@ -7,6 +7,7 @@ static const char *diagnosticText[] = {
 	"redeclaration of variable '%s' is not allowed. (%d,%d)\n",
 	"variable '%s' is undefined. (%d,%d)\n",
 	"cannot assign expression of type '%s' to variable '%s' of type '%s'. (%d,%d)\n",
+	"cannot convert expression of type '%s' to the expected type '%s'. (%d,%d)\n",
 };
 
 void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u32 param1, u32 param2, u32 param3) {
@@ -24,8 +25,8 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		case unexpectedCharacterDiagnostic: {
 			char param1 = d.param1;
 			if (param1 == '\r' || param1 == '\n' || param1 == '\0') param1 = ' ';
-			printf(diagnosticText[d.kind], param1, d.param2, d.span.start, d.span.length); break;
-		}
+			printf(diagnosticText[d.kind], param1, d.param2, d.span.start, d.span.length); 
+		} break;
 		case badTokenDiagnostic:
 			printf(diagnosticText[d.kind], sourceText[d.span.start], d.span.start, d.span.length); break;
 		case unexpectedTokenDiagnostic:
@@ -38,14 +39,15 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 			printf(diagnosticText[d.kind], d.param1, d.span.start, d.span.length); break;
 		case referenceToUndefinedVariableDiagnostic: {
 			char* identifierText = ast_substring(sourceText, d.span);
-			printf(diagnosticText[d.kind], identifierText, d.span.start, d.span.length); break;
+			printf(diagnosticText[d.kind], identifierText, d.span.start, d.span.length);
 			free(identifierText);
-		}
+		} break;
 		case cannotAssignDiagnostic: {
 			char* identifierText = ast_substring(sourceText, d.span);
-			printf(diagnosticText[d.kind], astTypeText[d.param2], identifierText, astTypeText[d.param1], d.span.start, d.span.length); break;
+			printf(diagnosticText[d.kind], astTypeText[d.param2], identifierText, astTypeText[d.param1], d.span.start, d.span.length);
 			free(identifierText);
-		}
+		} break;
+		case cannotConvertDiagnostic: printf(diagnosticText[d.kind], astTypeText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
 		default: {
 			printf("Unhandled case %s in print_diagnostics\n", diagnosticMetaText[d.kind]);
 			TERMRESET();

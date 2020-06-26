@@ -92,25 +92,30 @@ static const char *astBinaryText[] = {
 	"logicalOr",
 };
 
-enum astBinaryOperator get_binary_operator(enum syntaxKind operatorToken, enum astType left, enum astType right) {
-	if (operatorToken == plusOperator && left == intType && right == intType) return addOp;
-	if (operatorToken == minusOperator && left == intType && right == intType) return subtractOp;
-	if (operatorToken == multipliationOperator && left == intType && right == intType) return multiplyOp;
-	if (operatorToken == divisionOperator && left == intType && right == intType) return divideOp;
-	if (operatorToken == modulusOperator && left == intType && right == intType) return moduloOp;
+typedef struct typedOperator {
+	enum astBinaryOperator operator;
+	enum astType type;
+} typedOperator;
 
-	if (operatorToken == euqualsEqualsOperator && left == boolType && right == boolType) return equalOp;
-	if (operatorToken == bangEqualsOperator && left == boolType && right == boolType) return inEqualOp;
+typedOperator get_binary_operator(enum syntaxKind operatorToken, enum astType left, enum astType right) {
+	if (operatorToken == plusOperator && left == intType && right == intType) return (typedOperator){ addOp, intType };
+	if (operatorToken == minusOperator && left == intType && right == intType) return (typedOperator){ subtractOp, intType };
+	if (operatorToken == multipliationOperator && left == intType && right == intType) return (typedOperator){ multiplyOp, intType };
+	if (operatorToken == divisionOperator && left == intType && right == intType) return (typedOperator){ divideOp, intType };
+	if (operatorToken == modulusOperator && left == intType && right == intType) return (typedOperator){ moduloOp, intType };
 
-	if (operatorToken == lessOperator && left == intType && right == intType) return lessOp;
-	if (operatorToken == greaterOperator && left == intType && right == intType) return greaterOp;
-	if (operatorToken == lessEqualsOperator && left == intType && right == intType) return lessOrEqualOp;
-	if (operatorToken == greaterEqualsOperator && left == intType && right == intType) return greaterOrEqualOp;
+	if (operatorToken == euqualsEqualsOperator && left == boolType && right == boolType) return (typedOperator) { equalOp, boolType };
+	if (operatorToken == bangEqualsOperator && left == boolType && right == boolType) return (typedOperator){ inEqualOp, boolType };
 
-	if (operatorToken == ampersandAmpersandOperator && left == boolType && right == boolType) return logicalAndOp;
-	if (operatorToken == pipePipeOperator && left == boolType && right == boolType) return logicalOrOp;
+	if (operatorToken == lessOperator && left == intType && right == intType) return (typedOperator){ lessOp, boolType };
+	if (operatorToken == greaterOperator && left == intType && right == intType) return (typedOperator){ greaterOp, boolType };
+	if (operatorToken == lessEqualsOperator && left == intType && right == intType) return (typedOperator){ lessOrEqualOp, boolType };
+	if (operatorToken == greaterEqualsOperator && left == intType && right == intType) return (typedOperator){ greaterOrEqualOp, boolType };
 
-	return missingBinaryOp;
+	if (operatorToken == ampersandAmpersandOperator && left == boolType && right == boolType) return (typedOperator){ logicalAndOp, boolType };
+	if (operatorToken == pipePipeOperator && left == boolType && right == boolType) return (typedOperator) { logicalOrOp, boolType };
+
+	return (typedOperator){0};
 }
 
 enum astUnaryOperator {
@@ -188,7 +193,7 @@ typedef struct blockStatementAst {
 typedef struct ifStatementAst {
 	astNode condition;
 	astNode thenStatement;
-	astNode elseStatement;
+	astNode elseStatement;		// optional
 } ifStatementAst;
 
 typedef struct caseBranchAst {
@@ -232,6 +237,7 @@ typedef struct ast {
 	astNode nodes[1024];
 	scope scopes[20];
 	blockStatementAst blockStatements[1024];
+	ifStatementAst ifStatements[1024];
 	unaryExpressionAst unaryExpressions[1024];
 	binaryExpressionAst binaryExpressions[1024];
 	variableDeclarationAst variableDeclarations[1024];
@@ -240,6 +246,7 @@ typedef struct ast {
 	int scopesIndex;
 	int currentScopeIndex;
 	int blockStatementsIndex;
+	int ifStatementsIndex;
 	int unaryExpressionsIndex;
 	int binaryExpressionsIndex;
 	int variableDeclarationIndex;
@@ -303,6 +310,14 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		for(int i=0;i<bn.statementsCount;i++) {
 			print_ast_internal(text, &bn.statements[i], indent, verbose, i!=bn.statementsCount-1);
 		}
+		break;
+	}
+	case ifStatementKind: {
+		ifStatementAst in = *(ifStatementAst*)root->data;
+		print_ast_internal(text, &in.condition, indent, verbose, true);
+		bool hasElse = in.elseStatement.kind != 0;
+		print_ast_internal(text, &in.thenStatement, indent, verbose, hasElse);
+		if (hasElse) print_ast_internal(text, &in.elseStatement, indent, verbose, false);
 		break;
 	}
 	case unaryExpressionKind: {
