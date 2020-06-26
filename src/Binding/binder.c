@@ -1,4 +1,5 @@
 astNode bind_expression(node *n, ast *tree);
+astNode bind_expression_of_type(node *n, ast *tree, enum astType expectedType, textspan errorSpan);
 astNode bind_block_statement(node *n, ast *tree);
 astNode bind_if_statement(node *n, ast *tree);
 astNode bind_while_loop(node *n, ast *tree);
@@ -11,6 +12,16 @@ variableSymbol* find_variable_in_scope(textspan nameSpan, ast *tree);
 int bind_tree(ast* tree) {
     tree->root = bind_expression(&tree->parser.root, tree);
     return tree->diagnostics.index == 0;
+}
+
+astNode bind_expression_of_type(node *n, ast* tree, enum astType expectedType, textspan errorSpan) {
+    astNode outNode = bind_expression(n, tree);
+
+    if (expectedType != 0 && expectedType != outNode.type) {
+        report_diagnostic(&tree->diagnostics, cannotConvertDiagnostic, errorSpan, outNode.type, expectedType, 0);
+    }
+
+    return outNode;
 }
 
 astNode bind_expression(node *n, ast* tree) {
@@ -92,10 +103,7 @@ astNode bind_if_statement(node *n, ast *tree) {
 
 	ifStatementNode in = *(ifStatementNode*)n->data;
 
-    astNode boundCondition = bind_expression(&in.condition, tree);
-    if (boundCondition.type != boolType) {
-        report_diagnostic(&tree->diagnostics, cannotConvertDiagnostic, in.condition.span, boundCondition.type, boolType, 0);
-    }
+    astNode boundCondition = bind_expression_of_type(&in.condition, tree, boolType, in.condition.span);
     astNode boundthen = bind_expression(&in.thenExpression, tree);
     astNode boundElse =  {0};
     if (in.elseExpression.kind != 0 )  boundElse = bind_expression(&in.elseExpression, tree);
@@ -115,10 +123,7 @@ astNode bind_while_loop(node *n, ast *tree) {
 
 	whileLoopNode wn = *(whileLoopNode*)n->data;
 
-    astNode boundCondition = bind_expression(&wn.condition, tree);
-    if (boundCondition.type != boolType) {
-        report_diagnostic(&tree->diagnostics, cannotConvertDiagnostic, wn.condition.span, boundCondition.type, boolType, 0);
-    }
+    astNode boundCondition = bind_expression_of_type(&wn.condition, tree, boolType, wn.condition.span);
     astNode boundBlock = bind_expression(&wn.block, tree);
 
     int index = tree->whileLoopIndex;
