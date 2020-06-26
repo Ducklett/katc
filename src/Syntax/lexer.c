@@ -19,7 +19,7 @@ static inline bool isIdentifier(char c) { return isLetter(c) || isNumber(c) || c
 
 static inline int parse_numeric_char(char c) { return c - 48; }
 
-bool span_compare(char* text, textspan span, char* comp) {
+bool span_compare(char* text, textspan span, const char* comp) {
 
 	for (int i = 0; i < span.length; i++)
 		if (text[span.start + i] != comp[i]) return false;

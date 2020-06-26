@@ -21,6 +21,7 @@ enum diagnosticKind {
     referenceToUndefinedVariableDiagnostic,
     cannotAssignDiagnostic,
     cannotConvertDiagnostic,
+	unresolvedTypeDiagnostic,
 };
 
 static const char *diagnosticMetaText[] = {
@@ -33,6 +34,7 @@ static const char *diagnosticMetaText[] = {
     "referenceToUndefinedVariableDiagnostic",
     "cannotAssignDiagnostic",
     "cannotConvertDiagnostic",
+	"unresolvedTypeDiagnostic",
 };
 
 void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u32 param1, u32 param2, u32 param3);

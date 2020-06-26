@@ -255,6 +255,15 @@ typedef struct ast {
 	int variableAssignmentIndex;
 } ast;
 
+enum astType resolve_type_from_span(ast *tree, textspan span) {
+	char *text = tree->text;
+	for (int i = intType; i<= stringType; i++)
+		if (span_compare(text, span, astTypeText[i])) return i;
+	
+    report_diagnostic(&tree->diagnostics, unresolvedTypeDiagnostic, span, 0, 0, 0);
+	return 0;
+}
+
 int bind_tree(ast* tree);
 
 int create_ast(char* filename, ast* tree) {

@@ -8,6 +8,7 @@ static const char *diagnosticText[] = {
 	"variable '%s' is undefined. (%d,%d)\n",
 	"cannot assign expression of type '%s' to variable '%s' of type '%s'. (%d,%d)\n",
 	"cannot convert expression of type '%s' to the expected type '%s'. (%d,%d)\n",
+	"unresolved type '%s'. (%d,%d)\n",
 };
 
 void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u32 param1, u32 param2, u32 param3) {
@@ -48,6 +49,11 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 			free(identifierText);
 		} break;
 		case cannotConvertDiagnostic: printf(diagnosticText[d.kind], astTypeText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
+		case unresolvedTypeDiagnostic: {
+			char* typeText = ast_substring(sourceText, d.span);
+			printf(diagnosticText[d.kind], typeText, d.span.start, d.span.length);
+			free(typeText);
+		} break;
 		default: {
 			printf("Unhandled case %s in print_diagnostics\n", diagnosticMetaText[d.kind]);
 			TERMRESET();

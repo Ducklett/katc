@@ -188,12 +188,9 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 
 	variableDeclarationNode vn = *(variableDeclarationNode*)n->data;
 
-    astNode boundInitializer = bind_expression(&vn.expression, tree);
-
-    if (vn.type.kind != 0) {
-        printf("No explicit types for now\n");
-        exit(1);
-    } 
+    astNode boundInitializer = vn.type.kind != 0
+        ? bind_expression_of_type(&vn.expression, tree, resolve_type_from_span(tree, vn.type.span), vn.expression.span)
+        : bind_expression(&vn.expression, tree);
 
     scope *currentScope = &tree->scopes[tree->currentScopeIndex];
     textspan nameSpan = vn.identifier.span;
