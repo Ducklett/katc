@@ -6,6 +6,7 @@ astNode bind_while_loop(node *n, ast *tree);
 astNode bind_for_loop(node *n, ast *tree);
 astNode bind_unary_expression(node *n, ast *tree);
 astNode bind_binary_expression(node *n, ast *tree);
+astNode bind_call_expression(node *n, ast *tree);
 astNode bind_variable_declaration(node *n, ast *tree);
 astNode bind_variable_assignment(node *n, ast *tree);
 static inline int push_scope(ast *tree);
@@ -51,6 +52,7 @@ astNode bind_expression(node *n, ast* tree) {
 
         case unaryExpression: return bind_unary_expression(n, tree);
         case binaryExpression: return bind_binary_expression(n, tree);
+        case callExpression: return bind_call_expression(n, tree);
         case variableDeclaration: return bind_variable_declaration(n, tree);
         case variableAssignment: return bind_variable_assignment(n, tree);
 
@@ -192,6 +194,37 @@ astNode bind_binary_expression(node *n, ast *tree) {
         (binaryExpressionAst){ op.operator, boundLeft, boundRight };
 
     return (astNode){ binaryExpressionKind, hasErrors ? errorType : op.type, .data = &tree->binaryExpressions[index] };
+}
+
+astNode bind_call_expression(node *n, ast *tree) {
+	functionCallNode cn = *(functionCallNode*)n->data;
+
+    if (!span_compare(tree->text, cn.identifier.span, "print")) {
+        printf("only print function supported currently\n");
+        exit(1);
+    }
+
+    astNode arguments[128];
+    u8 argumentCount=0;
+    // skip the comma tokens
+    for (int i=0;i<cn.argumentCount;i+=2) {
+        if (i == 0) {
+            arguments[argumentCount++] = bind_expression_of_type(&cn.arguments[i], tree, stringType, cn.arguments[i].span);
+        } else {
+            arguments[argumentCount++] = bind_expression(&cn.arguments[i],tree);
+        }
+    }
+
+    astNode* nodesStart = &tree->nodes[tree->nodesIndex];
+    for (int i = 0; i < argumentCount; i++) {
+        tree->nodes[tree->nodesIndex++] = arguments[i];
+    }
+
+    int index = tree->functionCallIndex;
+    tree->functionCalls[tree->functionCallIndex++] =
+         (callExpressionAst){ nodesStart, argumentCount };
+
+    return (astNode){ callExpressionKind , voidType, .data = &tree->functionCalls[index] };
 }
 
 astNode bind_variable_declaration(node *n, ast *tree) {

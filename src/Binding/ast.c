@@ -175,7 +175,8 @@ typedef struct rangeExpressionAst {
 } rangeExpressionAst;
 
 typedef struct callExpressionAst {
-
+	astNode *arguments;
+	u8 argumentCount;
 } callExpressionAst;
 
 typedef struct variableDeclarationAst {
@@ -246,6 +247,7 @@ typedef struct ast {
 	forLoopAst forLoops[1024];
 	unaryExpressionAst unaryExpressions[1024];
 	binaryExpressionAst binaryExpressions[1024];
+	callExpressionAst functionCalls[1024];
 	variableDeclarationAst variableDeclarations[1024];
 	variableAssignmentAst variableAssignments[1024];
 	int nodesIndex;
@@ -258,6 +260,7 @@ typedef struct ast {
 	int forLoopIndex;
 	int unaryExpressionsIndex;
 	int binaryExpressionsIndex;
+	int functionCallIndex;
 	int variableDeclarationIndex;
 	int variableAssignmentIndex;
 } ast;
@@ -399,6 +402,17 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		TERMRESET();
 		print_ast_internal(text, &un.left, indent, verbose, true);
 		print_ast_internal(text, &un.right, indent, verbose, false);
+		break;
+	}
+	case callExpressionKind: {
+		callExpressionAst cn = *(callExpressionAst*)root->data;
+
+		TERMMAGENTA();
+		printf ("%*s%s\n", indent, "", "print");
+		TERMRESET();
+		for(int i=0;i<cn.argumentCount;i++) {
+			print_ast_internal(text, &cn.arguments[i], indent, verbose, i!=cn.argumentCount-1);
+		}
 		break;
 	}
 	case variableDeclarationKind: {

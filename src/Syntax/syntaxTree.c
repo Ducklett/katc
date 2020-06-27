@@ -260,6 +260,7 @@ char* ast_substring(char* text, textspan span) {
 char* allocate_string(char *text, int length) {
 	char *allocatedText = (char*)malloc(sizeof(char) * length);
 	strncpy(allocatedText, text, sizeof(char) * length);
+	allocatedText[length] = '\0';
 	return allocatedText;
 }
 
