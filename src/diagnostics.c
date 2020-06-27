@@ -2,6 +2,7 @@ static const char *diagnosticText[] = {
 	"Unexpected character '%c', expected '%c' (%d,%d)\n",
 	"bad token '%c' (%d,%d)\n",
 	"unexpected token of kind '%s', expected '%s' (%d,%d)\n",
+	"error parsing primary expression: '%s' is not valid here. (%d,%d)\n",
 	"undefined unary operator '%s' for value of type '%s' (%d,%d)\n",
 	"undefined binary operator '%s' for values of type '%s' and '%s' (%d,%d)\n",
 	"redeclaration of variable '%s' is not allowed. (%d,%d)\n",
@@ -32,6 +33,8 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 			printf(diagnosticText[d.kind], sourceText[d.span.start], d.span.start, d.span.length); break;
 		case unexpectedTokenDiagnostic:
 			printf(diagnosticText[d.kind], syntaxKindText[d.param1], syntaxKindText[d.param2], d.span.start, d.span.length); break;
+		case illegalPrimaryExpressionDiagnostic:
+			printf(diagnosticText[d.kind], syntaxKindText[d.param1], d.span.start, d.span.length); break;
 		case undefinedUnaryOperatorDiagnostic:
 			printf(diagnosticText[d.kind], syntaxKindText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
 		case undefinedBinaryOperatorDiagnostic:

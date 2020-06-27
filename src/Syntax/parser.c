@@ -120,16 +120,11 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	case identifierToken:
 		if  (l2kind == colonToken) {
 			res = parser_parse_variable_declaration(p, d);
-			break;
-		}
-		else if (l2kind == equalsToken) {
+		} else if (l2kind == equalsToken) {
 			res = parser_parse_variable_assignment(p, d);
-			break;
-		}
-		else if  (l2kind == openParenthesisToken) {
+		} else if  (l2kind == openParenthesisToken) {
 			res = parser_parse_function_call(p, d);
-			break;
-		}
+		} break;
 	default: res = parser_parse_expression(p, d); break;
 	}
 
@@ -172,15 +167,10 @@ node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
 	}
 
 	u16 blockIndex = p->blockIndex;
-	blockStatementNode blockData = { openCurly, &(p->nodes[startIndex]), statementCount, closeCurly, };
-	p->blockStatements[p->blockIndex++] = blockData;
+	p->blockStatements[p->blockIndex++] =
+		(blockStatementNode){ openCurly, &(p->nodes[startIndex]), statementCount, closeCurly, };
 
-	node blockNode = {
-		.kind = blockStatement,
-		.span = textspan_from_bounds(&openCurly, &closeCurly),
-		.data = &(p->blockStatements[blockIndex]),
-	};
-	return blockNode;
+	return (node) { blockStatement, textspan_from_bounds(&openCurly, &closeCurly), .data = &(p->blockStatements[blockIndex]), };
 }
 
 node parser_parse_if_statement(parser *p, diagnosticContainer *d) {
@@ -195,20 +185,13 @@ node parser_parse_if_statement(parser *p, diagnosticContainer *d) {
 		elseStatement = parser_parse_statement(p, d);
 	} 
 
-	ifStatementNode ifData = { ifToken, condition, thenStatement, elseToken, elseStatement };
-
 	u16 index = p->ifStatementIndex;
-	p->ifStatements[p->ifStatementIndex++] = ifData;
+	p->ifStatements[p->ifStatementIndex++] =
+		(ifStatementNode){ ifToken, condition, thenStatement, elseToken, elseStatement };
 
 	node lastToken = elseToken.kind == emptyToken ? thenStatement : elseStatement;
 
-	node ifNode = {
-		.kind = ifStatement,
-		.span = textspan_from_bounds(&ifToken, &lastToken),
-		.data = &(p->ifStatements[index]), 
-	};
-
-	return ifNode;
+	return (node) { ifStatement, textspan_from_bounds(&ifToken, &lastToken), .data = &(p->ifStatements[index]), };
 }
 
 node parser_parse_case_branch(parser *p, diagnosticContainer *d) {
@@ -219,18 +202,11 @@ node parser_parse_case_branch(parser *p, diagnosticContainer *d) {
 	node colon = parser_match_token(p, d, colonToken);
 	node thenStatement = parser_parse_statement(p, d);
 
-	caseBranchNode bData = { condition, colon, thenStatement };
-
 	u16 index = p->caseBranchIndex;
-	p->caseBranches[p->caseBranchIndex++] = bData;
+	p->caseBranches[p->caseBranchIndex++] = 
+		(caseBranchNode){ condition, colon, thenStatement };
 
-	node bNode = {
-		.kind = caseBranch,
-		.span = textspan_from_bounds(&condition, &thenStatement),
-		.data = &(p->caseBranches[index]), 
-	};
-
-	return bNode;
+	return (node) { caseBranch, textspan_from_bounds(&condition, &thenStatement), .data = &(p->caseBranches[index]), };
 }
 
 node parser_parse_case_statement(parser *p, diagnosticContainer *d) {
@@ -248,18 +224,11 @@ node parser_parse_case_statement(parser *p, diagnosticContainer *d) {
 	for (int i=0; i<branchCount; i++)
 		p->nodes[p->nodeIndex++] = branches[i];
 
-	caseStatementNode caseData = { caseToken, openCurly, branchesStart, branchCount, closeCurly };
-
 	u16 index = p->caseStatementIndex;
-	p->caseStatements[p->caseStatementIndex++] = caseData;
+	p->caseStatements[p->caseStatementIndex++] =
+		(caseStatementNode){ caseToken, openCurly, branchesStart, branchCount, closeCurly };
 
-	node caseNode = {
-		.kind = caseStatement,
-		.span = textspan_from_bounds(&caseToken, &closeCurly),
-		.data = &(p->caseStatements[index]), 
-	};
-
-	return caseNode;
+	return (node) { caseStatement, textspan_from_bounds(&caseToken, &closeCurly), .data = &(p->caseStatements[index]), };
 }
 
 node parser_parse_while_loop(parser *p, diagnosticContainer *d) {
@@ -267,18 +236,11 @@ node parser_parse_while_loop(parser *p, diagnosticContainer *d) {
 	node condition = parser_parse_expression(p, d);
 	node block = parser_parse_statement(p, d);
 
-	whileLoopNode whileData = { whileToken, condition, block };
-
 	u16 index = p->whileLoopIndex;
-	p->whileLoops[p->whileLoopIndex++] = whileData;
+	p->whileLoops[p->whileLoopIndex++] =
+		(whileLoopNode){ whileToken, condition, block };
 
-	node whileNode = {
-		.kind = whileLoop,
-		.span = textspan_from_bounds(&whileToken, &block),
-		.data = &(p->whileLoops[index]), 
-	};
-
-	return whileNode;
+	return (node) { whileLoop, textspan_from_bounds(&whileToken, &block), .data = &(p->whileLoops[index]), };
 }
 
 node parser_parse_for_loop(parser *p, diagnosticContainer *d) {
@@ -310,18 +272,11 @@ node parser_parse_for_loop(parser *p, diagnosticContainer *d) {
 
 	node block = parser_parse_statement(p, d);
 
-	forLoopNode forData = { forToken, openParen, value, comma, key, inToken, range, closeParen, block };
-
 	u16 index = p->forLoopIndex;
-	p->forLoops[p->forLoopIndex++] = forData;
+	p->forLoops[p->forLoopIndex++] =
+		(forLoopNode){ forToken, openParen, value, comma, key, inToken, range, closeParen, block };
 
-	node forNode = {
-		.kind = forLoop,
-		.span = textspan_from_bounds(&forToken, &block),
-		.data = &(p->forLoops[index]), 
-	};
-
-	return forNode;
+	return (node) { forLoop, textspan_from_bounds(&forToken, &block), .data = &(p->forLoops[index]), };
 }
 
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
@@ -336,18 +291,11 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 	node equals = parser_match_token(p, d, equalsToken);
 	node expression = parser_parse_expression(p, d);
 
-	variableDeclarationNode declData = { identifier, colon, type, equals, expression };
-
 	u16 index = p->variableDeclaratonIndex;
-	p->variableDeclarations[p->variableDeclaratonIndex++] = declData;
+	p->variableDeclarations[p->variableDeclaratonIndex++] =
+		(variableDeclarationNode){ identifier, colon, type, equals, expression };
 
-	node declNode = {
-		.kind = variableDeclaration,
-		.span = textspan_from_bounds(&identifier, &expression),
-		.data = &(p->variableDeclarations[index]), 
-	};
-
-	return declNode;
+	return (node) { variableDeclaration, textspan_from_bounds(&identifier, &expression), .data = &(p->variableDeclarations[index]), };
 }
 
 node parser_parse_variable_assignment(parser *p, diagnosticContainer *d) {
@@ -355,18 +303,11 @@ node parser_parse_variable_assignment(parser *p, diagnosticContainer *d) {
 	node equals = parser_match_token(p, d, equalsToken);
 	node expression = parser_parse_expression(p, d);
 
-	variableAssignmentNode assData = { identifier,  equals, expression };
-
 	u16 index = p->variableAssignmentIndex;
-	p->variableAssignments[p->variableAssignmentIndex++] = assData;
+	p->variableAssignments[p->variableAssignmentIndex++] =
+		(variableAssignmentNode){ identifier,  equals, expression };
 
-	node assNode = {
-		.kind = variableAssignment,
-		.span = textspan_from_bounds(&identifier, &expression),
-		.data = &(p->variableAssignments[index]), 
-	};
-
-	return assNode;
+	return (node) { variableAssignment, textspan_from_bounds(&identifier, &expression), .data = &(p->variableAssignments[index]), };
 }
 
 node parser_parse_function_call(parser *p, diagnosticContainer *d) {
@@ -393,19 +334,11 @@ node parser_parse_function_call(parser *p, diagnosticContainer *d) {
 	int argStart = p->nodeIndex;
 	for (int i = 0; i<argumentCount;i++) p->nodes[p->nodeIndex++] = arguments[i];
 
-
-	functionCallNode fnData = { identifier,  openParen, &(p->nodes[argStart]), argumentCount, closeParen };
-
 	u16 index = p->functionCallIndex;
-	p->functionCalls[p->functionCallIndex++] = fnData;
+	p->functionCalls[p->functionCallIndex++] =
+		(functionCallNode){ identifier,  openParen, &(p->nodes[argStart]), argumentCount, closeParen };
 
-	node fnNode = {
-		.kind = callExpression,
-		.span = textspan_from_bounds(&identifier, &closeParen),
-		.data = &(p->functionCalls[index]), 
-	};
-
-	return fnNode;
+	return (node) { callExpression, textspan_from_bounds(&identifier, &closeParen), .data = &(p->functionCalls[index]), };
 }
 
 node parser_parse_expression(parser *p, diagnosticContainer *d) { return parser_parse_binary_expression(p, d,-2); }
@@ -430,18 +363,11 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 			// ensure it doesn't get used a second time
 			unaryPrecedence = -1;
 
-			unaryExpressionNode exprData = { unaryOp, left, };
-
 			u16 index = p->unaryExpressionIndex;
-			p->unaryExpressions[p->unaryExpressionIndex++] = exprData;
+			p->unaryExpressions[p->unaryExpressionIndex++] =
+				(unaryExpressionNode){ unaryOp, left, };
 
-			node exprNode = {
-				.kind = unaryExpression,
-				.span = textspan_from_bounds(&unaryOp, &left),
-				.data = &(p->unaryExpressions[index]), 
-			};
-
-			left = exprNode;
+			left = (node) { unaryExpression, textspan_from_bounds(&unaryOp, &left), .data = &(p->unaryExpressions[index]), };
 		}
 
 		if (precedence == -1 || precedence <= parentPrecedence) {
@@ -452,18 +378,11 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 
 		node right = parser_parse_binary_expression(p, d, precedence);
 
-		binaryExpressionNode exprData = { left, operator, right, };
-
 		u16 index = p->binaryExpressionIndex;
-		p->binaryExpressions[p->binaryExpressionIndex++] = exprData;
+		p->binaryExpressions[p->binaryExpressionIndex++] =
+			(binaryExpressionNode){ left, operator, right, };
 
-		node exprNode = {
-			.kind = binaryExpression,
-			.span = textspan_from_bounds(&left, &right),
-			.data = &(p->binaryExpressions[index]), 
-		};
-
-		left = exprNode;
+		left = (node) { binaryExpression, textspan_from_bounds(&left, &right), .data = &(p->binaryExpressions[index]), };
 	}
 
 	return left;
@@ -474,18 +393,11 @@ node parser_parse_range_expression(parser *p, diagnosticContainer *d) {
 	node dotDot  = parser_match_token(p, d, dotDotToken);
 	node to  = parser_match_token(p, d, numberLiteral);
 
-	rangeExpressionNode exprData = { from, dotDot, to };
-
 	u16 index = p->rangeExpressionIndex;
-	p->rangeExpressions[p->rangeExpressionIndex++] = exprData;
+	p->rangeExpressions[p->rangeExpressionIndex++] =
+		(rangeExpressionNode){ from, dotDot, to };
 
-	node exprNode = {
-		.kind = rangeExpression,
-		.span = textspan_from_bounds(&from, &to),
-		.data = &(p->rangeExpressions[index]), 
-	};
-
-	return exprNode;
+	return (node) { rangeExpression, textspan_from_bounds(&from, &to), .data = &(p->rangeExpressions[index]), };
 }
 
 node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
@@ -496,10 +408,9 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 		return parser_parse_range_expression(p, d);
 
 	switch (current.kind) {
-	case identifierToken: {
+	case identifierToken:
 		if (lookahead.kind == openParenthesisToken) return parser_parse_function_call(p, d);
 		else return parser_next_token(p, d);
-	}
 
 	case numberLiteral:
 	case stringLiteral:
@@ -512,22 +423,15 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 		node expr = parser_parse_expression(p, d);
 		node closeParen = parser_match_token(p, d, closeParenthesisToken);
 
-		parenthesizedExpressionNode exprData = { openParen, expr, closeParen };
-
 		u16 index = p->parenthesizedExpressionIndex;
-		p->parenthesizedExpressions[p->parenthesizedExpressionIndex++] = exprData;
+		p->parenthesizedExpressions[p->parenthesizedExpressionIndex++] =
+			(parenthesizedExpressionNode){ openParen, expr, closeParen };
 
-		node exprNode = {
-			.kind = parenthesizedExpression,
-			.span = textspan_from_bounds(&current, &closeParen),
-			.data = &(p->parenthesizedExpressions[index]), 
-		};
-
-		return exprNode;
+		return (node) { parenthesizedExpression, textspan_from_bounds(&current, &closeParen), .data = &(p->parenthesizedExpressions[index]), };
 	}
 	default: 
 		// TODO: better error handling here
-		if (current.kind != badToken) report_diagnostic(d, unexpectedTokenDiagnostic, current.span, current.kind, numberLiteral, 0);
+		if (current.kind != badToken) report_diagnostic(d, illegalPrimaryExpressionDiagnostic, current.span, current.kind, 0, 0);
 		return parser_next_token(p, d);
 	}
 }
