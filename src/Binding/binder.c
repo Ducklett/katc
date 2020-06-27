@@ -3,10 +3,14 @@ astNode bind_expression_of_type(node *n, ast *tree, enum astType expectedType, t
 astNode bind_block_statement(node *n, ast *tree);
 astNode bind_if_statement(node *n, ast *tree);
 astNode bind_while_loop(node *n, ast *tree);
+astNode bind_for_loop(node *n, ast *tree);
 astNode bind_unary_expression(node *n, ast *tree);
 astNode bind_binary_expression(node *n, ast *tree);
 astNode bind_variable_declaration(node *n, ast *tree);
 astNode bind_variable_assignment(node *n, ast *tree);
+static inline int push_scope(ast *tree);
+static inline void pop_scope(ast *tree, int parentScopeIndex);
+variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableType);
 variableSymbol* find_variable_in_scope(textspan nameSpan, ast *tree);
 
 int bind_tree(ast* tree) {
@@ -29,6 +33,7 @@ astNode bind_expression(node *n, ast* tree) {
         case blockStatement: return bind_block_statement(n, tree);
         case ifStatement: return bind_if_statement(n, tree);
         case whileLoop: return bind_while_loop(n, tree);
+        case forLoop: return bind_for_loop(n, tree);
 
         case falseKeyword:
         case trueKeyword: return (astNode){ literalKind, boolType, .boolValue = n->boolValue };
@@ -62,19 +67,13 @@ astNode bind_block_statement(node *n, ast *tree) {
 
 	blockStatementNode bn = *(blockStatementNode*)n->data;
 
-    int parentScopeIndex = tree->currentScopeIndex;
-    tree->currentScopeIndex = tree->scopesIndex;
-    scope*  newScope = &tree->scopes[tree->scopesIndex++];
-
-    if (parentScopeIndex != tree->currentScopeIndex) {
-        newScope->parentScope = &tree->scopes[parentScopeIndex];
-    } 
+    int parentScopeIndex = push_scope(tree);
 
     for (int i = 0; i < bn.statementsCount; i++) {
         boundStatements[statementCount++] = bind_expression(&bn.statements[i], tree);
     }
     
-    tree->currentScopeIndex = parentScopeIndex;
+    pop_scope(tree, parentScopeIndex);
 
     astNode* nodesStart = &tree->nodes[tree->nodesIndex];
     for (int i = 0; i < statementCount; i++) {
@@ -104,7 +103,7 @@ astNode bind_if_statement(node *n, ast *tree) {
 
     enum astType ifType = boundthen.type == boundElse.type ? boundthen.type : voidType;
 
-    return (astNode){ ifStatementKind , ifType, .data = &tree->ifStatements[index] };
+    return (astNode){ ifStatementKind, ifType, .data = &tree->ifStatements[index] };
 }
 
 astNode bind_while_loop(node *n, ast *tree) {
@@ -118,7 +117,35 @@ astNode bind_while_loop(node *n, ast *tree) {
     tree->whileLoops[tree->whileLoopIndex++] = 
         (whileLoopAst){ boundCondition, boundBlock };
 
-    return (astNode){ whileLoopKind , voidType, .data = &tree->whileLoops[index] };
+    return (astNode){ whileLoopKind, voidType, .data = &tree->whileLoops[index] };
+}
+
+astNode bind_range_expression(node *n, ast *tree) {
+	rangeExpressionNode rn = *(rangeExpressionNode*)n->data;
+    int from = rn.start.numValue;
+    int to = rn.end.numValue;
+
+    int index = tree->rangeIndex;
+    tree->ranges[tree->rangeIndex++] = 
+         (rangeExpressionAst){ from, to };
+
+    return (astNode){ rangeExpressionKind, intType, .data = &tree->ranges[index] };
+}
+
+astNode bind_for_loop(node *n, ast *tree) {
+
+	forLoopNode fn = *(forLoopNode*)n->data;
+
+    astNode range = bind_range_expression(&fn.range, tree);
+    variableSymbol *valueVar = declare_variable(tree, fn.value.span, range.type);
+    variableSymbol *keyVar = fn.key.kind == 0 ? 0 : declare_variable(tree, fn.key.span, intType);
+    astNode boundBlock = bind_expression(&fn.block, tree);
+
+    int index = tree->forLoopIndex;
+    tree->forLoops[tree->forLoopIndex++] = 
+         (forLoopAst){ valueVar, keyVar, range, boundBlock };
+
+    return (astNode){ forLoopKind, voidType, .data = &tree->forLoops[index] };
 }
 
 astNode bind_unary_expression(node *n, ast *tree) {
@@ -173,28 +200,7 @@ astNode bind_variable_declaration(node *n, ast *tree) {
         ? bind_expression_of_type(&vn.expression, tree, resolve_type_from_span(tree, vn.type.span), vn.expression.span)
         : bind_expression(&vn.expression, tree);
 
-    scope *currentScope = &tree->scopes[tree->currentScopeIndex];
-    textspan nameSpan = vn.identifier.span;
-
-    variableSymbol *variable = 0;
-
-    bool success=true;
-    for (int i = 0; i < currentScope->variableCount; i++) {
-        if (span_compare(tree->text, nameSpan, currentScope->variables[i].name)) {
-            report_diagnostic(&tree->diagnostics, redeclarationOfVariableDiagnostic, n->span, (u32)currentScope->variables[i].name, 0, 0);
-            success=false;
-            break;
-        }
-    }
-
-    if (success) {
-        variable = &currentScope->variables[currentScope->variableCount++];
-
-        for (int i= 0;i<nameSpan.length;i++) {
-            variable->name[i] = tree->text[i+nameSpan.start];
-        }
-        variable->type = boundInitializer.type;
-    }
+    variableSymbol *variable = declare_variable(tree, vn.identifier.span, boundInitializer.type);
 
     int index = tree->variableDeclarationIndex;
     tree->variableDeclarations[tree->variableDeclarationIndex++] =
@@ -222,6 +228,42 @@ astNode bind_variable_assignment(node *n, ast *tree) {
         (variableAssignmentAst){ variable, boundExpression };
 
     return (astNode){ variableAssignmentKind, variable == 0 ? errorType : variable->type, .data = &tree->variableAssignments[index] };
+}
+
+static inline int push_scope(ast *tree) {
+    int parentScopeIndex = tree->currentScopeIndex;
+    tree->currentScopeIndex = tree->scopesIndex;
+    scope*  newScope = &tree->scopes[tree->scopesIndex++];
+
+    if (parentScopeIndex != tree->currentScopeIndex) {
+        newScope->parentScope = &tree->scopes[parentScopeIndex];
+    } 
+    return parentScopeIndex;
+}
+
+static inline void pop_scope(ast *tree, int parentScopeIndex) {
+    tree->currentScopeIndex = parentScopeIndex;
+}
+
+
+variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableType) {
+    scope *currentScope = &tree->scopes[tree->currentScopeIndex];
+
+    for (int i = 0; i < currentScope->variableCount; i++) {
+        if (span_compare(tree->text, nameSpan, currentScope->variables[i].name)) {
+            report_diagnostic(&tree->diagnostics, redeclarationOfVariableDiagnostic, nameSpan, (u32)currentScope->variables[i].name, 0, 0);
+            return 0;
+        }
+    }
+
+    variableSymbol *variable = &currentScope->variables[currentScope->variableCount++];
+
+    for (int i= 0;i<nameSpan.length;i++) {
+            variable->name[i] = tree->text[i+nameSpan.start];
+    }
+    variable->type = variableType;
+
+    return variable;
 }
 
 variableSymbol* find_variable_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope);

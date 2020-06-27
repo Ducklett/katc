@@ -236,19 +236,23 @@ typedef struct ast {
 	astNode root;
 	astNode nodes[1024];
 	scope scopes[20];
+	rangeExpressionAst ranges[1024];
 	blockStatementAst blockStatements[1024];
 	ifStatementAst ifStatements[1024];
 	whileLoopAst whileLoops[1024];
+	forLoopAst forLoops[1024];
 	unaryExpressionAst unaryExpressions[1024];
 	binaryExpressionAst binaryExpressions[1024];
 	variableDeclarationAst variableDeclarations[1024];
 	variableAssignmentAst variableAssignments[1024];
 	int nodesIndex;
 	int scopesIndex;
+	int rangeIndex;
 	int currentScopeIndex;
 	int blockStatementsIndex;
 	int ifStatementsIndex;
 	int whileLoopIndex;
+	int forLoopIndex;
 	int unaryExpressionsIndex;
 	int binaryExpressionsIndex;
 	int variableDeclarationIndex;
@@ -335,6 +339,31 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		whileLoopAst wn = *(whileLoopAst*)root->data;
 		print_ast_internal(text, &wn.condition, indent, verbose, true);
 		print_ast_internal(text, &wn.block, indent, verbose, false);
+		break;
+	}
+	case forLoopKind: {
+		forLoopAst fn = *(forLoopAst*)root->data;
+
+		TERMMAGENTA();
+		printf ("%*s%s %s\n", indent, "", fn.value->name, astTypeText[fn.value->type]);
+		TERMRESET();
+
+		if (fn.index != 0) {
+			TERMMAGENTA();
+			printf ("%*s%s %s\n", indent, "", fn.index->name, astTypeText[fn.index->type]);
+			TERMRESET();
+		}
+
+		print_ast_internal(text, &fn.range, indent, verbose, true);
+		print_ast_internal(text, &fn.block, indent, verbose, false);
+		break;
+	}
+	case rangeExpressionKind: {
+
+		rangeExpressionAst rn = *(rangeExpressionAst*)root->data;
+		TERMMAGENTA();
+		printf ("%*s%d..%d", indent, "", rn.from, rn.to);
+		TERMRESET();
 		break;
 	}
 	case unaryExpressionKind: {

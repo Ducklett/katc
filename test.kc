@@ -3,7 +3,7 @@
 	/* test multiline comment*/
 	/* test /*nested*/ multiline comment*/
 	i:int = 0 // test comment 2
-	while (i < 10) {
+	for x in 1..100 {
 		i := true
 		i = !i
 	}

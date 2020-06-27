@@ -5,7 +5,7 @@ static const char *diagnosticText[] = {
 	"error parsing primary expression: '%s' is not valid here. (%d,%d)\n",
 	"undefined unary operator '%s' for value of type '%s' (%d,%d)\n",
 	"undefined binary operator '%s' for values of type '%s' and '%s' (%d,%d)\n",
-	"redeclaration of variable '%s' is not allowed. (%d,%d)\n",
+	"variable '%s' is already declared in this scope. (%d,%d)\n",
 	"variable '%s' is undefined. (%d,%d)\n",
 	"cannot assign expression of type '%s' to variable '%s' of type '%s'. (%d,%d)\n",
 	"cannot convert expression of type '%s' to the expected type '%s'. (%d,%d)\n",
