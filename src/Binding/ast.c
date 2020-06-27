@@ -148,6 +148,7 @@ typedef struct astNode {
 		void* data; 
 		int numValue; 
 		bool boolValue; 
+		char* stringValue; 
 	};
 } astNode;
 
@@ -298,6 +299,12 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 			switch (root->type) {
 				case intType: printf ("%d", root->numValue); break;
 				case boolType: printf ("%s", root->boolValue ? "true" : "false"); break;
+				case stringType: printf ("\"%s\"", root->stringValue); break;
+				default:
+					TERMRED();
+					printf("Unhandled type '%s' in print_ast", astTypeText[root->type]);
+					TERMRESET();
+					exit(1);
 			}
 			TERMRESET();
 			printf (" :: ");
@@ -310,6 +317,12 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 			switch (root->type) {
 				case intType: printf ("%*s%d%s", indent, "", root->numValue, newline?"\n":"");
 				case boolType: printf ("%*s%s%s", indent, "", root->boolValue?"true":"false", newline?"\n":"");
+				case stringType: printf ("%*s\"%s\"%s", indent, "", root->stringValue, newline?"\n":"");
+				default:
+					TERMRED();
+					printf("Unhandled type '%s' in print_ast", astTypeText[root->type]);
+					TERMRESET();
+					exit(1);
 			}
 			TERMRESET();
 		}
