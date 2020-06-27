@@ -430,7 +430,6 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 		return (node) { parenthesizedExpression, textspan_from_bounds(&current, &closeParen), .data = &(p->parenthesizedExpressions[index]), };
 	}
 	default: 
-		// TODO: better error handling here
 		if (current.kind != badToken) report_diagnostic(d, illegalPrimaryExpressionDiagnostic, current.span, current.kind, 0, 0);
 		return parser_next_token(p, d);
 	}
