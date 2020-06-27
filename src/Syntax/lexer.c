@@ -71,13 +71,51 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 	int start;
 
 	switch (current) {
+	case '/': {
+		if (lexer_peek(l,1) == '/') {
+			// single line comment
+			t.kind = singleLineComment;
+			start =  l->index;
+			while (!isNewline(lexer_current(l))) lexer_move_next(l);
+			t.span = textspan_create(start, l->index - start);
+		} else if (lexer_peek(l,1) == '*') {
+			// multi line comment
+			t.kind = multiLineComment;
+			start =  l->index;
+
+			// move past the initial /*
+			lexer_move_next(l);
+			lexer_move_next(l);
+
+			int nestLevel=0;
+			while (true) {
+				char current = lexer_current(l);
+				char lookahead = lexer_peek(l,1);
+				if (current == '/' && lookahead == '*') {
+					nestLevel++;
+					lexer_move_next(l);
+					lexer_move_next(l);
+				} else if (nestLevel > 0 && current == '*' && lookahead == '/') {
+					nestLevel--;
+					lexer_move_next(l);
+					lexer_move_next(l);
+				} else if (current == '*' && lookahead == '/') {
+					lexer_move_next(l);
+					lexer_move_next(l);
+					break;
+				} else {
+					lexer_move_next(l);
+				}
+			}
+			t.span = textspan_create(start, l->index - start);
+		} else return lex_basic_token(l, divisionOperator, 1);
+	} break;
 
 	case '\0': return lex_basic_token(l, endOfFileToken, 1);
 
 	case '+': return lex_basic_token(l, plusOperator, 1);
 	case '-': return lex_basic_token(l, minusOperator, 1);
 	case '*': return lex_basic_token(l, multipliationOperator, 1);
-	case '/': return lex_basic_token(l, divisionOperator, 1);
 	case '%': return lex_basic_token(l, modulusOperator, 1);
 
 	case '!': if (lexer_peek(l,1) == '=') return lex_basic_token(l, bangEqualsOperator, 2);

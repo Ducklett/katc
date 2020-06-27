@@ -56,7 +56,10 @@ node parser_parse_range_expression(parser *p, diagnosticContainer *d);
 node parser_parse_token(parser *p, diagnosticContainer *d) {
 	while(true) {
 		node t = lexer_lex_token(&p->lexer, d);
-		if (t.kind == whitespaceToken || t.kind == newlineToken) continue;
+		if (t.kind == whitespaceToken
+			|| t.kind == newlineToken
+			|| t.kind == singleLineComment
+			|| t.kind == multiLineComment) continue;
 		return t;
 	}
 }

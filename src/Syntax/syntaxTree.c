@@ -63,6 +63,8 @@ enum syntaxKind {
 	caseBranch,
 	whileLoop,
 	forLoop,
+	singleLineComment,
+	multiLineComment,
 };
 
 static const char *syntaxKindText[] = {
@@ -120,6 +122,8 @@ static const char *syntaxKindText[] = {
 	"caseBranch",
 	"whileLoop",
 	"forLoop",
+	"singleLineComment",
+	"multiLineComment",
 };
 
 typedef struct textspan {
