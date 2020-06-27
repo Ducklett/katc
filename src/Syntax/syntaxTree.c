@@ -140,6 +140,7 @@ typedef struct node {
 		void* data; 
 		int numValue; 
 		bool boolValue; 
+		char* stringValue; 
 	};
 } node;
 
@@ -254,6 +255,12 @@ char* ast_substring(char* text, textspan span) {
 	tokenText[span.length] = '\0';
 	strncpy(tokenText, text + span.start, sizeof(char) * span.length);
 	return tokenText;
+}
+
+char* allocate_string(char *text, int length) {
+	char *allocatedText = (char*)malloc(sizeof(char) * length);
+	strncpy(allocatedText, text, sizeof(char) * length);
+	return allocatedText;
 }
 
 static inline i8 getBinaryOperatorPrecedence(enum syntaxKind kind) {

@@ -143,6 +143,8 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 	case '"':
 		t.kind = stringLiteral;
 		start =  l->index;
+		char sb[256];
+		u8 len=0;
 
 		// TODO: store the value
 		lexer_match(l, d, '"'); // open "
@@ -150,19 +152,35 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 		while (true) {
 			char current = lexer_current(l);
 			char lookahead = lexer_peek(l, 1);
+
 			switch(current) {
-				case '\\':
+				case '\\': {
+					bool isEscapeCode = true;
+					if (lookahead == 'r') sb[len++] = '\r';
+					else if (lookahead == 'n') sb[len++] = '\n';
+					else if (lookahead == '"') sb[len++] = '"';
+					else if (lookahead == '0') sb[len++] = '\0';
+					else if (lookahead == '\\') sb[len++] = '\\';
+					else sb[len++] = lookahead;
+
 					lexer_move_next(l);
 					lexer_move_next(l);
 					break;
+				}
 				case '\0': case '\r': case '\n': case '"': goto end;
-				default: lexer_move_next(l); break;
+				default:
+					sb[len++] = current;
+					lexer_move_next(l);
+					break;
 			}
 		}
 		end:
 
 		lexer_match(l, d, '"'); // close "
 		t.span = textspan_create(start, l->index - start);
+		if (len > 0) {
+			t.stringValue = allocate_string(sb,len);
+		}
 		break;
 
 	case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': {
