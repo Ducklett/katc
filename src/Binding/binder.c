@@ -30,6 +30,7 @@ astNode bind_expression_of_type(node *n, ast* tree, enum astType expectedType, t
 
 astNode bind_expression(node *n, ast* tree) {
     switch(n->kind) {
+        case fileStatement:
         case blockStatement: return bind_block_statement(n, tree);
         case ifStatement: return bind_if_statement(n, tree);
         case whileLoop: return bind_while_loop(n, tree);
@@ -84,7 +85,7 @@ astNode bind_block_statement(node *n, ast *tree) {
     tree->blockStatements[tree->blockStatementsIndex++] =
         (blockStatementAst){ nodesStart, statementCount };
 
-    return (astNode){ blockStatementKind,  .data = &tree->blockStatements[index] };
+    return (astNode){ n->kind == blockStatement ? blockStatementKind : fileStatementKind,  .data = &tree->blockStatements[index] };
 }
 
 astNode bind_if_statement(node *n, ast *tree) {

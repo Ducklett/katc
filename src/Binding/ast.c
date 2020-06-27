@@ -9,6 +9,7 @@ enum astKind {
 	variableDeclarationKind,
 	variableAssignmentKind,
 	variableReferenceKind,
+	fileStatementKind,
 	blockStatementKind,
 	ifStatementKind,
 	caseStatementKind,
@@ -29,6 +30,7 @@ static const char *astKindText[] = {
 	"variableDeclaration",
 	"variableAssignment",
 	"variableReferenceKind",
+	"fileStatement",
 	"blockStatement",
 	"ifStatement",
 	"caseStatement",
@@ -319,6 +321,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	indent += 4;
 
 	switch(root->kind) {
+	case fileStatementKind:
 	case blockStatementKind: {
 		blockStatementAst bn = *(blockStatementAst*)root->data;
 

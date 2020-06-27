@@ -65,6 +65,7 @@ enum syntaxKind {
 	forLoop,
 	singleLineComment,
 	multiLineComment,
+	fileStatement,
 };
 
 static const char *syntaxKindText[] = {
@@ -124,6 +125,7 @@ static const char *syntaxKindText[] = {
 	"forLoop",
 	"singleLineComment",
 	"multiLineComment",
+	"fileStatement",
 };
 
 typedef struct textspan {

@@ -38,6 +38,7 @@ typedef struct parser {
 node parser_next_token(parser *p, diagnosticContainer *d);
 
 node parser_parse_statement(parser *p, diagnosticContainer *d);
+node parser_parse_file_statement(parser *p, diagnosticContainer *d);
 node parser_parse_block_statement(parser *p, diagnosticContainer *d);
 node parser_parse_if_statement(parser *p, diagnosticContainer *d);
 node parser_parse_case_statement(parser *p, diagnosticContainer *d);
@@ -98,7 +99,7 @@ node parser_match_token(parser *p, diagnosticContainer *d, enum syntaxKind expec
 }
 
 void parser_parse(parser *p, diagnosticContainer *d) {
-	p->root = parser_parse_statement(p, d);
+	p->root = parser_parse_file_statement(p, d);
 	parser_match_token(p, d, endOfFileToken);
 }
 
@@ -131,6 +132,37 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	while (parser_current(p, d).kind == semicolonToken) parser_next_token(p, d);
 
 	return res;
+}
+
+node parser_parse_file_statement(parser *p, diagnosticContainer *d) {
+	// TODO: add dynamic arrays so this doesn't have to be fixed size
+	node nodes[100];
+	int nodeIndex = 0;
+
+	while (true) {
+		node token = parser_current(p, d);
+
+		if (token.kind == endOfFileToken) break;
+
+		node exprNode = parser_parse_statement(p, d);
+		nodes[nodeIndex++] = exprNode;
+	}
+
+	// TODO: some kind of memcpy is probably faster
+	u16 startIndex = p->nodeIndex;
+	u16 statementCount = nodeIndex;
+	for (int i = 0; i < statementCount; i++) {
+		p->nodes[p->nodeIndex++] = nodes[i];
+	}
+
+	textspan voidSpan = {0};
+	node voidNode = {0};
+
+	u16 blockIndex = p->blockIndex;
+	p->blockStatements[p->blockIndex++] =
+		(blockStatementNode){ voidNode, &(p->nodes[startIndex]), statementCount, voidNode, };
+
+	return (node) { fileStatement, textspan_from_bounds(&voidSpan, &voidSpan), .data = &(p->blockStatements[blockIndex]), };
 }
 
 node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
