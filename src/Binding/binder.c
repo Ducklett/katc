@@ -2,6 +2,8 @@ astNode bind_expression(node *n, ast *tree);
 astNode bind_expression_of_type(node *n, ast *tree, enum astType expectedType, textspan errorSpan);
 astNode bind_block_statement(node *n, ast *tree);
 astNode bind_if_statement(node *n, ast *tree);
+astNode bind_case_branch(node *n, ast *tree);
+astNode bind_case_statement(node *n, ast *tree);
 astNode bind_while_loop(node *n, ast *tree);
 astNode bind_for_loop(node *n, ast *tree);
 astNode bind_unary_expression(node *n, ast *tree);
@@ -15,7 +17,10 @@ variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType vari
 variableSymbol* find_variable_in_scope(textspan nameSpan, ast *tree);
 
 int bind_tree(ast* tree) {
+
+	benchmark_start();
     tree->root = bind_expression(&tree->parser.root, tree);
+	benchmark_end("Binding");
     return tree->diagnostics.index == 0;
 }
 
@@ -34,6 +39,7 @@ astNode bind_expression(node *n, ast* tree) {
         case fileStatement:
         case blockStatement: return bind_block_statement(n, tree);
         case ifStatement: return bind_if_statement(n, tree);
+        case caseStatement: return bind_case_statement(n, tree);
         case whileLoop: return bind_while_loop(n, tree);
         case forLoop: return bind_for_loop(n, tree);
 
@@ -88,7 +94,7 @@ astNode bind_block_statement(node *n, ast *tree) {
     tree->blockStatements[tree->blockStatementsIndex++] =
         (blockStatementAst){ nodesStart, statementCount };
 
-    return (astNode){ n->kind == blockStatement ? blockStatementKind : fileStatementKind,  .data = &tree->blockStatements[index] };
+    return (astNode){ n->kind == blockStatement ? blockStatementKind : fileStatementKind, voidType, .data = &tree->blockStatements[index] };
 }
 
 astNode bind_if_statement(node *n, ast *tree) {
@@ -108,6 +114,57 @@ astNode bind_if_statement(node *n, ast *tree) {
     enum astType ifType = boundthen.type == boundElse.type ? boundthen.type : voidType;
 
     return (astNode){ ifStatementKind, ifType, .data = &tree->ifStatements[index] };
+}
+
+astNode bind_case_branch(node *n, ast *tree) {
+	caseBranchNode cn = *(caseBranchNode*)n->data;
+
+    astNode boundCondition = cn.condition.kind == defaultKeyword
+        ? (astNode){0}
+        : bind_expression_of_type(&cn.condition, tree, boolType, cn.condition.span);
+
+    astNode boundthen = bind_expression(&cn.thenExpression, tree);
+
+    int index = tree->caseBranchesIndex;
+    tree->caseBranches[tree->caseBranchesIndex++] =
+        (caseBranchAst){ boundCondition, boundthen  }; 
+
+    return (astNode){ caseBranchKind, boundthen.type, .data = &tree->caseBranches[index] };
+}
+
+astNode bind_case_statement(node *n, ast *tree) {
+
+    astNode boundBranches[100];
+    int branchCount = 0;
+
+	caseStatementNode cn = *(caseStatementNode*)n->data;
+
+    int parentScopeIndex = push_scope(tree);
+
+    enum astType caseType;
+
+    for (int i = 0; i < cn.branchCount; i++) {
+        boundBranches[branchCount++] = bind_case_branch(&cn.branches[i], tree);
+        if (i == 0) caseType = boundBranches[i].type;
+        else if (caseType != boundBranches[i].type) caseType = voidType;
+    }
+    
+    pop_scope(tree, parentScopeIndex);
+
+    if (branchCount == 0) {
+        report_diagnostic(&tree->diagnostics, emptyCaseStatementDiagnostic, n->span, 0, 0, 0);
+    }
+
+    astNode* nodesStart = &tree->nodes[tree->nodesIndex];
+    for (int i = 0; i < branchCount; i++) {
+        tree->nodes[tree->nodesIndex++] = boundBranches[i];
+    }
+
+    int index = tree->caseStatementsIndex;
+    tree->caseStatements[tree->caseStatementsIndex++] =
+        (caseStatementAst){ nodesStart, branchCount };
+
+    return (astNode){ caseStatementKind, caseType, .data = &tree->caseStatements[index], };
 }
 
 astNode bind_while_loop(node *n, ast *tree) {

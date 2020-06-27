@@ -10,6 +10,7 @@ static const char *diagnosticText[] = {
 	"cannot assign expression of type '%s' to variable '%s' of type '%s'. (%d,%d)\n",
 	"cannot convert expression of type '%s' to the expected type '%s'. (%d,%d)\n",
 	"unresolved type '%s'. (%d,%d)\n",
+	"case statements should have at least one branch. (%d,%d)\n",
 };
 
 void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u32 param1, u32 param2, u32 param3) {
@@ -57,6 +58,7 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 			printf(diagnosticText[d.kind], typeText, d.span.start, d.span.length);
 			free(typeText);
 		} break;
+		case emptyCaseStatementDiagnostic: printf(diagnosticText[d.kind], d.span.start, d.span.length); break;
 		default: {
 			printf("Unhandled case %s in print_diagnostics\n", diagnosticMetaText[d.kind]);
 			TERMRESET();

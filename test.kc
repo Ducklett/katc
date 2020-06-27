@@ -1,2 +1,6 @@
-name := "world"
-print("hello  %s\n", name)
+for x in 1..100 case {
+	x % 3 == 0 && x % 5 == 0 : print("fizzbuzz\n")
+	x % 3 == 0 : print("fizz\n")
+	x % 5 == 0 : print("buzz\n")
+	default : print("%d", x)
+}

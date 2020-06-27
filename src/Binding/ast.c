@@ -106,6 +106,9 @@ typedOperator get_binary_operator(enum syntaxKind operatorToken, enum astType le
 	if (operatorToken == divisionOperator && left == intType && right == intType) return (typedOperator){ divideOp, intType };
 	if (operatorToken == modulusOperator && left == intType && right == intType) return (typedOperator){ moduloOp, intType };
 
+	if (operatorToken == euqualsEqualsOperator && left == intType && right == intType) return (typedOperator) { equalOp, boolType };
+	if (operatorToken == bangEqualsOperator && left == intType && right == intType) return (typedOperator){ inEqualOp, boolType };
+
 	if (operatorToken == euqualsEqualsOperator && left == boolType && right == boolType) return (typedOperator) { equalOp, boolType };
 	if (operatorToken == bangEqualsOperator && left == boolType && right == boolType) return (typedOperator){ inEqualOp, boolType };
 
@@ -206,7 +209,7 @@ typedef struct caseBranchAst {
 } caseBranchAst;
 
 typedef struct caseStatementAst {
-	caseBranchAst* branches;
+	astNode* branches;
 	u16 branchCount;
 } caseStatementAst;
 
@@ -243,6 +246,8 @@ typedef struct ast {
 	rangeExpressionAst ranges[1024];
 	blockStatementAst blockStatements[1024];
 	ifStatementAst ifStatements[1024];
+	caseBranchAst caseBranches[1024];
+	caseStatementAst caseStatements[1024];
 	whileLoopAst whileLoops[1024];
 	forLoopAst forLoops[1024];
 	unaryExpressionAst unaryExpressions[1024];
@@ -256,6 +261,8 @@ typedef struct ast {
 	int currentScopeIndex;
 	int blockStatementsIndex;
 	int ifStatementsIndex;
+	int caseBranchesIndex;
+	int caseStatementsIndex;
 	int whileLoopIndex;
 	int forLoopIndex;
 	int unaryExpressionsIndex;
@@ -352,6 +359,26 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		bool hasElse = in.elseStatement.kind != 0;
 		print_ast_internal(text, &in.thenStatement, indent, verbose, hasElse);
 		if (hasElse) print_ast_internal(text, &in.elseStatement, indent, verbose, false);
+		break;
+	}
+	case caseBranchKind: {
+		caseBranchAst cn = *(caseBranchAst*)root->data;
+		if (cn.condition.kind==0) {
+			TERMMAGENTA();
+			printf ("%*s%s\n", indent, "", "default");
+			TERMRESET();
+		} else {
+			print_ast_internal(text, &cn.condition, indent, verbose, true);
+		}
+		print_ast_internal(text, &cn.thenStatement, indent, verbose, false);
+		break;
+	}
+	case caseStatementKind: {
+		caseStatementAst cn = *(caseStatementAst*)root->data;
+
+		for(int i=0;i<cn.branchCount;i++) {
+			print_ast_internal(text, &cn.branches[i], indent, verbose, i!=cn.branchCount-1);
+		}
 		break;
 	}
 	case whileLoopKind: {

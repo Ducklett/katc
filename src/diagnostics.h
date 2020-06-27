@@ -23,6 +23,7 @@ enum diagnosticKind {
     cannotAssignDiagnostic,
     cannotConvertDiagnostic,
 	unresolvedTypeDiagnostic,
+	emptyCaseStatementDiagnostic,
 };
 
 static const char *diagnosticMetaText[] = {
@@ -37,6 +38,7 @@ static const char *diagnosticMetaText[] = {
     "cannotAssignDiagnostic",
     "cannotConvertDiagnostic",
 	"unresolvedTypeDiagnostic",
+	"emptyCaseStatementDiagnostic",
 };
 
 void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u32 param1, u32 param2, u32 param3);
