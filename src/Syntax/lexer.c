@@ -155,7 +155,6 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 
 			switch(current) {
 				case '\\': {
-					bool isEscapeCode = true;
 					if (lookahead == 'r') sb[len++] = '\r';
 					else if (lookahead == 'n') sb[len++] = '\n';
 					else if (lookahead == '"') sb[len++] = '"';

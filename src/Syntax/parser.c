@@ -155,14 +155,13 @@ node parser_parse_file_statement(parser *p, diagnosticContainer *d) {
 		p->nodes[p->nodeIndex++] = nodes[i];
 	}
 
-	textspan voidSpan = {0};
 	node voidNode = {0};
 
 	u16 blockIndex = p->blockIndex;
 	p->blockStatements[p->blockIndex++] =
 		(blockStatementNode){ voidNode, &(p->nodes[startIndex]), statementCount, voidNode, };
 
-	return (node) { fileStatement, textspan_from_bounds(&voidSpan, &voidSpan), .data = &(p->blockStatements[blockIndex]), };
+	return (node) { fileStatement, textspan_from_bounds(&voidNode, &voidNode), .data = &(p->blockStatements[blockIndex]), };
 }
 
 node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
