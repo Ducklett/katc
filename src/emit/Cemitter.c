@@ -2,6 +2,7 @@ void emit_c_node(astNode *n, ast *tree);
 static inline void emit_c_file(astNode *n, ast *tree);
 static inline void emit_c_literal(astNode *n, ast *tree);
 static inline void emit_c_callExpression(astNode *n, ast *tree);
+char* escape_string_c(char *str);
 
 void emit_c_from_ast(ast *tree) {
 	emit_c_file(&tree->root, tree);
@@ -60,7 +61,7 @@ static inline void emit_c_callExpression(astNode *n, ast *tree) {
 	printf(")");
 }
 
-char *escape_string_c(char *str) {
+char* escape_string_c(char *str) {
 	int escapedCharacters = 0;
 	int i = 0;
 	bool endFound = false;
