@@ -2,7 +2,19 @@ void emit_c_node(astNode *n, ast *tree);
 static inline void emit_c_file(astNode *n, ast *tree);
 static inline void emit_c_literal(astNode *n, ast *tree);
 static inline void emit_c_callExpression(astNode *n, ast *tree);
+static inline void emit_c_variableDeclaration(astNode *n, ast *tree);
+static inline void emit_c_variableAssignment(astNode *n, ast *tree);
+static inline void emit_c_variableReference(astNode *n, ast *tree);
 char* escape_string_c(char *str);
+
+static const char *cTypeText[] = {
+	"errorType",
+	"unresolved",
+	"void",
+	"int",
+	"int",		// bool
+	"char*",
+};
 
 void emit_c_from_ast(ast *tree) {
 	emit_c_file(&tree->root, tree);
@@ -12,6 +24,9 @@ void emit_c_node(astNode *n, ast *tree) {
 	switch(n->kind) {
 	case literalKind: return emit_c_literal(n, tree);
 	case callExpressionKind: return emit_c_callExpression(n, tree);
+	case variableDeclarationKind: return emit_c_variableDeclaration(n, tree);
+	case variableAssignmentKind: return emit_c_variableAssignment(n, tree);
+	case variableReferenceKind: return emit_c_variableReference(n, tree);
 	default:
 		TERMRED();
 		printf("Unhandled node of type %s in c emitter", astKindText[n->kind]);
@@ -36,7 +51,7 @@ void emit_c_file(astNode *n, ast *tree) {
 static inline void emit_c_literal(astNode *n, ast *tree) {
 	switch (n->type) {
 	case intType: printf("%d", n->numValue); break;
-	case boolType: printf("%s", n->boolValue ? "true" : "false"); break;
+	case boolType: printf("%s", n->boolValue ? "1" : "0"); break;
 	case stringType: {
 		char *escapedStr = escape_string_c(n->stringValue);
 		printf("\"%s\"", escapedStr); break;
@@ -59,6 +74,26 @@ static inline void emit_c_callExpression(astNode *n, ast *tree) {
 		if (i != cn.argumentCount-1) printf(", ");
 	}
 	printf(")");
+}
+
+static inline void emit_c_variableDeclaration(astNode *n, ast *tree) {
+
+	variableDeclarationAst dn = *(variableDeclarationAst*)n->data;
+
+	printf("%s %s = ", cTypeText[dn.variable->type], dn.variable->name);
+	emit_c_node(&dn.initalizer, tree);
+}
+
+static inline void emit_c_variableAssignment(astNode *n, ast *tree) {
+
+	variableAssignmentAst an = *(variableAssignmentAst*)n->data;
+
+	printf("%s = ", an.variable->name);
+	emit_c_node(&an.expression, tree);
+}
+
+static inline void emit_c_variableReference(astNode *n, ast *tree) {
+	printf(((variableSymbol*) n->data)->name);
 }
 
 char* escape_string_c(char *str) {

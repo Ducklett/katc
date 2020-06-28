@@ -1,1 +1,5 @@
-print("Hello world!\n");
+msg := "world"
+num := 10
+num = 123
+b := false
+print("Hello %s %d %d!\n", msg, num, b);
