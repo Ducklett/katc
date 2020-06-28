@@ -8,6 +8,7 @@ static const char *diagnosticText[] = {
 	"variable '%s' is already declared in this scope. (%d,%d)\n",
 	"variable '%s' is undefined. (%d,%d)\n",
 	"cannot assign expression of type '%s' to variable '%s' of type '%s'. (%d,%d)\n",
+	"variable '%s' cannot be void. (%d,%d)\n",
 	"cannot convert expression of type '%s' to the expected type '%s'. (%d,%d)\n",
 	"unresolved type '%s'. (%d,%d)\n",
 	"case statements should have at least one branch. (%d,%d)\n",
@@ -50,6 +51,11 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		case cannotAssignDiagnostic: {
 			char* identifierText = ast_substring(sourceText, d.span);
 			printf(diagnosticText[d.kind], astTypeText[d.param2], identifierText, astTypeText[d.param1], d.span.start, d.span.length);
+			free(identifierText);
+		} break;
+		case variableCannotBeVoidDiagnostic: {
+			char* identifierText = ast_substring(sourceText, d.span);
+			printf(diagnosticText[d.kind], identifierText, d.span.start, d.span.length);
 			free(identifierText);
 		} break;
 		case cannotConvertDiagnostic: printf(diagnosticText[d.kind], astTypeText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;

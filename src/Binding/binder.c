@@ -339,6 +339,11 @@ static inline void pop_scope(ast *tree, int parentScopeIndex) {
 
 
 variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableType) {
+    if (variableType == voidType) {
+        report_diagnostic(&tree->diagnostics, variableCannotBeVoidDiagnostic, nameSpan, 0, 0, 0);
+        return 0;
+    }
+
     scope *currentScope = &tree->scopes[tree->currentScopeIndex];
 
     for (int i = 0; i < currentScope->variableCount; i++) {

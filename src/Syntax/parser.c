@@ -246,8 +246,11 @@ node parser_parse_case_statement(parser *p, diagnosticContainer *d) {
 
 	node branches[100];
 	u8 branchCount=0;
-	while(parser_current(p, d).kind != closeCurlyToken)
+	while(true) {
+		enum syntaxKind currentKind = parser_current(p, d).kind;
+		if (currentKind == closeCurlyToken || currentKind == endOfFileToken) break;
 		branches[branchCount++] = parser_parse_case_branch(p, d);
+	}
 
 	node closeCurly = parser_match_token(p, d, closeCurlyToken);
 
@@ -320,7 +323,7 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 	}
 
 	node equals = parser_match_token(p, d, equalsToken);
-	node expression = parser_parse_expression(p, d);
+	node expression = parser_parse_statement(p, d);
 
 	u16 index = p->variableDeclaratonIndex;
 	p->variableDeclarations[p->variableDeclaratonIndex++] =
@@ -332,7 +335,7 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 node parser_parse_variable_assignment(parser *p, diagnosticContainer *d) {
 	node identifier = parser_match_token(p, d, identifierToken);
 	node equals = parser_match_token(p, d, equalsToken);
-	node expression = parser_parse_expression(p, d);
+	node expression = parser_parse_statement(p, d);
 
 	u16 index = p->variableAssignmentIndex;
 	p->variableAssignments[p->variableAssignmentIndex++] =
