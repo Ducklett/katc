@@ -125,6 +125,8 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 			res = parser_parse_variable_assignment(p, d);
 		} else if  (l2kind == openParenthesisToken) {
 			res = parser_parse_function_call(p, d);
+		} else {
+			res = parser_parse_expression(p, d);
 		} break;
 	default: res = parser_parse_expression(p, d); break;
 	}
@@ -335,7 +337,9 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 node parser_parse_variable_assignment(parser *p, diagnosticContainer *d) {
 	node identifier = parser_match_token(p, d, identifierToken);
 	node equals = parser_match_token(p, d, equalsToken);
+	printf("epic\n");
 	node expression = parser_parse_statement(p, d);
+	printf("nice %d\n", expression.kind);
 
 	u16 index = p->variableAssignmentIndex;
 	p->variableAssignments[p->variableAssignmentIndex++] =
@@ -378,6 +382,7 @@ node parser_parse_function_call(parser *p, diagnosticContainer *d) {
 node parser_parse_expression(parser *p, diagnosticContainer *d) { return parser_parse_binary_expression(p, d,-2); }
 
 node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parentPrecedence) {
+
 	node unaryOp = parser_current(p, d);
 	i8 unaryPrecedence =  getUnaryOperatorPrecedence(unaryOp.kind);
 
