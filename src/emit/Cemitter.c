@@ -1,6 +1,7 @@
 void emit_c_node(astNode *n, ast *tree);
 static inline void emit_c_file(astNode *n, ast *tree);
 static inline void emit_c_blockStatement(astNode *n, ast *tree);
+static inline void emit_c_whileLoop(astNode *n, ast *tree);
 
 static inline void emit_c_literal(astNode *n, ast *tree);
 static inline void emit_c_binaryExpression(astNode *n, ast *tree);
@@ -51,6 +52,7 @@ void emit_c_from_ast(ast *tree) {
 void emit_c_node(astNode *n, ast *tree) {
 	switch(n->kind) {
 	case blockStatementKind: return emit_c_blockStatement(n, tree);
+	case whileLoopKind: return emit_c_whileLoop(n, tree);
 
 	case literalKind: return emit_c_literal(n, tree);
 	case binaryExpressionKind: return emit_c_binaryExpression(n, tree);
@@ -80,6 +82,14 @@ static inline void emit_c_blockStatement(astNode *n, ast *tree) {
 		printf(";\n");
 	}
 	printf("}\n");
+}
+
+static inline void emit_c_whileLoop(astNode *n, ast *tree) {
+	whileLoopAst wn = *(whileLoopAst*)n->data;
+	printf("while (");
+	emit_c_node(&wn.condition, tree);
+	printf(") ");
+	emit_c_node(&wn.block, tree);
 }
 
 static inline void emit_c_literal(astNode *n, ast *tree) {
