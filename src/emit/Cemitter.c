@@ -74,7 +74,6 @@ void emit_c_file(astNode *n, ast *tree) {
 
 static inline void emit_c_blockStatement(astNode *n, ast *tree) {
 	printf("{\n");
-
 	blockStatementAst bn = *(blockStatementAst*)n->data;
 	for (int i= 0; i < bn.statementsCount; i++) {
 		emit_c_node(bn.statements + i, tree);

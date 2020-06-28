@@ -337,9 +337,7 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 node parser_parse_variable_assignment(parser *p, diagnosticContainer *d) {
 	node identifier = parser_match_token(p, d, identifierToken);
 	node equals = parser_match_token(p, d, equalsToken);
-	printf("epic\n");
 	node expression = parser_parse_statement(p, d);
-	printf("nice %d\n", expression.kind);
 
 	u16 index = p->variableAssignmentIndex;
 	p->variableAssignments[p->variableAssignmentIndex++] =
