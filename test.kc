@@ -1,5 +1,5 @@
 msg := "world"
 num := 10
-num = 2 + 3 * 3 * num
+num = 2 + 3 * -3 * num
 b := false
 print("Hello %s %d %d!\n", msg, num, b);

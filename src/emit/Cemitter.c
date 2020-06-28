@@ -2,6 +2,7 @@ void emit_c_node(astNode *n, ast *tree);
 static inline void emit_c_file(astNode *n, ast *tree);
 static inline void emit_c_literal(astNode *n, ast *tree);
 static inline void emit_c_binaryExpression(astNode *n, ast *tree);
+static inline void emit_c_unaryExpression(astNode *n, ast *tree);
 static inline void emit_c_callExpression(astNode *n, ast *tree);
 static inline void emit_c_variableDeclaration(astNode *n, ast *tree);
 static inline void emit_c_variableAssignment(astNode *n, ast *tree);
@@ -34,6 +35,13 @@ static const char *cBinaryText[] = {
 	"||",
 };
 
+static const char *cUnaryText[] = {
+	"missingUnary",
+	"!",
+	"-",
+	"+",
+};
+
 void emit_c_from_ast(ast *tree) {
 	emit_c_file(&tree->root, tree);
 }
@@ -42,6 +50,7 @@ void emit_c_node(astNode *n, ast *tree) {
 	switch(n->kind) {
 	case literalKind: return emit_c_literal(n, tree);
 	case binaryExpressionKind: return emit_c_binaryExpression(n, tree);
+	case unaryExpressionKind: return emit_c_unaryExpression(n, tree);
 	case callExpressionKind: return emit_c_callExpression(n, tree);
 	case variableDeclarationKind: return emit_c_variableDeclaration(n, tree);
 	case variableAssignmentKind: return emit_c_variableAssignment(n, tree);
@@ -91,6 +100,14 @@ static inline void emit_c_binaryExpression(astNode *n, ast *tree) {
 	emit_c_node(&bn.left, tree);
 	printf(" %s ", cBinaryText[bn.operator]);
 	emit_c_node(&bn.right, tree);
+	printf(")");
+}
+
+static inline void emit_c_unaryExpression(astNode *n, ast *tree) {
+	unaryExpressionAst un = *(unaryExpressionAst*)n->data;
+	printf("(");
+	printf(cUnaryText[un.operator]);
+	emit_c_node(&un.operand, tree);
 	printf(")");
 }
 
