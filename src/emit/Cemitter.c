@@ -1,5 +1,7 @@
 void emit_c_node(astNode *n, ast *tree);
 static inline void emit_c_file(astNode *n, ast *tree);
+static inline void emit_c_blockStatement(astNode *n, ast *tree);
+
 static inline void emit_c_literal(astNode *n, ast *tree);
 static inline void emit_c_binaryExpression(astNode *n, ast *tree);
 static inline void emit_c_unaryExpression(astNode *n, ast *tree);
@@ -48,6 +50,8 @@ void emit_c_from_ast(ast *tree) {
 
 void emit_c_node(astNode *n, ast *tree) {
 	switch(n->kind) {
+	case blockStatementKind: return emit_c_blockStatement(n, tree);
+
 	case literalKind: return emit_c_literal(n, tree);
 	case binaryExpressionKind: return emit_c_binaryExpression(n, tree);
 	case unaryExpressionKind: return emit_c_unaryExpression(n, tree);
@@ -64,12 +68,15 @@ void emit_c_node(astNode *n, ast *tree) {
 }
 
 void emit_c_file(astNode *n, ast *tree) {
-	printf("#include <stdio.h>\n");
-	printf("void main() {\n");
+	printf("#include <stdio.h>\nvoid main() ");
+	emit_c_blockStatement(n,tree);
+}
+
+static inline void emit_c_blockStatement(astNode *n, ast *tree) {
+	printf("{\n");
 
 	blockStatementAst bn = *(blockStatementAst*)n->data;
 	for (int i= 0; i < bn.statementsCount; i++) {
-		printf("\t");
 		emit_c_node(bn.statements + i, tree);
 		printf(";\n");
 	}
