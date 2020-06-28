@@ -1,6 +1,1 @@
-for x in 1..100 case {
-	x % 15 == 0: print("fizzbuzz\n")
-	x % 3  == 0: print("fizz\n")
-	x % 5  == 0: print("buzz\n")
-	default: print("%d\n", x)
-}
+print("Hello world!\n");

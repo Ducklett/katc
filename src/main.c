@@ -13,8 +13,9 @@ int main() {
 		return 1;
 	} 
 
-    bool verbose = true;
-	print_ast(result->text, &result->root, 0, verbose);
+    // bool verbose = true;
+	// print_ast(result->text, &result->root, 0, verbose);
+	emit_c_from_ast(result);
 
 	return 0;
 }

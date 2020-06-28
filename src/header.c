@@ -12,4 +12,5 @@
 #include "syntax/parser.c"
 #include "Binding/ast.c"
 #include "Binding/binder.c"
+#include "emit/Cemitter.c"
 #include "diagnostics.c"
