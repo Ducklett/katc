@@ -2,6 +2,7 @@ void emit_c_node(astNode *n, ast *tree);
 static inline void emit_c_file(astNode *n, ast *tree);
 static inline void emit_c_blockStatement(astNode *n, ast *tree);
 static inline void emit_c_whileLoop(astNode *n, ast *tree);
+static inline void emit_c_forLoop(astNode *n, ast *tree);
 
 static inline void emit_c_literal(astNode *n, ast *tree);
 static inline void emit_c_binaryExpression(astNode *n, ast *tree);
@@ -53,6 +54,7 @@ void emit_c_node(astNode *n, ast *tree) {
 	switch(n->kind) {
 	case blockStatementKind: return emit_c_blockStatement(n, tree);
 	case whileLoopKind: return emit_c_whileLoop(n, tree);
+	case forLoopKind: return emit_c_forLoop(n, tree);
 
 	case literalKind: return emit_c_literal(n, tree);
 	case binaryExpressionKind: return emit_c_binaryExpression(n, tree);
@@ -90,6 +92,36 @@ static inline void emit_c_whileLoop(astNode *n, ast *tree) {
 	emit_c_node(&wn.condition, tree);
 	printf(") ");
 	emit_c_node(&wn.block, tree);
+}
+
+static inline void emit_c_forLoop(astNode *n, ast *tree) {
+	forLoopAst fn = *(forLoopAst*)n->data;
+	rangeExpressionAst rn = *(rangeExpressionAst*)fn.range.data;
+
+	if (fn.index == 0) {
+		char* compOp = rn.to > rn.from ? "<=" : ">=";
+		char* incOp = rn.to > rn.from ? "++" : "--";
+
+		printf("for (");
+		// int x = 1; 
+		printf("%s %s = %d; ", cTypeText[fn.value->type], fn.value->name, rn.from);
+		// x <= 100
+		printf("%s %s %d; ", fn.value->name, compOp, rn.to);
+		// x++
+		printf("%s%s", fn.value->name, incOp);
+		printf(") ");
+		emit_c_node(&fn.block, tree);
+	} else {
+		char* incOp = rn.to > rn.from ? "++" : "--";
+		printf("for (int %s = 0; %s <= %d; %s++) {\n", fn.index->name, fn.index->name, abs(rn.from - rn.to), fn.index->name);
+
+		if (rn.to > rn.from) printf("%s %s = i + %d;\n", cTypeText[fn.value->type], fn.value->name, rn.from);
+		else printf("%s %s = %d - i;\n",cTypeText[fn.value->type], fn.value->name, rn.from);
+
+		emit_c_node(&fn.block, tree);
+		printf(";\n");
+		printf("} ");
+	}
 }
 
 static inline void emit_c_literal(astNode *n, ast *tree) {
