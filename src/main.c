@@ -1,11 +1,13 @@
+//#define BENCHMARK true
 #include "header.c"
 
-int main() {
+int main(int argc, char **argv) {
 
 	ast *result = calloc(1, sizeof(ast));
 
 	benchmark_start();
-	bool success = create_ast("test.kc", result);
+	char *filename = argc >= 2 ? argv[1] : "test.kc";
+	bool success = create_ast(filename, result);
 	benchmark_end("Total");
 
 	if (!success) {

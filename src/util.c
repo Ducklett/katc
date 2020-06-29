@@ -21,8 +21,13 @@ typedef unsigned long u64;
 #define TERMBOLDCYAN() printf("\033[1;36m")
 #define TERMRESET() printf("\033[0m")
 
+#if BENCHMARK
 #define benchmark_start() clock_t t = clock();
 #define benchmark_end(name) t = clock() - t; TERMGREEN(); printf("%s: %.0fms\n", name, ((double)t) / CLOCKS_PER_SEC * 1000); TERMRESET();
+#else
+#define benchmark_start() {}
+#define benchmark_end(name) {}
+#endif
 
 char* read_file(char* filename, u64* length) {
     char * buffer = 0;

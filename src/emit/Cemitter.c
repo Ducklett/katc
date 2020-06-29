@@ -96,7 +96,7 @@ static inline void emit_c_ifStatement(astNode *n, ast *tree) {
 	emit_c_node(&in.condition, tree);
 	printf(")\n");
 	emit_c_node(&in.thenStatement, tree);
-	printf(";\n");
+	if (in.thenStatement.kind != blockStatementKind) printf(";\n");
 	if (in.elseStatement.kind != 0) {
 		printf(" else \n");
 		emit_c_node(&in.elseStatement, tree);

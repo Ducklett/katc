@@ -1,0 +1,10 @@
+// print behaves just like printf
+print("hello\n");
+
+// pass arguments
+// int: %d
+// bool: %d
+// string: %s
+print("name: %s\n", "Bob");
+print("age: %d\n", 21);
+print("registered: %d\n", true);

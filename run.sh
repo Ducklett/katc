@@ -1,1 +1,1 @@
-tcc -run src/main.c
+tcc -run src/main.c $@ > test.c && tcc -run test.c

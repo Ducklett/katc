@@ -1,0 +1,20 @@
+// normal if statement
+id := 123
+if (id == 122) print("valid id\n")
+else print("invalid id\n")
+
+print("\n")
+
+// if statement chaining 
+if (id < 100) print("small id\n")
+else if (id < 200) print("medium id\n")
+else print("large id\n")
+
+print("\n")
+
+// use case statements for large if chains
+case {
+    id < 100: print("small id\n")
+    id < 200: print("medium id\n")
+    default: print("large id\n")
+}

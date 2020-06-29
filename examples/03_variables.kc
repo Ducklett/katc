@@ -1,0 +1,24 @@
+
+// variable declaration with inferred type
+number := 10
+message := "Hey guys"
+
+print("\n")
+print("Number %d\n", number)
+print("Message %s\n", message)
+
+// variable declaration with explicit type
+number2 :int= 10
+message2 :string= "Hey guys"
+
+print("\n")
+print("Number2 %d\n", number2)
+print("Message2 %s\n", message2)
+
+// variable assignment
+number = 20
+message = "Hey pals"
+
+print("\n")
+print("Number is now %d\n", number)
+print("Message is now %s\n", message)
