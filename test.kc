@@ -1,1 +1,1 @@
-while (true) print("hello\n")
+while (k) print("hello\n")
