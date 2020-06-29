@@ -1,6 +1,7 @@
 void emit_c_node(astNode *n, ast *tree);
 static inline void emit_c_file(astNode *n, ast *tree);
 static inline void emit_c_blockStatement(astNode *n, ast *tree);
+static inline void emit_c_ifStatement(astNode *n, ast *tree);
 static inline void emit_c_whileLoop(astNode *n, ast *tree);
 static inline void emit_c_forLoop(astNode *n, ast *tree);
 
@@ -53,6 +54,7 @@ void emit_c_from_ast(ast *tree) {
 void emit_c_node(astNode *n, ast *tree) {
 	switch(n->kind) {
 	case blockStatementKind: return emit_c_blockStatement(n, tree);
+	case ifStatementKind: return emit_c_ifStatement(n, tree);
 	case whileLoopKind: return emit_c_whileLoop(n, tree);
 	case forLoopKind: return emit_c_forLoop(n, tree);
 
@@ -84,6 +86,19 @@ static inline void emit_c_blockStatement(astNode *n, ast *tree) {
 		printf(";\n");
 	}
 	printf("}\n");
+}
+
+static inline void emit_c_ifStatement(astNode *n, ast *tree) {
+	ifStatementAst in = *(ifStatementAst*)n->data;
+	printf("if (");
+	emit_c_node(&in.condition, tree);
+	printf(")\n");
+	emit_c_node(&in.thenStatement, tree);
+	printf(";\n");
+	if (in.elseStatement.kind != 0) {
+		printf(" else \n");
+		emit_c_node(&in.elseStatement, tree);
+	}
 }
 
 static inline void emit_c_whileLoop(astNode *n, ast *tree) {
