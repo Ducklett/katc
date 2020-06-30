@@ -1,4 +1,4 @@
-//#define BENCHMARK true
+#define BENCHMARK true
 #include "header.c"
 
 int main(int argc, char **argv) {
