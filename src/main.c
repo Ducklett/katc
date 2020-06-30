@@ -6,10 +6,7 @@ int main(int argc, char **argv) {
 	ast *result = calloc(1, sizeof(ast));
 
 	if (argc < 2) {
-		printf("\n");
-		TERMRED();
-		fprintf(stderr, "Must supply a file:\n");
-		TERMRESET();
+		fprintf(stderr, "%sMust supply a file:%s\n", TERMRED, TERMRESET);
 		printf("kc <filename>");
 		exit(1);
 	}

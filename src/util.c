@@ -7,23 +7,23 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 typedef unsigned long u64;
 
-#define TERMRED() printf("\033[0;31m")
-#define TERMBOLDRED() printf("\033[1;31m")
-#define TERMGREEN() printf("\033[0;32m")
-#define TERMBOLDGREEN() printf("\033[1;32m")
-#define TERMYELLOW() printf("\033[0;33m")
-#define TERMBOLDYELLOW() printf("\033[01;33m")
-#define TERMBLUE() printf("\033[0;34m")
-#define TERMBOLDBLUE() printf("\033[1;34m")
-#define TERMMAGENTA() printf("\033[0;35m")
-#define TERMBOLDMAGENTA() printf("\033[1;35m")
-#define TERMCYAN() printf("\033[0;36m")
-#define TERMBOLDCYAN() printf("\033[1;36m")
-#define TERMRESET() printf("\033[0m")
+#define TERMRED "\033[0;31m"
+#define TERMBOLDRED "\033[1;31m"
+#define TERMGREEN "\033[0;32m"
+#define TERMBOLDGREEN "\033[1;32m"
+#define TERMYELLOW "\033[0;33m"
+#define TERMBOLDYELLOW "\033[01;33m"
+#define TERMBLUE "\033[0;34m"
+#define TERMBOLDBLUE "\033[1;34m"
+#define TERMMAGENTA "\033[0;35m"
+#define TERMBOLDMAGENTA "\033[1;35m"
+#define TERMCYAN "\033[0;36m"
+#define TERMBOLDCYAN "\033[1;36m"
+#define TERMRESET "\033[0m"
 
 #if BENCHMARK
 #define benchmark_start() clock_t t = clock();
-#define benchmark_end(name) t = clock() - t; TERMGREEN(); printf("%s: %.0fms\n", name, ((double)t) / CLOCKS_PER_SEC * 1000); TERMRESET();
+#define benchmark_end(name) t = clock() - t; printf("%s%s: %.0fms%s\n", TERMGREEN, name, ((double)t) / CLOCKS_PER_SEC * 1000, TERMRESET); 
 #else
 #define benchmark_start() {}
 #define benchmark_end(name) {}
@@ -46,9 +46,7 @@ char* read_file(char* filename, u64* length) {
     }
 
     if (!buffer) {
-        TERMRED();
-        fprintf(stderr, "Failed to read file: %s\n", filename);
-        TERMRESET();
+        fprintf(stderr, "%sFailed to read file: %s%s\n", TERMRED, filename, TERMRESET);
         exit(1);
     }
     return buffer;

@@ -24,7 +24,7 @@ void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspa
 void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 	for (int i = 0; i < diagnostics->index; i++) {
 		diagnostic d = diagnostics->diagnostics[i];
-		TERMRED();
+		fprintf(stderr, TERMRED);
 		switch (d.kind) {
 		case unexpectedCharacterDiagnostic: {
 			char param1 = d.param1;
@@ -66,19 +66,16 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		} break;
 		case emptyCaseStatementDiagnostic: fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
 		default: {
-			fprintf(stderr, "Unhandled case %s in print_diagnostics\n", diagnosticMetaText[d.kind]);
-			TERMRESET();
+			fprintf(stderr, "Unhandled case %s in print_diagnostics%s\n", diagnosticMetaText[d.kind], TERMRESET);
 			exit(1);
 		}
 		}
-		TERMRESET();
+		fprintf(stderr, TERMRESET);
 
 		int lineStart;
 		for (lineStart = d.span.start; sourceText[lineStart] != '\n' && lineStart > 0; lineStart--) {}
 		for (int i=lineStart;i<d.span.start;i++) fprintf(stderr, "%c", sourceText[i]);
-		TERMRED();
-		for (int i=0;i<d.span.length;i++) fprintf(stderr, "%c", sourceText[d.span.start + i]);
-		TERMRESET();
+		for (int i=0;i<d.span.length;i++) fprintf(stderr, "%s%c%s", TERMRED, sourceText[d.span.start + i], TERMRESET);
 		for (int i=(d.span.start + d.span.length); sourceText[i] != '\n' && sourceText[i] != '\0';i++) fprintf(stderr, "%c", sourceText[i]);
 		fprintf(stderr, "\n");
 	}

@@ -305,36 +305,27 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		if (root->type == voidType) return;
 		if (verbose) {
 			printf ("%*s(", indent, "");
-			TERMBLUE();
+			printf(TERMBLUE);
 			switch (root->type) {
 				case intType: printf ("%d", root->numValue); break;
 				case boolType: printf ("%s", root->boolValue ? "true" : "false"); break;
 				case stringType: printf ("\"%s\"", root->stringValue); break;
 				default:
-					TERMRED();
-					fprintf(stderr, "Unhandled type '%s' in print_ast", astTypeText[root->type]);
-					TERMRESET();
+					fprintf(stderr, "%sUnhandled type '%s' in print_ast%s", TERMRED, astTypeText[root->type], TERMRESET);
 					exit(1);
 			}
-			TERMRESET();
-			printf (" :: ");
-			TERMYELLOW();
-			printf ("%s", astTypeText[root->type]);
-			TERMRESET();
-			printf (")%s", newline?"\n":"");
+			printf ("%s :: %s%s%s)%s", TERMRESET, TERMYELLOW, astTypeText[root->type], TERMRESET, newline?"\n":"");
 		} else {
-			TERMCYAN();
+			printf(TERMCYAN);
 			switch (root->type) {
 				case intType: printf ("%*s%d%s", indent, "", root->numValue, newline?"\n":"");
 				case boolType: printf ("%*s%s%s", indent, "", root->boolValue?"true":"false", newline?"\n":"");
 				case stringType: printf ("%*s\"%s\"%s", indent, "", root->stringValue, newline?"\n":"");
 				default:
-					TERMRED();
-					fprintf(stderr, "Unhandled type '%s' in print_ast", astTypeText[root->type]);
-					TERMRESET();
+					fprintf(stderr, "%sUnhandled type '%s' in print_ast%s", TERMRED, astTypeText[root->type], TERMRESET);
 					exit(1);
 			}
-			TERMRESET();
+			printf(TERMRESET);
 		}
 		return;
 	}
@@ -364,9 +355,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	case caseBranchKind: {
 		caseBranchAst cn = *(caseBranchAst*)root->data;
 		if (cn.condition.kind==0) {
-			TERMMAGENTA();
-			printf ("%*s%s\n", indent, "", "default");
-			TERMRESET();
+			printf ("%*s%s%s%s\n", indent, "", TERMMAGENTA, "default", TERMRESET);
 		} else {
 			print_ast_internal(text, &cn.condition, indent, verbose, true);
 		}
@@ -390,14 +379,10 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	case forLoopKind: {
 		forLoopAst fn = *(forLoopAst*)root->data;
 
-		TERMMAGENTA();
-		printf ("%*s%s %s\n", indent, "", fn.value->name, astTypeText[fn.value->type]);
-		TERMRESET();
+		printf ("%*s%s%s %s%s\n", indent, "", TERMMAGENTA, fn.value->name, astTypeText[fn.value->type], TERMRESET);
 
 		if (fn.index != 0) {
-			TERMMAGENTA();
-			printf ("%*s%s %s\n", indent, "", fn.index->name, astTypeText[fn.index->type]);
-			TERMRESET();
+			printf ("%*s%s%s %s%s\n", indent, "", TERMMAGENTA, fn.index->name, astTypeText[fn.index->type], TERMRESET);
 		}
 
 		print_ast_internal(text, &fn.range, indent, verbose, true);
@@ -407,26 +392,20 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	case rangeExpressionKind: {
 
 		rangeExpressionAst rn = *(rangeExpressionAst*)root->data;
-		TERMMAGENTA();
-		printf ("%*s%d..%d", indent, "", rn.from, rn.to);
-		TERMRESET();
+		printf ("%*s%s%d..%d%s", indent, "", TERMMAGENTA, rn.from, rn.to, TERMRESET);
 		break;
 	}
 	case unaryExpressionKind: {
 		unaryExpressionAst un = *(unaryExpressionAst*)root->data;
 
-		TERMMAGENTA();
-		printf ("%*s%s\n", indent, "", astUnaryText[un.operator]);
-		TERMRESET();
+		printf ("%*s%s%s%s\n", indent, "", TERMMAGENTA, astUnaryText[un.operator], TERMRESET);
 		print_ast_internal(text, &un.operand, indent, verbose, false);
 		break;
 	}
 	case binaryExpressionKind: {
 		binaryExpressionAst un = *(binaryExpressionAst*)root->data;
 
-		TERMMAGENTA();
-		printf ("%*s%s\n", indent, "", astBinaryText[un.operator]);
-		TERMRESET();
+		printf ("%*s%s%s%s\n", indent, "", TERMMAGENTA, astBinaryText[un.operator], TERMRESET);
 		print_ast_internal(text, &un.left, indent, verbose, true);
 		print_ast_internal(text, &un.right, indent, verbose, false);
 		break;
@@ -434,9 +413,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	case callExpressionKind: {
 		callExpressionAst cn = *(callExpressionAst*)root->data;
 
-		TERMMAGENTA();
-		printf ("%*s%s\n", indent, "", "print");
-		TERMRESET();
+		printf ("%*s%s%s%s\n", indent, "", TERMMAGENTA, "print", TERMRESET);
 		for(int i=0;i<cn.argumentCount;i++) {
 			print_ast_internal(text, &cn.arguments[i], indent, verbose, i!=cn.argumentCount-1);
 		}
@@ -445,33 +422,25 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	case variableDeclarationKind: {
 		variableDeclarationAst vn = *(variableDeclarationAst*)root->data;
 
-		TERMMAGENTA();
-		printf ("%*s%s %s\n", indent, "", vn.variable->name, astTypeText[vn.variable->type]);
-		TERMRESET();
+		printf ("%*s%s%s %s%s\n", indent, "", TERMMAGENTA, vn.variable->name, astTypeText[vn.variable->type], TERMRESET);
 		print_ast_internal(text, &vn.initalizer, indent, verbose, false);
 		break;
 	}
 	case variableAssignmentKind: {
 		variableAssignmentAst va = *(variableAssignmentAst*)root->data;
 
-		TERMMAGENTA();
-		printf ("%*s%s %s\n", indent, "", va.variable->name, astTypeText[va.variable->type]);
-		TERMRESET();
+		printf ("%*s%s%s %s%s\n", indent, "", TERMMAGENTA,va.variable->name, astTypeText[va.variable->type], TERMRESET);
 		print_ast_internal(text, &va.expression, indent, verbose, false);
 		break;
 	}
 	case variableReferenceKind: {
 		variableSymbol vs = *(variableSymbol*)root->data;
 
-		TERMMAGENTA();
-		printf ("%*s%s %s", indent, "", vs.name, astTypeText[vs.type]);
-		TERMRESET();
+		printf ("%*s%s%s %s%s", indent, "", TERMMAGENTA, vs.name, astTypeText[vs.type], TERMRESET);
 		break;
 	}
 	default: {
-		TERMRED();
-		fprintf(stderr, "ERROR: Unhandled case in print_ast for kind %s", astKindText[root->kind]);
-		TERMRESET();
+		fprintf(stderr, "%sERROR: Unhandled case in print_ast for kind %s%s", TERMRED, astKindText[root->kind], TERMRESET);
 		exit(1);
 		break;
 	}

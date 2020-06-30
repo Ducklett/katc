@@ -301,18 +301,12 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		char* tokenText = ast_substring(text, root->span);
 		if (verbose) {
 			printf ("%*s(", indent, "");
-			TERMBLUE();
-			printf ("'%s'", tokenText);
-			TERMRESET();
+			printf ("%s'%s'%s", TERMBLUE, tokenText, TERMRESET);
 			printf (" :: ");
-			TERMYELLOW();
-			printf ("%s", syntaxKindText[root->kind]);
-			TERMRESET();
+			printf ("%s%s%s", TERMYELLOW, syntaxKindText[root->kind], TERMRESET);
 			printf (")%s", newline?"\n":"");
 		} else {
-			TERMCYAN();
-			printf ("%*s%s%s", indent, "", tokenText, newline?"\n":"");
-			TERMRESET();
+			printf ("%*s%s%s%s%s", indent, "", TERMCYAN, tokenText, TERMRESET, newline?"\n":"");
 		}
 		free(tokenText);
 		return;
@@ -436,9 +430,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		break;
 	}
 	default: {
-		TERMRED();
-		fprintf(stderr, "ERROR: Unhandled case in print_syntaxTree for kind %s", syntaxKindText[root->kind]);
-		TERMRESET();
+		fprintf(stderr, "%sERROR: Unhandled case in print_syntaxTree for kind %s", TERMRED, syntaxKindText[root->kind], TERMRESET);
 		exit(1);
 		break;
 	}

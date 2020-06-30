@@ -63,9 +63,7 @@ astNode bind_expression(node *n, ast* tree) {
         case variableAssignment: return bind_variable_assignment(n, tree);
 
         default: {
-            TERMRED();
-            fprintf(stderr, "Unhandled node of type %s in binder", syntaxKindText[n->kind]);
-            TERMRESET();
+            fprintf(stderr, "%sUnhandled node of type %s in binder%s", TERMRED, syntaxKindText[n->kind], TERMRESET);
             exit(1);
         }
     }

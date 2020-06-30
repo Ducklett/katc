@@ -73,9 +73,7 @@ void emit_c_node(astNode *n, ast *tree) {
 	case variableAssignmentKind: return emit_c_variableAssignment(n, tree);
 	case variableReferenceKind: return emit_c_variableReference(n, tree);
 	default:
-		TERMRED();
-		fprintf(fp,"Unhandled node of type %s in c emitter", astKindText[n->kind]);
-		TERMRESET();
+		fprintf(stderr, "%sUnhandled node of type %s in c emitter%s", TERMRED, astKindText[n->kind], TERMRESET);
 		exit(1);
 	}
 }
@@ -154,7 +152,6 @@ static inline void emit_c_forLoop(astNode *n, ast *tree) {
 		fprintf(fp,") ");
 		emit_c_node(&fn.block, tree);
 	} else {
-		char* incOp = rn.to > rn.from ? "++" : "--";
 		fprintf(fp,"for (int %s = 0; %s <= %d; %s++) {\n", fn.index->name, fn.index->name, abs(rn.from - rn.to), fn.index->name);
 
 		if (rn.to > rn.from) fprintf(fp,"%s %s = i + %d;\n", cTypeText[fn.value->type], fn.value->name, rn.from);
@@ -177,9 +174,7 @@ static inline void emit_c_literal(astNode *n, ast *tree) {
 		free(n->stringValue);
 	}
 	default:
-		TERMRED();
-		fprintf(fp,"Unhandled type %s in c emitter", astTypeText[n->type]);
-		TERMRESET();
+		fprintf(fp,"%sUnhandled type %s in c emitter%s", TERMRED, astTypeText[n->type], TERMRESET);
 		exit(1);
 	}
 }
