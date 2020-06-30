@@ -312,7 +312,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 				case stringType: printf ("\"%s\"", root->stringValue); break;
 				default:
 					TERMRED();
-					printf("Unhandled type '%s' in print_ast", astTypeText[root->type]);
+					fprintf(stderr, "Unhandled type '%s' in print_ast", astTypeText[root->type]);
 					TERMRESET();
 					exit(1);
 			}
@@ -330,7 +330,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 				case stringType: printf ("%*s\"%s\"%s", indent, "", root->stringValue, newline?"\n":"");
 				default:
 					TERMRED();
-					printf("Unhandled type '%s' in print_ast", astTypeText[root->type]);
+					fprintf(stderr, "Unhandled type '%s' in print_ast", astTypeText[root->type]);
 					TERMRESET();
 					exit(1);
 			}
@@ -470,7 +470,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	}
 	default: {
 		TERMRED();
-		printf("ERROR: Unhandled case in print_ast for kind %s", astKindText[root->kind]);
+		fprintf(stderr, "ERROR: Unhandled case in print_ast for kind %s", astKindText[root->kind]);
 		TERMRESET();
 		exit(1);
 		break;

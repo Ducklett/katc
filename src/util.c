@@ -47,7 +47,7 @@ char* read_file(char* filename, u64* length) {
 
     if (!buffer) {
         TERMRED();
-        printf("Failed to read file: %s\n", filename);
+        fprintf(stderr, "Failed to read file: %s\n", filename);
         TERMRESET();
         exit(1);
     }

@@ -64,7 +64,7 @@ astNode bind_expression(node *n, ast* tree) {
 
         default: {
             TERMRED();
-            printf("Unhandled node of type %s in binder", syntaxKindText[n->kind]);
+            fprintf(stderr, "Unhandled node of type %s in binder", syntaxKindText[n->kind]);
             TERMRESET();
             exit(1);
         }
@@ -257,7 +257,7 @@ astNode bind_call_expression(node *n, ast *tree) {
 	functionCallNode cn = *(functionCallNode*)n->data;
 
     if (!span_compare(tree->text, cn.identifier.span, "print")) {
-        printf("only print function supported currently\n");
+        fprintf(stderr, "only print function supported currently\n");
         exit(1);
     }
 

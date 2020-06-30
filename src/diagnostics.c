@@ -29,44 +29,44 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		case unexpectedCharacterDiagnostic: {
 			char param1 = d.param1;
 			if (param1 == '\r' || param1 == '\n' || param1 == '\0') param1 = ' ';
-			printf(diagnosticText[d.kind], param1, d.param2, d.span.start, d.span.length); 
+			fprintf(stderr, diagnosticText[d.kind], param1, d.param2, d.span.start, d.span.length); 
 		} break;
 		case badTokenDiagnostic:
-			printf(diagnosticText[d.kind], sourceText[d.span.start], d.span.start, d.span.length); break;
+			fprintf(stderr, diagnosticText[d.kind], sourceText[d.span.start], d.span.start, d.span.length); break;
 		case unexpectedTokenDiagnostic:
-			printf(diagnosticText[d.kind], syntaxKindText[d.param1], syntaxKindText[d.param2], d.span.start, d.span.length); break;
+			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], syntaxKindText[d.param2], d.span.start, d.span.length); break;
 		case illegalPrimaryExpressionDiagnostic:
-			printf(diagnosticText[d.kind], syntaxKindText[d.param1], d.span.start, d.span.length); break;
+			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], d.span.start, d.span.length); break;
 		case undefinedUnaryOperatorDiagnostic:
-			printf(diagnosticText[d.kind], syntaxKindText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
+			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
 		case undefinedBinaryOperatorDiagnostic:
-			printf(diagnosticText[d.kind], syntaxKindText[d.param1], astTypeText[d.param2], astTypeText[d.param3], d.span.start, d.span.length); break;
+			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], astTypeText[d.param2], astTypeText[d.param3], d.span.start, d.span.length); break;
 		case redeclarationOfVariableDiagnostic:
-			printf(diagnosticText[d.kind], d.param1, d.span.start, d.span.length); break;
+			fprintf(stderr, diagnosticText[d.kind], d.param1, d.span.start, d.span.length); break;
 		case referenceToUndefinedVariableDiagnostic: {
 			char* identifierText = ast_substring(sourceText, d.span);
-			printf(diagnosticText[d.kind], identifierText, d.span.start, d.span.length);
+			fprintf(stderr, diagnosticText[d.kind], identifierText, d.span.start, d.span.length);
 			free(identifierText);
 		} break;
 		case cannotAssignDiagnostic: {
 			char* identifierText = ast_substring(sourceText, d.span);
-			printf(diagnosticText[d.kind], astTypeText[d.param2], identifierText, astTypeText[d.param1], d.span.start, d.span.length);
+			fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param2], identifierText, astTypeText[d.param1], d.span.start, d.span.length);
 			free(identifierText);
 		} break;
 		case variableCannotBeVoidDiagnostic: {
 			char* identifierText = ast_substring(sourceText, d.span);
-			printf(diagnosticText[d.kind], identifierText, d.span.start, d.span.length);
+			fprintf(stderr, diagnosticText[d.kind], identifierText, d.span.start, d.span.length);
 			free(identifierText);
 		} break;
-		case cannotConvertDiagnostic: printf(diagnosticText[d.kind], astTypeText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
+		case cannotConvertDiagnostic: fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
 		case unresolvedTypeDiagnostic: {
 			char* typeText = ast_substring(sourceText, d.span);
-			printf(diagnosticText[d.kind], typeText, d.span.start, d.span.length);
+			fprintf(stderr, diagnosticText[d.kind], typeText, d.span.start, d.span.length);
 			free(typeText);
 		} break;
-		case emptyCaseStatementDiagnostic: printf(diagnosticText[d.kind], d.span.start, d.span.length); break;
+		case emptyCaseStatementDiagnostic: fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
 		default: {
-			printf("Unhandled case %s in print_diagnostics\n", diagnosticMetaText[d.kind]);
+			fprintf(stderr, "Unhandled case %s in print_diagnostics\n", diagnosticMetaText[d.kind]);
 			TERMRESET();
 			exit(1);
 		}
@@ -75,11 +75,11 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 
 		int lineStart;
 		for (lineStart = d.span.start; sourceText[lineStart] != '\n' && lineStart > 0; lineStart--) {}
-		for (int i=lineStart;i<d.span.start;i++) printf("%c", sourceText[i]);
+		for (int i=lineStart;i<d.span.start;i++) fprintf(stderr, "%c", sourceText[i]);
 		TERMRED();
-		for (int i=0;i<d.span.length;i++) printf("%c", sourceText[d.span.start + i]);
+		for (int i=0;i<d.span.length;i++) fprintf(stderr, "%c", sourceText[d.span.start + i]);
 		TERMRESET();
-		for (int i=(d.span.start + d.span.length); sourceText[i] != '\n' && sourceText[i] != '\0';i++) printf("%c", sourceText[i]);
-		printf("\n");
+		for (int i=(d.span.start + d.span.length); sourceText[i] != '\n' && sourceText[i] != '\0';i++) fprintf(stderr, "%c", sourceText[i]);
+		fprintf(stderr, "\n");
 	}
 }

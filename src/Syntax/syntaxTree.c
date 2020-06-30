@@ -437,7 +437,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 	}
 	default: {
 		TERMRED();
-		printf("ERROR: Unhandled case in print_syntaxTree for kind %s", syntaxKindText[root->kind]);
+		fprintf(stderr, "ERROR: Unhandled case in print_syntaxTree for kind %s", syntaxKindText[root->kind]);
 		TERMRESET();
 		exit(1);
 		break;
