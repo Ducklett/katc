@@ -216,6 +216,7 @@ static inline void emit_c_callExpression(astNode *n, ast *tree) {
 	fprintf(fp,"printf(");
 	for (int i= 0; i < cn.argumentCount; i++) {
 		emit_c_node(cn.arguments + i, tree);
+		if (cn.arguments[i].type == boolType) fprintf(fp, " ? \"true\" : \"false\"");
 		if (i != cn.argumentCount-1) fprintf(fp,", ");
 	}
 	fprintf(fp,")");
