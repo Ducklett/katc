@@ -128,6 +128,10 @@ enum astUnaryOperator {
 	logicalNegationOp,
 	negationOp,
 	identityOp,
+	preIncrementOp,
+	preDecrementOp,
+	postIncrementOp,
+	postDecrementOp,
 };
 
 static const char *astUnaryText[] = {
@@ -135,12 +139,21 @@ static const char *astUnaryText[] = {
 	"logicalNegation",
 	"negation",
 	"identity",
+	"preIncrement",
+	"preDecrement",
+	"postIncrement",
+	"postDecrement",
 };
 
-enum astUnaryOperator get_unary_operator(enum syntaxKind operatorToken, enum astType type) {
-	if (type == intType && operatorToken == plusOperator) return identityOp;
-	if (type == intType && operatorToken == minusOperator) return negationOp;
-	if (type == boolType && operatorToken == bangOperator) return logicalNegationOp;
+enum astUnaryOperator get_unary_operator(enum syntaxKind operatorToken, enum astType type, bool left) {
+	if (type == intType && operatorToken == plusPlusOperator && left) return preIncrementOp;
+	if (type == intType && operatorToken == plusPlusOperator && !left) return postIncrementOp;
+	if (type == intType && operatorToken == minusMinusOperator && left) return preDecrementOp;
+	if (type == intType && operatorToken == minusMinusOperator && !left) return postDecrementOp;
+
+	if (type == intType && operatorToken == plusOperator && left) return identityOp;
+	if (type == intType && operatorToken == minusOperator && left) return negationOp;
+	if (type == boolType && operatorToken == bangOperator && left) return logicalNegationOp;
 	return missingUnaryOp;
 }
 

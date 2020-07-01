@@ -12,11 +12,11 @@ int main(int argc, char **argv) {
 	}
 
     bool verbose = true;
-    bool parseOnly = true;
+    bool parseOnly = false;
 
 	benchmark_start();
 	char *filename = argv[1];
-	bool success = create_ast(filename, result, true);
+	bool success = create_ast(filename, result, parseOnly);
 	benchmark_end("Total");
 
 	if (!success) {

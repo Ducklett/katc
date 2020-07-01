@@ -212,7 +212,7 @@ astNode bind_unary_expression(node *n, ast *tree) {
 
     astNode boundOperand = bind_expression(&un.operand, tree);
 
-    enum astUnaryOperator op = get_unary_operator(un.operator.kind, boundOperand.type);
+    enum astUnaryOperator op = get_unary_operator(un.operator.kind, boundOperand.type, un.left);
 
     if (!op) {
         report_diagnostic(&tree->diagnostics, undefinedUnaryOperatorDiagnostic, un.operator.span, un.operator.kind, boundOperand.type, 0);
