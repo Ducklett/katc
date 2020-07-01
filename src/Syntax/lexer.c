@@ -126,12 +126,19 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 	case '=': if (lexer_peek(l,1) == '=') return lex_basic_token(l, euqualsEqualsOperator, 2);
 			  else return lex_basic_token(l, equalsToken, 1);
 	case '<': if (lexer_peek(l,1) == '=') return lex_basic_token(l, lessEqualsOperator, 2);
+			  else if (lexer_peek(l,1) == '<') return lex_basic_token(l, lessLessOperator, 2);
 			  else return lex_basic_token(l, lessOperator, 1);
 	case '>': if (lexer_peek(l,1) == '=') return lex_basic_token(l, greaterEqualsOperator, 2);
+			  else if (lexer_peek(l,1) == '>') return lex_basic_token(l, greaterGreaterOperator, 2);
 			  else return lex_basic_token(l, greaterOperator, 1);
 
 	case '&': if (lexer_peek(l,1) == '&') return lex_basic_token(l, ampersandAmpersandOperator, 2);
+			  else return lex_basic_token(l, ampersandOperator, 1);
 	case '|': if (lexer_peek(l,1) == '|') return lex_basic_token(l, pipePipeOperator, 2);
+			  else return lex_basic_token(l, pipeOperator, 1);
+
+	case '~': return lex_basic_token(l, tildeOperator, 1);
+	case '^': return lex_basic_token(l, caretOperator, 1);
 
 	case ':': return lex_basic_token(l, colonToken, 1);
 	case ';': return lex_basic_token(l, semicolonToken, 1);

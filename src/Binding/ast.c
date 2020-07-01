@@ -73,6 +73,12 @@ enum astBinaryOperator {
 	lessOrEqualOp,
 	greaterOrEqualOp,
 
+	shiftLeftOp,
+	shiftRightOp,
+	bitwiseAndOp,
+	bitwiseXorOp,
+	bitwiseOrOp,
+
 	logicalAndOp,
 	logicalOrOp,
 };
@@ -90,6 +96,11 @@ static const char *astBinaryText[] = {
 	"greater",
 	"lessOrEqual",
 	"greaterOrEqual",
+	"shiftLeft",
+	"shiftRight",
+	"bitwiseAnd",
+	"bitwiseXor",
+	"bitwiseOr",
 	"logicalAnd",
 	"logicalOr",
 };
@@ -117,6 +128,17 @@ typedOperator get_binary_operator(enum syntaxKind operatorToken, enum astType le
 	if (operatorToken == lessEqualsOperator && left == intType && right == intType) return (typedOperator){ lessOrEqualOp, boolType };
 	if (operatorToken == greaterEqualsOperator && left == intType && right == intType) return (typedOperator){ greaterOrEqualOp, boolType };
 
+	if (operatorToken == lessLessOperator && left == intType && right == intType) return (typedOperator){ shiftLeftOp, intType };
+	if (operatorToken == greaterGreaterOperator && left == intType && right == intType) return (typedOperator){ shiftRightOp, intType };
+
+	if (operatorToken == ampersandOperator && left == intType && right == intType) return (typedOperator){ bitwiseAndOp, intType };
+	if (operatorToken == caretOperator && left == intType && right == intType) return (typedOperator){ bitwiseXorOp, intType };
+	if (operatorToken == pipeOperator && left == intType && right == intType) return (typedOperator){ bitwiseOrOp, intType };
+
+	if (operatorToken == ampersandOperator && left == boolType && right == boolType) return (typedOperator){ bitwiseAndOp, boolType };
+	if (operatorToken == caretOperator && left == boolType && right == boolType) return (typedOperator){ bitwiseXorOp, boolType };
+	if (operatorToken == pipeOperator && left == boolType && right == boolType) return (typedOperator){ bitwiseOrOp, boolType };
+
 	if (operatorToken == ampersandAmpersandOperator && left == boolType && right == boolType) return (typedOperator){ logicalAndOp, boolType };
 	if (operatorToken == pipePipeOperator && left == boolType && right == boolType) return (typedOperator) { logicalOrOp, boolType };
 
@@ -126,6 +148,7 @@ typedOperator get_binary_operator(enum syntaxKind operatorToken, enum astType le
 enum astUnaryOperator {
 	missingUnaryOp,
 	logicalNegationOp,
+	bitwiseNegationOp,
 	negationOp,
 	identityOp,
 	preIncrementOp,
@@ -136,8 +159,8 @@ enum astUnaryOperator {
 
 static const char *astUnaryText[] = {
 	"missingUnary",
-	"logicalNegation",
 	"negation",
+	"bitwiseNegation",
 	"identity",
 	"preIncrement",
 	"preDecrement",
@@ -150,10 +173,12 @@ enum astUnaryOperator get_unary_operator(enum syntaxKind operatorToken, enum ast
 	if (type == intType && operatorToken == plusPlusOperator && !left) return postIncrementOp;
 	if (type == intType && operatorToken == minusMinusOperator && left) return preDecrementOp;
 	if (type == intType && operatorToken == minusMinusOperator && !left) return postDecrementOp;
+	if (type == intType && operatorToken == tildeOperator && left) return bitwiseNegationOp;
 
 	if (type == intType && operatorToken == plusOperator && left) return identityOp;
 	if (type == intType && operatorToken == minusOperator && left) return negationOp;
 	if (type == boolType && operatorToken == bangOperator && left) return logicalNegationOp;
+
 	return missingUnaryOp;
 }
 

@@ -37,6 +37,11 @@ static const char *cBinaryText[] = {
 	">",
 	"<=",
 	">=",
+	"<<",
+	">>",
+	"&",
+	"^",
+	"|",
 	"&&",
 	"||",
 };
@@ -44,6 +49,7 @@ static const char *cBinaryText[] = {
 static const char *cUnaryText[] = {
 	"missingUnary",
 	"!",
+	"~",
 	"-",
 	"+",
 	"++",

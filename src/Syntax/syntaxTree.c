@@ -32,6 +32,13 @@ enum syntaxKind {
 	ampersandAmpersandOperator,
 	pipePipeOperator,
 
+	tildeOperator,
+	lessLessOperator,
+	greaterGreaterOperator,
+	ampersandOperator,
+	caretOperator,
+	pipeOperator,
+
 	equalsToken,
 	colonToken,
 	commaToken,
@@ -97,6 +104,12 @@ static const char *syntaxKindText[] = {
 	">=",
 	"&&",
 	"||",
+	"~",
+	"<<",
+	">>",
+	"&",
+	"^",
+	"|",
 	"=",
 	":",
 	",",
@@ -276,13 +289,17 @@ static inline i8 getBinaryOperatorPrecedence(enum syntaxKind kind) {
 	case multipliationOperator: return 13;
 	case divisionOperator: return 13;
 	case modulusOperator: return 13;
-
+	case lessLessOperator: return 11;
+	case greaterGreaterOperator: return 11;
 	case greaterOperator: return 10;
 	case greaterEqualsOperator: return 10;
 	case lessOperator: return 10;
 	case lessEqualsOperator: return 10;
 	case euqualsEqualsOperator: return 9;
 	case bangEqualsOperator: return 9;
+	case ampersandOperator: return 8;
+	case caretOperator: return 7;
+	case pipeOperator: return 6;
 	case ampersandAmpersandOperator: return 5;
 	case pipePipeOperator: return 4;
 	default: return -1;
@@ -292,6 +309,7 @@ static inline i8 getBinaryOperatorPrecedence(enum syntaxKind kind) {
 static inline i8 getUnaryOperatorPrecedence(enum syntaxKind kind) {
 	switch(kind) {
 	case bangOperator: return 14;
+	case tildeOperator: return 14;
 	case plusOperator: return 14;
 	case minusOperator: return 14;
 	case plusPlusOperator: return 14;
