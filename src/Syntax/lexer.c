@@ -113,8 +113,11 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 
 	case '\0': return lex_basic_token(l, endOfFileToken, 1);
 
-	case '+': return lex_basic_token(l, plusOperator, 1);
-	case '-': return lex_basic_token(l, minusOperator, 1);
+	case '+': if (lexer_peek(l,1) == '+') return lex_basic_token(l, plusPlusOperator, 2);
+			  else return lex_basic_token(l, plusOperator, 1);
+	case '-': if (lexer_peek(l,1) == '-') return lex_basic_token(l, minusMinusOperator, 2);
+			  return lex_basic_token(l, minusOperator, 1);
+
 	case '*': return lex_basic_token(l, multipliationOperator, 1);
 	case '%': return lex_basic_token(l, modulusOperator, 1);
 

@@ -381,6 +381,7 @@ node parser_parse_expression(parser *p, diagnosticContainer *d) { return parser_
 
 node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parentPrecedence) {
 
+	bool unaryOnLeft = true;
 	node unaryOp = parser_current(p, d);
 	i8 unaryPrecedence =  getUnaryOperatorPrecedence(unaryOp.kind);
 
@@ -389,7 +390,17 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 
 	node left = parser_parse_primary_expression(p, d);
 
-	if (left.kind == endOfFileToken || left.kind == errorToken) return left;
+	// try to find a right unary expression if a left one was not found
+	if (unaryPrecedence == -1) {
+		unaryOp = parser_current(p, d);
+		if (unaryOp.kind == plusPlusOperator || unaryOp.kind == minusMinusOperator) {
+			unaryPrecedence =  getUnaryOperatorPrecedence(unaryOp.kind);
+			parser_next_token(p, d);
+			unaryOnLeft = false;
+		} 
+	} else if (left.kind == endOfFileToken || left.kind == errorToken) return left;
+
+
 
 	while (true) {
 		node operator = parser_current(p, d);
@@ -402,7 +413,7 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 
 			u16 index = p->unaryExpressionIndex;
 			p->unaryExpressions[p->unaryExpressionIndex++] =
-				(unaryExpressionNode){ unaryOp, left, };
+				(unaryExpressionNode){ unaryOp, left, unaryOnLeft };
 
 			left = (node) { unaryExpression, textspan_from_bounds(&unaryOp, &left), .data = &(p->unaryExpressions[index]), };
 		}

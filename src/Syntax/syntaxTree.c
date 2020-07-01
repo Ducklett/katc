@@ -16,6 +16,8 @@ enum syntaxKind {
 
 	plusOperator,
 	minusOperator,
+	plusPlusOperator,
+	minusMinusOperator,
 	multipliationOperator,
 	divisionOperator,
 	modulusOperator,
@@ -81,6 +83,8 @@ static const char *syntaxKindText[] = {
 	"stringLiteral",
 	"+",
 	"-",
+	"++",
+	"--",
 	"*",
 	"/",
 	"%",
@@ -147,6 +151,7 @@ typedef struct node {
 typedef struct unaryExpressionNode {
 	node operator;
 	node operand;
+	bool left;
 } unaryExpressionNode;
 
 typedef struct binaryExpressionNode {
@@ -289,6 +294,8 @@ static inline i8 getUnaryOperatorPrecedence(enum syntaxKind kind) {
 	case bangOperator: return 14;
 	case plusOperator: return 14;
 	case minusOperator: return 14;
+	case plusPlusOperator: return 14;
+	case minusMinusOperator: return 14;
 	default: return -1;
 	}
 }
@@ -405,8 +412,9 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 	}
 	case unaryExpression: {
 		unaryExpressionNode un = *(unaryExpressionNode*)root->data;
-		print_syntaxtree_internal(text, &un.operator, indent, verbose, true);
-		print_syntaxtree_internal(text, &un.operand, indent, verbose, false);
+		if (un.left) print_syntaxtree_internal(text, &un.operator, indent, verbose, true);
+		print_syntaxtree_internal(text, &un.operand, indent, verbose, !un.left);
+		if (!un.left) print_syntaxtree_internal(text, &un.operator, indent, verbose, false);
 		break;
 	}
 	case binaryExpression: {
