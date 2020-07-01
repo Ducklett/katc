@@ -11,9 +11,12 @@ int main(int argc, char **argv) {
 		exit(1);
 	}
 
+    bool verbose = true;
+    bool parseOnly = true;
+
 	benchmark_start();
-	char *filename = argc >= 2 ? argv[1] : "test.kc";
-	bool success = create_ast(filename, result);
+	char *filename = argv[1];
+	bool success = create_ast(filename, result, true);
 	benchmark_end("Total");
 
 	if (!success) {
@@ -21,9 +24,10 @@ int main(int argc, char **argv) {
 		return 1;
 	} 
 
-    // bool verbose = true;
-	// print_ast(result->text, &result->root, 0, verbose);
-	emit_c_from_ast(result);
+	if (parseOnly) print_syntaxtree(result->text, &result->parser.root, 0, verbose);
+	else print_ast(result->text, &result->root, 0, verbose);
+
+	//emit_c_from_ast(result);
 
 	return 0;
 }

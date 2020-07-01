@@ -283,7 +283,7 @@ enum astType resolve_type_from_span(ast *tree, textspan span) {
 
 int bind_tree(ast* tree);
 
-int create_ast(char* filename, ast* tree) {
+int create_ast(char* filename, ast* tree, bool parseOnly) {
 	{
 		benchmark_start();
 		tree->text = read_file(filename, &tree->length);
@@ -293,6 +293,8 @@ int create_ast(char* filename, ast* tree) {
 	if (!create_syntaxtree(tree->text, tree->length, &tree->parser, &tree->diagnostics)) {
 		return 0;
 	}
+
+	if (parseOnly) return 1;
 
 	return bind_tree(tree);
 }

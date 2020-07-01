@@ -393,6 +393,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		print_syntaxtree_internal(text, &fn.block, indent, verbose, false);
 		break;
 	}
+	case fileStatement:
 	case blockStatement: {
 		blockStatementNode bn = *(blockStatementNode*)root->data;
 		print_syntaxtree_internal(text, &bn.openCurly, indent, verbose, true);
