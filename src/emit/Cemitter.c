@@ -46,6 +46,10 @@ static const char *cUnaryText[] = {
 	"!",
 	"-",
 	"+",
+	"++",
+	"--",
+	"++",
+	"--",
 };
 
 FILE *fp;
@@ -191,8 +195,13 @@ static inline void emit_c_binaryExpression(astNode *n, ast *tree) {
 static inline void emit_c_unaryExpression(astNode *n, ast *tree) {
 	unaryExpressionAst un = *(unaryExpressionAst*)n->data;
 	fprintf(fp,"(");
-	fprintf(fp,cUnaryText[un.operator]);
-	emit_c_node(&un.operand, tree);
+	if (un.operator == postIncrementOp || un.operator == postDecrementOp) {
+		emit_c_node(&un.operand, tree);
+		fprintf(fp,cUnaryText[un.operator]);
+	} else {
+		fprintf(fp,cUnaryText[un.operator]);
+		emit_c_node(&un.operand, tree);
+	}
 	fprintf(fp,")");
 }
 

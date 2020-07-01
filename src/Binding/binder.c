@@ -212,6 +212,10 @@ astNode bind_unary_expression(node *n, ast *tree) {
 
     astNode boundOperand = bind_expression(&un.operand, tree);
 
+    if (boundOperand.kind != variableReferenceKind &&
+        (un.operator.kind == plusPlusOperator || un.operator.kind == minusMinusOperator)) {
+        report_diagnostic(&tree->diagnostics, illegalIncrementOrDecrementDiagnostic, un.operand.span, 0, 0, 0);
+    }
     enum astUnaryOperator op = get_unary_operator(un.operator.kind, boundOperand.type, un.left);
 
     if (!op) {

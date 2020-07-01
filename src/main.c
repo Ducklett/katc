@@ -24,10 +24,10 @@ int main(int argc, char **argv) {
 		return 1;
 	} 
 
-	if (parseOnly) print_syntaxtree(result->text, &result->parser.root, 0, verbose);
-	else print_ast(result->text, &result->root, 0, verbose);
+	// if (parseOnly) print_syntaxtree(result->text, &result->parser.root, 0, verbose);
+	// else print_ast(result->text, &result->root, 0, verbose);
 
-	//emit_c_from_ast(result);
+	emit_c_from_ast(result);
 
 	return 0;
 }
