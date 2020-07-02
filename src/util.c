@@ -29,7 +29,7 @@ typedef unsigned long u64;
 #define benchmark_end(name) {}
 #endif
 
-char* read_file(char* filename, u64* length) {
+char* read_file(const char* filename, u64* length) {
     char * buffer = 0;
     FILE * f = fopen (filename, "rb");
 

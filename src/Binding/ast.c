@@ -321,7 +321,7 @@ enum astType resolve_type_from_span(ast *tree, textspan span) {
 
 int bind_tree(ast* tree);
 
-int create_ast(char* filename, ast* tree, bool parseOnly) {
+int create_ast(const char* filename, ast* tree, bool parseOnly) {
 	{
 		benchmark_start();
 		tree->text = read_file(filename, &tree->length);

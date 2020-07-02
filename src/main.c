@@ -1,22 +1,49 @@
-#define BENCHMARK true
-#include "header.c"
+ #define BENCHMARK true
+ #include "header.c"
 
-int main(int argc, char **argv) {
+static const char *const usage[] = {
+    "kc <entrypoint> [options] ",
+    NULL,
+};
 
-	ast *result = calloc(1, sizeof(ast));
+int main(int argc, const char **argv) {
 
-	if (argc < 2) {
-		fprintf(stderr, "%sMust supply a file:%s\n", TERMRED, TERMRESET);
-		printf("kc <filename>");
+	int run = 0;
+	const char *outputType = NULL;
+	struct argparse_option options[] = {
+    	OPT_HELP(),
+    	OPT_GROUP("Basic options"),
+    	OPT_BOOLEAN('r', "run", &run, "run as script"),
+    	OPT_STRING('t', "output-type", &outputType, "syntaxtree|ast|c"),
+    	OPT_END(),
+	};
+
+	struct argparse argparse;
+	argparse_init(&argparse, options, usage, 0);
+	argparse_describe(&argparse, "\nThe kat language compiler","");
+	argc = argparse_parse(&argparse, argc, argv);
+
+	if (argc > 1) {
+		fprintf(stderr, "%sMust supply only one file as entrypoint.%s\n", TERMRED, TERMRESET);
 		exit(1);
 	}
 
-    bool verbose = true;
-    bool parseOnly = false;
+    bool parseOnly = outputType != NULL && !strcmp(outputType, "syntaxtree");
+    bool isAst = outputType != NULL && !strcmp(outputType, "ast");
+	bool isC = outputType != NULL && !strcmp(outputType, "c");
+
+	if (outputType != NULL && !parseOnly && !isAst && !isC) {
+		fprintf(stderr, "%sInvalid output type '%s', options are syntaxtree|ast|c.%s\n", TERMRED, outputType, TERMRESET);
+		exit(1);
+	}
+
+	const char* entrypoint = argv[0];
+
+	ast *result = calloc(1, sizeof(ast));
+
 
 	benchmark_start();
-	char *filename = argv[1];
-	bool success = create_ast(filename, result, parseOnly);
+	bool success = create_ast(entrypoint, result, parseOnly);
 	benchmark_end("Total");
 
 	if (!success) {
@@ -24,10 +51,11 @@ int main(int argc, char **argv) {
 		return 1;
 	} 
 
-	// if (parseOnly) print_syntaxtree(result->text, &result->parser.root, 0, verbose);
-	// else print_ast(result->text, &result->root, 0, verbose);
+    bool verbose = true;
 
-	emit_c_from_ast(result);
+	if (parseOnly) print_syntaxtree(result->text, &result->parser.root, 0, verbose);
+	else if (isAst) print_ast(result->text, &result->root, 0, verbose);
+	else emit_c_from_ast(result, run);
 
 	return 0;
 }

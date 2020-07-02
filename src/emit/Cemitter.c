@@ -59,11 +59,14 @@ static const char *cUnaryText[] = {
 };
 
 FILE *fp;
-void emit_c_from_ast(ast *tree) {
+void emit_c_from_ast(ast *tree, bool run) {
 	fp = fopen("out.c", "w+");
 	emit_c_file(&tree->root, tree);
 	fclose(fp);
-	system("tcc -run out.c");
+
+	if (run) system("tcc -run out.c");
+	else system("tcc out.c");
+
 	remove("out.c");
 }
 
