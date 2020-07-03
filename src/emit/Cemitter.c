@@ -59,15 +59,22 @@ static const char *cUnaryText[] = {
 };
 
 FILE *fp;
-void emit_c_from_ast(ast *tree, bool run) {
-	fp = fopen("out.c", "w+");
+void emit_c_from_ast(ast *tree, const char* outputName, bool run, bool emitSource) {
+	const char* cFileName = (emitSource && outputName && !run) ? outputName : "out.c";
+	fp = fopen(cFileName, "w+");
 	emit_c_file(&tree->root, tree);
 	fclose(fp);
 
 	if (run) system("tcc -run out.c");
-	else system("tcc out.c");
+	else if (!emitSource) {
+		if (outputName) {
+			char* compileCommand = string_concat("tcc out.c -o ", outputName);
+			system(compileCommand);
+			free(compileCommand);
+		} else system("tcc out.c");
 
-	remove("out.c");
+		remove("out.c");
+	}
 }
 
 void emit_c_node(astNode *n, ast *tree) {

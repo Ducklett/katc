@@ -10,11 +10,15 @@ int main(int argc, const char **argv) {
 
 	int run = 0;
 	const char *outputType = NULL;
+	const char *outputTypes = "syntaxtree|ast|c|bin";
+	const char *outputName = NULL;
+
 	struct argparse_option options[] = {
     	OPT_HELP(),
     	OPT_GROUP("Basic options"),
     	OPT_BOOLEAN('r', "run", &run, "run as script"),
-    	OPT_STRING('t', "output-type", &outputType, "syntaxtree|ast|c"),
+    	OPT_STRING('t', "output-type", &outputType, outputTypes),
+    	OPT_STRING('o', "output-name", &outputName, "name for the output file"),
     	OPT_END(),
 	};
 
@@ -31,9 +35,10 @@ int main(int argc, const char **argv) {
     bool parseOnly = outputType != NULL && !strcmp(outputType, "syntaxtree");
     bool isAst = outputType != NULL && !strcmp(outputType, "ast");
 	bool isC = outputType != NULL && !strcmp(outputType, "c");
+	bool isBinary = outputType != NULL && !strcmp(outputType, "bin");
 
-	if (outputType != NULL && !parseOnly && !isAst && !isC) {
-		fprintf(stderr, "%sInvalid output type '%s', options are syntaxtree|ast|c.%s\n", TERMRED, outputType, TERMRESET);
+	if (outputType != NULL && !parseOnly && !isAst && !isC && !isBinary) {
+		fprintf(stderr, "%sInvalid output type '%s', options are %s.%s\n", TERMRED, outputType, outputTypes, TERMRESET);
 		exit(1);
 	}
 
@@ -55,7 +60,7 @@ int main(int argc, const char **argv) {
 
 	if (parseOnly) print_syntaxtree(result->text, &result->parser.root, 0, verbose);
 	else if (isAst) print_ast(result->text, &result->root, 0, verbose);
-	else emit_c_from_ast(result, run);
+	else emit_c_from_ast(result, outputName, run, isC);
 
 	return 0;
 }

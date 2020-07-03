@@ -29,6 +29,14 @@ typedef unsigned long u64;
 #define benchmark_end(name) {}
 #endif
 
+char* string_concat(const char *s1, const char *s2)
+{
+    char *result = malloc(strlen(s1) + strlen(s2) + 1);
+    strcpy(result, s1);
+    strcat(result, s2);
+    return result;
+}
+
 char* read_file(const char* filename, u64* length) {
     char * buffer = 0;
     FILE * f = fopen (filename, "rb");
