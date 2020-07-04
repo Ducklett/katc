@@ -228,6 +228,7 @@ typedef struct variableDeclarationAst {
 typedef struct variableAssignmentAst {
 	variableSymbol* variable;
 	astNode expression;
+	enum astBinaryOperator compoundOperator;
 } variableAssignmentAst;
 
 typedef struct blockStatementAst {
@@ -469,7 +470,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	case variableAssignmentKind: {
 		variableAssignmentAst va = *(variableAssignmentAst*)root->data;
 
-		printf ("%*s%s%s %s%s\n", indent, "", TERMMAGENTA,va.variable->name, astTypeText[va.variable->type], TERMRESET);
+		printf ("%*s%s%s %s %s%s\n", indent, "", TERMMAGENTA,va.variable->name, astTypeText[va.variable->type], va.compoundOperator?astBinaryText[va.compoundOperator]:"equals",  TERMRESET);
 		print_ast_internal(text, &va.expression, indent, verbose, false);
 		break;
 	}

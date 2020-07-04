@@ -303,6 +303,21 @@ char* allocate_string(char *text, int length) {
 	return allocatedText;
 }
 
+static inline enum syntaxKind getBinaryOperatorFromAssignmentOperator(enum syntaxKind kind) {
+	switch(kind) {
+	case plusEqualsToken: return plusOperator;
+	case minusEqualsToken: return minusOperator;
+	case starEqualsToken: return multipliationOperator;
+	case slashEqualsToken: return divisionOperator;
+	case percentEqualsToken: return modulusOperator;
+	case lessLessEqualsToken: return lessLessOperator;
+	case greaterGreaterEqualsToken: return greaterGreaterOperator;
+	case ampersandEqualsToken: return ampersandOperator;
+	case caretEqualsToken: return caretOperator;
+	case pipeEqualsToken: return pipeOperator;
+	default: return 0;
+	}
+}
 static inline bool isAssignmentOperator(enum syntaxKind kind) {
 	return (
 		kind == equalsToken ||

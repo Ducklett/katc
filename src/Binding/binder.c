@@ -19,367 +19,374 @@ variableSymbol* find_variable_in_scope(textspan nameSpan, ast *tree);
 int bind_tree(ast* tree) {
 
 	benchmark_start();
-    tree->root = bind_expression(&tree->parser.root, tree);
+	tree->root = bind_expression(&tree->parser.root, tree);
 	benchmark_end("Binding");
-    return tree->diagnostics.index == 0;
+	return tree->diagnostics.index == 0;
 }
 
 astNode bind_expression_of_type(node *n, ast* tree, enum astType expectedType, textspan errorSpan) {
-    astNode outNode = bind_expression(n, tree);
+	astNode outNode = bind_expression(n, tree);
 
-    if (expectedType != 0 && outNode.type != errorType && expectedType != outNode.type) {
-        report_diagnostic(&tree->diagnostics, cannotConvertDiagnostic, errorSpan, outNode.type, expectedType, 0);
-    }
+	if (expectedType != 0 && outNode.type != errorType && expectedType != outNode.type) {
+		report_diagnostic(&tree->diagnostics, cannotConvertDiagnostic, errorSpan, outNode.type, expectedType, 0);
+	}
 
-    return outNode;
+	return outNode;
 }
 
 astNode bind_expression(node *n, ast* tree) {
-    switch(n->kind) {
-        case fileStatement:
-        case blockStatement: return bind_block_statement(n, tree);
-        case ifStatement: return bind_if_statement(n, tree);
-        case caseStatement: return bind_case_statement(n, tree);
-        case whileLoop: return bind_while_loop(n, tree);
-        case forLoop: return bind_for_loop(n, tree);
+	switch(n->kind) {
+		case fileStatement:
+		case blockStatement: return bind_block_statement(n, tree);
+		case ifStatement: return bind_if_statement(n, tree);
+		case caseStatement: return bind_case_statement(n, tree);
+		case whileLoop: return bind_while_loop(n, tree);
+		case forLoop: return bind_for_loop(n, tree);
 
-        case falseKeyword:
-        case trueKeyword: return (astNode){ literalKind, boolType, .boolValue = n->boolValue };
+		case falseKeyword:
+		case trueKeyword: return (astNode){ literalKind, boolType, .boolValue = n->boolValue };
 
-        case numberLiteral: return (astNode){ literalKind, intType, .numValue = n->numValue };
-        case stringLiteral: return (astNode){ literalKind, stringType, .stringValue = n->stringValue };
-        
-        case parenthesizedExpression: return bind_expression(&((parenthesizedExpressionNode*)n->data)->expression, tree);
+		case numberLiteral: return (astNode){ literalKind, intType, .numValue = n->numValue };
+		case stringLiteral: return (astNode){ literalKind, stringType, .stringValue = n->stringValue };
+		
+		case parenthesizedExpression: return bind_expression(&((parenthesizedExpressionNode*)n->data)->expression, tree);
 
-        case identifierToken: {
-            variableSymbol *variable = find_variable_in_scope(n->span, tree);
-            return (astNode){ variableReferenceKind, variable == 0 ? errorType : variable->type, .data = variable };
-        }
+		case identifierToken: {
+			variableSymbol *variable = find_variable_in_scope(n->span, tree);
+			return (astNode){ variableReferenceKind, variable == 0 ? errorType : variable->type, .data = variable };
+		}
 
-        case unaryExpression: return bind_unary_expression(n, tree);
-        case binaryExpression: return bind_binary_expression(n, tree);
-        case callExpression: return bind_call_expression(n, tree);
-        case variableDeclaration: return bind_variable_declaration(n, tree);
-        case variableAssignment: return bind_variable_assignment(n, tree);
+		case unaryExpression: return bind_unary_expression(n, tree);
+		case binaryExpression: return bind_binary_expression(n, tree);
+		case callExpression: return bind_call_expression(n, tree);
+		case variableDeclaration: return bind_variable_declaration(n, tree);
+		case variableAssignment: return bind_variable_assignment(n, tree);
 
-        default: {
-            fprintf(stderr, "%sUnhandled node of type %s in binder%s", TERMRED, syntaxKindText[n->kind], TERMRESET);
-            exit(1);
-        }
-    }
+		default: {
+			fprintf(stderr, "%sUnhandled node of type %s in binder%s", TERMRED, syntaxKindText[n->kind], TERMRESET);
+			exit(1);
+		}
+	}
 }
 
 astNode bind_block_statement(node *n, ast *tree) {
-    astNode boundStatements[100];
-    int statementCount = 0;
+	astNode boundStatements[100];
+	int statementCount = 0;
 
 	blockStatementNode bn = *(blockStatementNode*)n->data;
 
-    int parentScopeIndex = push_scope(tree);
+	int parentScopeIndex = push_scope(tree);
 
-    for (int i = 0; i < bn.statementsCount; i++) {
-        boundStatements[statementCount++] = bind_expression(&bn.statements[i], tree);
-    }
-    
-    pop_scope(tree, parentScopeIndex);
+	for (int i = 0; i < bn.statementsCount; i++) {
+		boundStatements[statementCount++] = bind_expression(&bn.statements[i], tree);
+	}
+	
+	pop_scope(tree, parentScopeIndex);
 
-    astNode* nodesStart = &tree->nodes[tree->nodesIndex];
-    for (int i = 0; i < statementCount; i++) {
-        tree->nodes[tree->nodesIndex++] = boundStatements[i];
-    }
+	astNode* nodesStart = &tree->nodes[tree->nodesIndex];
+	for (int i = 0; i < statementCount; i++) {
+		tree->nodes[tree->nodesIndex++] = boundStatements[i];
+	}
 
-    int index = tree->blockStatementsIndex;
-    tree->blockStatements[tree->blockStatementsIndex++] =
-        (blockStatementAst){ nodesStart, statementCount };
+	int index = tree->blockStatementsIndex;
+	tree->blockStatements[tree->blockStatementsIndex++] =
+		(blockStatementAst){ nodesStart, statementCount };
 
-    return (astNode){ n->kind == blockStatement ? blockStatementKind : fileStatementKind, voidType, .data = &tree->blockStatements[index] };
+	return (astNode){ n->kind == blockStatement ? blockStatementKind : fileStatementKind, voidType, .data = &tree->blockStatements[index] };
 }
 
 astNode bind_if_statement(node *n, ast *tree) {
 
 	ifStatementNode in = *(ifStatementNode*)n->data;
 
-    astNode boundCondition = bind_expression_of_type(&in.condition, tree, boolType, in.condition.span);
-    astNode boundthen = bind_expression(&in.thenExpression, tree);
-    astNode boundElse = in.elseExpression.kind == 0
-        ? (astNode){0}
-        : bind_expression(&in.elseExpression, tree);
+	astNode boundCondition = bind_expression_of_type(&in.condition, tree, boolType, in.condition.span);
+	astNode boundthen = bind_expression(&in.thenExpression, tree);
+	astNode boundElse = in.elseExpression.kind == 0
+		? (astNode){0}
+		: bind_expression(&in.elseExpression, tree);
 
-    int index = tree->ifStatementsIndex;
-    tree->ifStatements[tree->ifStatementsIndex++] =
-        (ifStatementAst){ boundCondition, boundthen, boundElse }; 
+	int index = tree->ifStatementsIndex;
+	tree->ifStatements[tree->ifStatementsIndex++] =
+		(ifStatementAst){ boundCondition, boundthen, boundElse }; 
 
-    enum astType ifType = boundthen.type == boundElse.type ? boundthen.type : voidType;
+	enum astType ifType = boundthen.type == boundElse.type ? boundthen.type : voidType;
 
-    return (astNode){ ifStatementKind, ifType, .data = &tree->ifStatements[index] };
+	return (astNode){ ifStatementKind, ifType, .data = &tree->ifStatements[index] };
 }
 
 astNode bind_case_branch(node *n, ast *tree) {
 	caseBranchNode cn = *(caseBranchNode*)n->data;
 
-    astNode boundCondition = cn.condition.kind == defaultKeyword
-        ? (astNode){0}
-        : bind_expression_of_type(&cn.condition, tree, boolType, cn.condition.span);
+	astNode boundCondition = cn.condition.kind == defaultKeyword
+		? (astNode){0}
+		: bind_expression_of_type(&cn.condition, tree, boolType, cn.condition.span);
 
-    astNode boundthen = bind_expression(&cn.thenExpression, tree);
+	astNode boundthen = bind_expression(&cn.thenExpression, tree);
 
-    int index = tree->caseBranchesIndex;
-    tree->caseBranches[tree->caseBranchesIndex++] =
-        (caseBranchAst){ boundCondition, boundthen  }; 
+	int index = tree->caseBranchesIndex;
+	tree->caseBranches[tree->caseBranchesIndex++] =
+		(caseBranchAst){ boundCondition, boundthen  }; 
 
-    return (astNode){ caseBranchKind, boundthen.type, .data = &tree->caseBranches[index] };
+	return (astNode){ caseBranchKind, boundthen.type, .data = &tree->caseBranches[index] };
 }
 
 astNode bind_case_statement(node *n, ast *tree) {
 
-    astNode boundBranches[100];
-    int branchCount = 0;
+	astNode boundBranches[100];
+	int branchCount = 0;
 
 	caseStatementNode cn = *(caseStatementNode*)n->data;
 
-    int parentScopeIndex = push_scope(tree);
+	int parentScopeIndex = push_scope(tree);
 
-    enum astType caseType;
+	enum astType caseType;
 
-    for (int i = 0; i < cn.branchCount; i++) {
-        boundBranches[branchCount++] = bind_case_branch(&cn.branches[i], tree);
-        if (i == 0) caseType = boundBranches[i].type;
-        else if (caseType != boundBranches[i].type) caseType = voidType;
-    }
-    
-    pop_scope(tree, parentScopeIndex);
+	for (int i = 0; i < cn.branchCount; i++) {
+		boundBranches[branchCount++] = bind_case_branch(&cn.branches[i], tree);
+		if (i == 0) caseType = boundBranches[i].type;
+		else if (caseType != boundBranches[i].type) caseType = voidType;
+	}
+	
+	pop_scope(tree, parentScopeIndex);
 
-    if (branchCount == 0) {
-        report_diagnostic(&tree->diagnostics, emptyCaseStatementDiagnostic, n->span, 0, 0, 0);
-    }
+	if (branchCount == 0) {
+		report_diagnostic(&tree->diagnostics, emptyCaseStatementDiagnostic, n->span, 0, 0, 0);
+	}
 
-    astNode* nodesStart = &tree->nodes[tree->nodesIndex];
-    for (int i = 0; i < branchCount; i++) {
-        tree->nodes[tree->nodesIndex++] = boundBranches[i];
-    }
+	astNode* nodesStart = &tree->nodes[tree->nodesIndex];
+	for (int i = 0; i < branchCount; i++) {
+		tree->nodes[tree->nodesIndex++] = boundBranches[i];
+	}
 
-    int index = tree->caseStatementsIndex;
-    tree->caseStatements[tree->caseStatementsIndex++] =
-        (caseStatementAst){ nodesStart, branchCount };
+	int index = tree->caseStatementsIndex;
+	tree->caseStatements[tree->caseStatementsIndex++] =
+		(caseStatementAst){ nodesStart, branchCount };
 
-    return (astNode){ caseStatementKind, caseType, .data = &tree->caseStatements[index], };
+	return (astNode){ caseStatementKind, caseType, .data = &tree->caseStatements[index], };
 }
 
 astNode bind_while_loop(node *n, ast *tree) {
 
 	whileLoopNode wn = *(whileLoopNode*)n->data;
 
-    astNode boundCondition = bind_expression_of_type(&wn.condition, tree, boolType, wn.condition.span);
-    astNode boundBlock = bind_expression(&wn.block, tree);
+	astNode boundCondition = bind_expression_of_type(&wn.condition, tree, boolType, wn.condition.span);
+	astNode boundBlock = bind_expression(&wn.block, tree);
 
-    int index = tree->whileLoopIndex;
-    tree->whileLoops[tree->whileLoopIndex++] = 
-        (whileLoopAst){ boundCondition, boundBlock };
+	int index = tree->whileLoopIndex;
+	tree->whileLoops[tree->whileLoopIndex++] = 
+		(whileLoopAst){ boundCondition, boundBlock };
 
-    return (astNode){ whileLoopKind, voidType, .data = &tree->whileLoops[index] };
+	return (astNode){ whileLoopKind, voidType, .data = &tree->whileLoops[index] };
 }
 
 astNode bind_range_expression(node *n, ast *tree) {
 	rangeExpressionNode rn = *(rangeExpressionNode*)n->data;
-    int from = rn.start.numValue;
-    int to = rn.end.numValue;
+	int from = rn.start.numValue;
+	int to = rn.end.numValue;
 
-    int index = tree->rangeIndex;
-    tree->ranges[tree->rangeIndex++] = 
-         (rangeExpressionAst){ from, to };
+	int index = tree->rangeIndex;
+	tree->ranges[tree->rangeIndex++] = 
+		 (rangeExpressionAst){ from, to };
 
-    return (astNode){ rangeExpressionKind, intType, .data = &tree->ranges[index] };
+	return (astNode){ rangeExpressionKind, intType, .data = &tree->ranges[index] };
 }
 
 astNode bind_for_loop(node *n, ast *tree) {
 
 	forLoopNode fn = *(forLoopNode*)n->data;
 
-    astNode range = bind_range_expression(&fn.range, tree);
-    variableSymbol *valueVar = declare_variable(tree, fn.value.span, range.type);
-    variableSymbol *keyVar = fn.key.kind == 0 ? 0 : declare_variable(tree, fn.key.span, intType);
-    astNode boundBlock = bind_expression(&fn.block, tree);
+	astNode range = bind_range_expression(&fn.range, tree);
+	variableSymbol *valueVar = declare_variable(tree, fn.value.span, range.type);
+	variableSymbol *keyVar = fn.key.kind == 0 ? 0 : declare_variable(tree, fn.key.span, intType);
+	astNode boundBlock = bind_expression(&fn.block, tree);
 
-    int index = tree->forLoopIndex;
-    tree->forLoops[tree->forLoopIndex++] = 
-         (forLoopAst){ valueVar, keyVar, range, boundBlock };
+	int index = tree->forLoopIndex;
+	tree->forLoops[tree->forLoopIndex++] = 
+		 (forLoopAst){ valueVar, keyVar, range, boundBlock };
 
-    return (astNode){ forLoopKind, voidType, .data = &tree->forLoops[index] };
+	return (astNode){ forLoopKind, voidType, .data = &tree->forLoops[index] };
 }
 
 astNode bind_unary_expression(node *n, ast *tree) {
 	unaryExpressionNode un = *(unaryExpressionNode*)n->data;
 
-    astNode boundOperand = bind_expression(&un.operand, tree);
+	astNode boundOperand = bind_expression(&un.operand, tree);
 
-    if (boundOperand.kind != variableReferenceKind &&
-        (un.operator.kind == plusPlusOperator || un.operator.kind == minusMinusOperator)) {
-        report_diagnostic(&tree->diagnostics, illegalIncrementOrDecrementDiagnostic, un.operand.span, 0, 0, 0);
-    }
-    enum astUnaryOperator op = get_unary_operator(un.operator.kind, boundOperand.type, un.left);
+	if (boundOperand.kind != variableReferenceKind &&
+		(un.operator.kind == plusPlusOperator || un.operator.kind == minusMinusOperator)) {
+		report_diagnostic(&tree->diagnostics, illegalIncrementOrDecrementDiagnostic, un.operand.span, 0, 0, 0);
+	}
+	enum astUnaryOperator op = get_unary_operator(un.operator.kind, boundOperand.type, un.left);
 
-    if (!op) {
-        report_diagnostic(&tree->diagnostics, undefinedUnaryOperatorDiagnostic, un.operator.span, un.operator.kind, boundOperand.type, 0);
-    }
+	if (!op) {
+		report_diagnostic(&tree->diagnostics, undefinedUnaryOperatorDiagnostic, un.operator.span, un.operator.kind, boundOperand.type, 0);
+	}
 
-    if (op == identityOp) return boundOperand;
+	if (op == identityOp) return boundOperand;
 
-    int index = tree->unaryExpressionsIndex;
-    tree->unaryExpressions[tree->unaryExpressionsIndex++] =
-        (unaryExpressionAst){ op, boundOperand };
+	int index = tree->unaryExpressionsIndex;
+	tree->unaryExpressions[tree->unaryExpressionsIndex++] =
+		(unaryExpressionAst){ op, boundOperand };
 
-    return (astNode){ unaryExpressionKind , boundOperand.type, .data = &tree->unaryExpressions[index] };
+	return (astNode){ unaryExpressionKind , boundOperand.type, .data = &tree->unaryExpressions[index] };
 }
 
 astNode bind_binary_expression(node *n, ast *tree) {
 	binaryExpressionNode bn = *(binaryExpressionNode*)n->data;
 
-    astNode boundLeft = bind_expression(&bn.left, tree);
-    astNode boundRight = bind_expression(&bn.right, tree);
+	astNode boundLeft = bind_expression(&bn.left, tree);
+	astNode boundRight = bind_expression(&bn.right, tree);
 
-    typedOperator op = get_binary_operator(bn.operator.kind, boundLeft.type, boundRight.type);
+	typedOperator op = get_binary_operator(bn.operator.kind, boundLeft.type, boundRight.type);
 
-    // silence errors if the problem lies elsewhere
-    bool hasErrors = boundLeft.type == errorType || boundLeft.type == unresolvedType ||
-                    boundRight.type == errorType || boundRight.type == unresolvedType;
+	// silence errors if the problem lies elsewhere
+	bool hasErrors = boundLeft.type == errorType || boundLeft.type == unresolvedType ||
+					boundRight.type == errorType || boundRight.type == unresolvedType;
 
-    if (!op.operator && !hasErrors) {
-        report_diagnostic(&tree->diagnostics, undefinedBinaryOperatorDiagnostic, n->span, bn.operator.kind, boundLeft.type, boundRight.type);
-        hasErrors = true;
-    }
+	if (!op.operator && !hasErrors) {
+		report_diagnostic(&tree->diagnostics, undefinedBinaryOperatorDiagnostic, n->span, bn.operator.kind, boundLeft.type, boundRight.type);
+		hasErrors = true;
+	}
 
-    int index = tree->binaryExpressionsIndex;
-    tree->binaryExpressions[tree->binaryExpressionsIndex++] =
-        (binaryExpressionAst){ op.operator, boundLeft, boundRight };
+	int index = tree->binaryExpressionsIndex;
+	tree->binaryExpressions[tree->binaryExpressionsIndex++] =
+		(binaryExpressionAst){ op.operator, boundLeft, boundRight };
 
-    return (astNode){ binaryExpressionKind, hasErrors ? errorType : op.type, .data = &tree->binaryExpressions[index] };
+	return (astNode){ binaryExpressionKind, hasErrors ? errorType : op.type, .data = &tree->binaryExpressions[index] };
 }
 
 astNode bind_call_expression(node *n, ast *tree) {
 	functionCallNode cn = *(functionCallNode*)n->data;
 
-    if (!span_compare(tree->text, cn.identifier.span, "print")) {
-        fprintf(stderr, "only print function supported currently\n");
-        exit(1);
-    }
+	if (!span_compare(tree->text, cn.identifier.span, "print")) {
+		fprintf(stderr, "only print function supported currently\n");
+		exit(1);
+	}
 
-    astNode arguments[128];
-    u8 argumentCount=0;
-    // skip the comma tokens
-    for (int i=0;i<cn.argumentCount;i+=2) {
-        if (i == 0) {
-            arguments[argumentCount++] = bind_expression_of_type(&cn.arguments[i], tree, stringType, cn.arguments[i].span);
-        } else {
-            arguments[argumentCount++] = bind_expression(&cn.arguments[i],tree);
-        }
-    }
+	astNode arguments[128];
+	u8 argumentCount=0;
+	// skip the comma tokens
+	for (int i=0;i<cn.argumentCount;i+=2) {
+		if (i == 0) {
+			arguments[argumentCount++] = bind_expression_of_type(&cn.arguments[i], tree, stringType, cn.arguments[i].span);
+		} else {
+			arguments[argumentCount++] = bind_expression(&cn.arguments[i],tree);
+		}
+	}
 
-    astNode* nodesStart = &tree->nodes[tree->nodesIndex];
-    for (int i = 0; i < argumentCount; i++) {
-        tree->nodes[tree->nodesIndex++] = arguments[i];
-    }
+	astNode* nodesStart = &tree->nodes[tree->nodesIndex];
+	for (int i = 0; i < argumentCount; i++) {
+		tree->nodes[tree->nodesIndex++] = arguments[i];
+	}
 
-    int index = tree->functionCallIndex;
-    tree->functionCalls[tree->functionCallIndex++] =
-         (callExpressionAst){ nodesStart, argumentCount };
+	int index = tree->functionCallIndex;
+	tree->functionCalls[tree->functionCallIndex++] =
+		 (callExpressionAst){ nodesStart, argumentCount };
 
-    return (astNode){ callExpressionKind , voidType, .data = &tree->functionCalls[index] };
+	return (astNode){ callExpressionKind , voidType, .data = &tree->functionCalls[index] };
 }
 
 astNode bind_variable_declaration(node *n, ast *tree) {
 
 	variableDeclarationNode vn = *(variableDeclarationNode*)n->data;
 
-    astNode boundInitializer = vn.type.kind != 0
-        ? bind_expression_of_type(&vn.expression, tree, resolve_type_from_span(tree, vn.type.span), vn.expression.span)
-        : bind_expression(&vn.expression, tree);
+	astNode boundInitializer = vn.type.kind != 0
+		? bind_expression_of_type(&vn.expression, tree, resolve_type_from_span(tree, vn.type.span), vn.expression.span)
+		: bind_expression(&vn.expression, tree);
 
-    variableSymbol *variable = declare_variable(tree, vn.identifier.span, boundInitializer.type);
+	variableSymbol *variable = declare_variable(tree, vn.identifier.span, boundInitializer.type);
 
-    int index = tree->variableDeclarationIndex;
-    tree->variableDeclarations[tree->variableDeclarationIndex++] =
-        (variableDeclarationAst){ variable, boundInitializer };
+	int index = tree->variableDeclarationIndex;
+	tree->variableDeclarations[tree->variableDeclarationIndex++] =
+		(variableDeclarationAst){ variable, boundInitializer };
 
-    return (astNode){ variableDeclarationKind , boundInitializer.type, .data = &tree->variableDeclarations[index] };
+	return (astNode){ variableDeclarationKind , boundInitializer.type, .data = &tree->variableDeclarations[index] };
 }
 
 astNode bind_variable_assignment(node *n, ast *tree) {
 
 	variableAssignmentNode an = *(variableAssignmentNode*)n->data;
+	enum syntaxKind opKind = getBinaryOperatorFromAssignmentOperator(an.assignmentOperator.kind);
 
-    astNode boundExpression = bind_expression(&an.expression, tree);
 
-    variableSymbol *variable = find_variable_in_scope(an.identifier.span, tree);
+	astNode boundExpression = bind_expression(&an.expression, tree);
 
-    if (variable != 0) {
-        if (variable->type != boundExpression.type) {
-            report_diagnostic(&tree->diagnostics, cannotAssignDiagnostic, an.identifier.span, variable->type, boundExpression.type, 0);
-        }
-    }
+	variableSymbol *variable = find_variable_in_scope(an.identifier.span, tree);
 
-    int index = tree->variableAssignmentIndex;
-    tree->variableAssignments[tree->variableAssignmentIndex++] =
-        (variableAssignmentAst){ variable, boundExpression };
+	typedOperator op = {0};
+	if (opKind != 0 && variable != 0) {
+		op = get_binary_operator(opKind, variable->type, boundExpression.type);
+	}
 
-    return (astNode){ variableAssignmentKind, variable == 0 ? errorType : variable->type, .data = &tree->variableAssignments[index] };
+	if (variable != 0) {
+		if (variable->type != boundExpression.type) {
+			report_diagnostic(&tree->diagnostics, cannotAssignDiagnostic, an.identifier.span, variable->type, boundExpression.type, 0);
+		}
+	}
+
+	int index = tree->variableAssignmentIndex;
+	tree->variableAssignments[tree->variableAssignmentIndex++] =
+		(variableAssignmentAst){ variable, boundExpression, op.operator };
+
+	return (astNode){ variableAssignmentKind, variable == 0 ? errorType : variable->type, .data = &tree->variableAssignments[index] };
 }
 
 static inline int push_scope(ast *tree) {
-    int parentScopeIndex = tree->currentScopeIndex;
-    tree->currentScopeIndex = tree->scopesIndex;
-    scope*  newScope = &tree->scopes[tree->scopesIndex++];
+	int parentScopeIndex = tree->currentScopeIndex;
+	tree->currentScopeIndex = tree->scopesIndex;
+	scope*  newScope = &tree->scopes[tree->scopesIndex++];
 
-    if (parentScopeIndex != tree->currentScopeIndex) {
-        newScope->parentScope = &tree->scopes[parentScopeIndex];
-    } 
-    return parentScopeIndex;
+	if (parentScopeIndex != tree->currentScopeIndex) {
+		newScope->parentScope = &tree->scopes[parentScopeIndex];
+	} 
+	return parentScopeIndex;
 }
 
 static inline void pop_scope(ast *tree, int parentScopeIndex) {
-    tree->currentScopeIndex = parentScopeIndex;
+	tree->currentScopeIndex = parentScopeIndex;
 }
 
 
 variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableType) {
-    if (variableType == voidType) {
-        report_diagnostic(&tree->diagnostics, variableCannotBeVoidDiagnostic, nameSpan, 0, 0, 0);
-        return 0;
-    }
+	if (variableType == voidType) {
+		report_diagnostic(&tree->diagnostics, variableCannotBeVoidDiagnostic, nameSpan, 0, 0, 0);
+		return 0;
+	}
 
-    scope *currentScope = &tree->scopes[tree->currentScopeIndex];
+	scope *currentScope = &tree->scopes[tree->currentScopeIndex];
 
-    for (int i = 0; i < currentScope->variableCount; i++) {
-        if (span_compare(tree->text, nameSpan, currentScope->variables[i].name)) {
-            report_diagnostic(&tree->diagnostics, redeclarationOfVariableDiagnostic, nameSpan, (u32)currentScope->variables[i].name, 0, 0);
-            return 0;
-        }
-    }
+	for (int i = 0; i < currentScope->variableCount; i++) {
+		if (span_compare(tree->text, nameSpan, currentScope->variables[i].name)) {
+			report_diagnostic(&tree->diagnostics, redeclarationOfVariableDiagnostic, nameSpan, (u32)currentScope->variables[i].name, 0, 0);
+			return 0;
+		}
+	}
 
-    variableSymbol *variable = &currentScope->variables[currentScope->variableCount++];
+	variableSymbol *variable = &currentScope->variables[currentScope->variableCount++];
 
-    for (int i= 0;i<nameSpan.length;i++) {
-            variable->name[i] = tree->text[i+nameSpan.start];
-    }
-    variable->type = variableType;
+	for (int i= 0;i<nameSpan.length;i++) {
+			variable->name[i] = tree->text[i+nameSpan.start];
+	}
+	variable->type = variableType;
 
-    return variable;
+	return variable;
 }
 
 variableSymbol* find_variable_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope);
 variableSymbol* find_variable_in_scope(textspan nameSpan, ast *tree) {
-    return find_variable_in_scope_internal(nameSpan, tree, &tree->scopes[tree->currentScopeIndex]);
+	return find_variable_in_scope_internal(nameSpan, tree, &tree->scopes[tree->currentScopeIndex]);
 }
 variableSymbol* find_variable_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope) {
 
-    for (int i = 0; i < currentScope->variableCount; i++) {
-        if (span_compare(tree->text, nameSpan, currentScope->variables[i].name)) {
-            return &currentScope->variables[i];
-        }
-    }
+	for (int i = 0; i < currentScope->variableCount; i++) {
+		if (span_compare(tree->text, nameSpan, currentScope->variables[i].name)) {
+			return &currentScope->variables[i];
+		}
+	}
 
-    if (currentScope->parentScope == 0) {
-        report_diagnostic(&tree->diagnostics, referenceToUndefinedVariableDiagnostic, nameSpan, 0, 0, 0);
-        return 0;
-    }
-    return find_variable_in_scope_internal(nameSpan, tree, currentScope->parentScope);
+	if (currentScope->parentScope == 0) {
+		report_diagnostic(&tree->diagnostics, referenceToUndefinedVariableDiagnostic, nameSpan, 0, 0, 0);
+		return 0;
+	}
+	return find_variable_in_scope_internal(nameSpan, tree, currentScope->parentScope);
 }
