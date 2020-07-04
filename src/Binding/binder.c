@@ -48,6 +48,7 @@ astNode bind_expression(node *n, ast* tree) {
 
 		case numberLiteral: return (astNode){ literalKind, intType, .numValue = n->numValue };
 		case stringLiteral: return (astNode){ literalKind, stringType, .stringValue = n->stringValue };
+		case charLiteral: return (astNode){ literalKind, charType, .charValue = n->charValue };
 		
 		case parenthesizedExpression: return bind_expression(&((parenthesizedExpressionNode*)n->data)->expression, tree);
 

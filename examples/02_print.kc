@@ -5,6 +5,8 @@ print("hello\n");
 // int: %d
 // bool: %s
 // string: %s
+// char: %c
+print("first letter: %c\n", 'B');
 print("name: %s\n", "Bob");
 print("age: %d\n", 21);
 print("age in hex: %d\n", 0x15);

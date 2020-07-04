@@ -22,6 +22,7 @@ static const char *cTypeText[] = {
 	"int",
 	"int",		// bool
 	"char*",
+	"char",
 };
 
 static const char *cBinaryText[] = {
@@ -193,8 +194,9 @@ static inline void emit_c_literal(astNode *n, ast *tree) {
 		free(escapedStr);
 		free(n->stringValue);
 	}
+	case charType: fprintf(fp,"'%c'", n->charValue); break;
 	default:
-		fprintf(fp,"%sUnhandled type %s in c emitter%s", TERMRED, astTypeText[n->type], TERMRESET);
+		fprintf(stderr,"%sUnhandled type %s in c emitter%s", TERMRED, astTypeText[n->type], TERMRESET);
 		exit(1);
 	}
 }

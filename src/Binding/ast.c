@@ -47,6 +47,7 @@ enum astType {
 	intType,
 	boolType,
 	stringType,
+	charType,
 };
 
 static const char *astTypeText[] = {
@@ -56,6 +57,7 @@ static const char *astTypeText[] = {
 	"int",
 	"bool",
 	"string",
+	"char",
 };
 
 enum astBinaryOperator {
@@ -190,6 +192,7 @@ typedef struct astNode {
 		int numValue; 
 		bool boolValue; 
 		char* stringValue; 
+		char charValue; 
 	};
 } astNode;
 
@@ -313,7 +316,7 @@ typedef struct ast {
 
 enum astType resolve_type_from_span(ast *tree, textspan span) {
 	char *text = tree->text;
-	for (int i = intType; i<= stringType; i++)
+	for (int i = intType; i<= charType; i++)
 		if (span_compare(text, span, astTypeText[i])) return i;
 	
 	report_diagnostic(&tree->diagnostics, unresolvedTypeDiagnostic, span, 0, 0, 0);
@@ -351,6 +354,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 				case intType: printf ("%d", root->numValue); break;
 				case boolType: printf ("%s", root->boolValue ? "true" : "false"); break;
 				case stringType: printf ("\"%s\"", root->stringValue); break;
+				case charType: printf ("'%c'", root->charValue); break;
 				default:
 					fprintf(stderr, "%sUnhandled type '%s' in print_ast%s", TERMRED, astTypeText[root->type], TERMRESET);
 					exit(1);
