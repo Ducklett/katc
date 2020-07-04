@@ -45,6 +45,14 @@ enum astType {
 	unresolvedType,
 	voidType,
 	intType,
+	u8Type,
+	u16Type,
+	u32Type,
+	u64Type,
+	i8Type,
+	i16Type,
+	i32Type,
+	i64Type,
 	boolType,
 	stringType,
 	charType,
@@ -55,10 +63,31 @@ static const char *astTypeText[] = {
 	"unresolved",
 	"void",
 	"int",
+	"u8",
+	"u16",
+	"u32",
+	"u64",
+	"i8",
+	"i16",
+	"i32",
+	"i64",
 	"bool",
 	"string",
 	"char",
 };
+
+bool isNumberType(enum astType t) {
+	return (
+		t == intType ||
+		t == u8Type  ||
+		t == u16Type ||
+		t == u32Type ||
+		t == u64Type ||
+		t == i8Type  ||
+		t == i16Type ||
+		t == i32Type ||
+		t == i64Type );
+}
 
 enum astBinaryOperator {
 	missingBinaryOp,
@@ -113,38 +142,38 @@ typedef struct typedOperator {
 } typedOperator;
 
 typedOperator get_binary_operator(enum syntaxKind operatorToken, enum astType left, enum astType right) {
-	if (operatorToken == plusOperator && left == charType && right == intType) return (typedOperator){ addOp, charType };
-	if (operatorToken == minusOperator && left == charType && right == intType) return (typedOperator){ subtractOp, charType };
+	if (operatorToken == plusOperator          && left == charType && isNumberType(right)) return (typedOperator){ addOp, charType };
+	if (operatorToken == minusOperator         && left == charType && isNumberType(right)) return (typedOperator){ subtractOp, charType };
 	if (operatorToken == euqualsEqualsOperator && left == charType && right == charType) return (typedOperator) { equalOp, boolType };
-	if (operatorToken == bangEqualsOperator && left == charType && right == charType) return (typedOperator){ inEqualOp, boolType };
-	if (operatorToken == lessOperator && left == charType && right == charType) return (typedOperator){ lessOp, boolType };
-	if (operatorToken == greaterOperator && left == charType && right == charType) return (typedOperator){ greaterOp, boolType };
-	if (operatorToken == lessEqualsOperator && left == charType && right == charType) return (typedOperator){ lessOrEqualOp, boolType };
+	if (operatorToken == bangEqualsOperator    && left == charType && right == charType) return (typedOperator){ inEqualOp, boolType };
+	if (operatorToken == lessOperator          && left == charType && right == charType) return (typedOperator){ lessOp, boolType };
+	if (operatorToken == greaterOperator       && left == charType && right == charType) return (typedOperator){ greaterOp, boolType };
+	if (operatorToken == lessEqualsOperator    && left == charType && right == charType) return (typedOperator){ lessOrEqualOp, boolType };
 	if (operatorToken == greaterEqualsOperator && left == charType && right == charType) return (typedOperator){ greaterOrEqualOp, boolType };
 
-	if (operatorToken == plusOperator && left == intType && right == intType) return (typedOperator){ addOp, intType };
-	if (operatorToken == minusOperator && left == intType && right == intType) return (typedOperator){ subtractOp, intType };
-	if (operatorToken == multipliationOperator && left == intType && right == intType) return (typedOperator){ multiplyOp, intType };
-	if (operatorToken == divisionOperator && left == intType && right == intType) return (typedOperator){ divideOp, intType };
-	if (operatorToken == modulusOperator && left == intType && right == intType) return (typedOperator){ moduloOp, intType };
+	if (operatorToken == plusOperator          && isNumberType(left) && isNumberType(right)) return (typedOperator){ addOp, left };
+	if (operatorToken == minusOperator         && isNumberType(left) && isNumberType(right)) return (typedOperator){ subtractOp, left };
+	if (operatorToken == multipliationOperator && isNumberType(left) && isNumberType(right)) return (typedOperator){ multiplyOp, left };
+	if (operatorToken == divisionOperator      && isNumberType(left) && isNumberType(right)) return (typedOperator){ divideOp, left };
+	if (operatorToken == modulusOperator       && isNumberType(left) && isNumberType(right)) return (typedOperator){ moduloOp, left };
 
-	if (operatorToken == euqualsEqualsOperator && left == intType && right == intType) return (typedOperator) { equalOp, boolType };
-	if (operatorToken == bangEqualsOperator && left == intType && right == intType) return (typedOperator){ inEqualOp, boolType };
+	if (operatorToken == euqualsEqualsOperator && isNumberType(left) && right == left) return (typedOperator) { equalOp, boolType };
+	if (operatorToken == bangEqualsOperator    && isNumberType(left) && right == left) return (typedOperator){ inEqualOp, boolType };
 
 	if (operatorToken == euqualsEqualsOperator && left == boolType && right == boolType) return (typedOperator) { equalOp, boolType };
-	if (operatorToken == bangEqualsOperator && left == boolType && right == boolType) return (typedOperator){ inEqualOp, boolType };
+	if (operatorToken == bangEqualsOperator    && left == boolType && right == boolType) return (typedOperator){ inEqualOp, boolType };
 
-	if (operatorToken == lessOperator && left == intType && right == intType) return (typedOperator){ lessOp, boolType };
-	if (operatorToken == greaterOperator && left == intType && right == intType) return (typedOperator){ greaterOp, boolType };
-	if (operatorToken == lessEqualsOperator && left == intType && right == intType) return (typedOperator){ lessOrEqualOp, boolType };
-	if (operatorToken == greaterEqualsOperator && left == intType && right == intType) return (typedOperator){ greaterOrEqualOp, boolType };
+	if (operatorToken == lessOperator          && isNumberType(left) && right == left) return (typedOperator){ lessOp, boolType };
+	if (operatorToken == greaterOperator       && isNumberType(left) && right == left) return (typedOperator){ greaterOp, boolType };
+	if (operatorToken == lessEqualsOperator    && isNumberType(left) && right == left) return (typedOperator){ lessOrEqualOp, boolType };
+	if (operatorToken == greaterEqualsOperator && isNumberType(left) && right == left) return (typedOperator){ greaterOrEqualOp, boolType };
 
-	if (operatorToken == lessLessOperator && left == intType && right == intType) return (typedOperator){ shiftLeftOp, intType };
-	if (operatorToken == greaterGreaterOperator && left == intType && right == intType) return (typedOperator){ shiftRightOp, intType };
+	if (operatorToken == lessLessOperator       && isNumberType(left) && isNumberType(right)) return (typedOperator){ shiftLeftOp, left };
+	if (operatorToken == greaterGreaterOperator && isNumberType(left) && isNumberType(right)) return (typedOperator){ shiftRightOp, left };
 
-	if (operatorToken == ampersandOperator && left == intType && right == intType) return (typedOperator){ bitwiseAndOp, intType };
-	if (operatorToken == caretOperator && left == intType && right == intType) return (typedOperator){ bitwiseXorOp, intType };
-	if (operatorToken == pipeOperator && left == intType && right == intType) return (typedOperator){ bitwiseOrOp, intType };
+	if (operatorToken == ampersandOperator && isNumberType(left) && right == left) return (typedOperator){ bitwiseAndOp, left };
+	if (operatorToken == caretOperator     && isNumberType(left) && right == left) return (typedOperator){ bitwiseXorOp, left };
+	if (operatorToken == pipeOperator      && isNumberType(left) && right == left) return (typedOperator){ bitwiseOrOp, left };
 
 	if (operatorToken == ampersandOperator && left == boolType && right == boolType) return (typedOperator){ bitwiseAndOp, boolType };
 	if (operatorToken == caretOperator && left == boolType && right == boolType) return (typedOperator){ bitwiseXorOp, boolType };
@@ -371,6 +400,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 			printf ("%*s(", indent, "");
 			printf(TERMBLUE);
 			switch (root->type) {
+				case u8Type: case u16Type: case u32Type: case u64Type: case i8Type: case i16Type: case i32Type: case i64Type:
 				case intType: printf ("%d", root->numValue); break;
 				case boolType: printf ("%s", root->boolValue ? "true" : "false"); break;
 				case stringType: printf ("\"%s\"", root->stringValue); break;
@@ -383,6 +413,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		} else {
 			printf(TERMCYAN);
 			switch (root->type) {
+				case u8Type: case u16Type: case u32Type: case u64Type: case i8Type: case i16Type: case i32Type: case i64Type:
 				case intType: printf ("%*s%d%s", indent, "", root->numValue, newline?"\n":"");
 				case boolType: printf ("%*s%s%s", indent, "", root->boolValue?"true":"false", newline?"\n":"");
 				case stringType: printf ("%*s\"%s\"%s", indent, "", root->stringValue, newline?"\n":"");

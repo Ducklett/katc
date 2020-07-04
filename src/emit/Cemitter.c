@@ -19,11 +19,20 @@ static const char *cTypeText[] = {
 	"errorType",
 	"unresolved",
 	"void",
-	"int",
-	"int",		// bool
-	"char*",
-	"char",
+	"int",            // int
+	"unsigned char",  // u8
+	"unsigned short", // u16
+	"unsigned int",   // u32
+	"unsigned long",  // u64
+	"char",           // i8
+	"short",          // i16
+	"int",            // i32
+	"long",           // i64
+	"int",		      // bool
+	"char*",          // string
+	"char",           // char
 };
+
 
 static const char *cBinaryText[] = {
 	"missingBinary",
@@ -186,6 +195,7 @@ static inline void emit_c_forLoop(astNode *n, ast *tree) {
 
 static inline void emit_c_literal(astNode *n, ast *tree) {
 	switch (n->type) {
+	case u8Type: case u16Type: case u32Type: case u64Type: case i8Type: case i16Type: case i32Type: case i64Type:
 	case intType: fprintf(fp,"%d", n->numValue); break;
 	case boolType: fprintf(fp,"%s", n->boolValue ? "1" : "0"); break;
 	case stringType: {

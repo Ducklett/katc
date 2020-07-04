@@ -28,7 +28,12 @@ astNode bind_expression_of_type(node *n, ast* tree, enum astType expectedType, t
 	astNode outNode = bind_expression(n, tree);
 
 	if (expectedType != 0 && outNode.type != errorType && expectedType != outNode.type) {
-		report_diagnostic(&tree->diagnostics, cannotConvertDiagnostic, errorSpan, outNode.type, expectedType, 0);
+		// TODO: proper casting
+		if ((isNumberType(expectedType) && isNumberType(outNode.type))) {
+			outNode.type = expectedType;
+		} else {
+			report_diagnostic(&tree->diagnostics, cannotConvertDiagnostic, errorSpan, outNode.type, expectedType, 0);
+		}
 	}
 
 	return outNode;
