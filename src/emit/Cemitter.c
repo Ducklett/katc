@@ -244,7 +244,7 @@ static inline void emit_c_variableAssignment(astNode *n, ast *tree) {
 
 	variableAssignmentAst an = *(variableAssignmentAst*)n->data;
 
-	fprintf(fp,"%s = ", an.variable->name);
+	fprintf(fp,"%s %s= ", an.variable->name, an.compoundOperator == 0 ? "" : cBinaryText[an.compoundOperator]);
 	emit_c_node(&an.expression, tree);
 }
 
