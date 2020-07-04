@@ -5,15 +5,15 @@
 print("P3 256 256 255\n")
 
 for y in 0..255 {
-    for x in 0..255 {
-        inFrame := x > 45 && x < 210 && y > 25 && y < 230 
-        verticalBar := x > 120 && x < 136
-        horizontalBar := y > 80 && y < 96
-        if inFrame && (verticalBar || horizontalBar) {
-            print("%d %d %d ", x/2+128, y/2+128, 255)
-        } else {
-            print("%d %d %d ", x, y, 128)
-        }
-    }
-    print("\n")
+	for x in 0..255 {
+		inFrame := x > 45 && x < 210 && y > 25 && y < 230 
+		verticalBar := x > 120 && x < 136
+		horizontalBar := y > 80 && y < 96
+		if inFrame && (verticalBar || horizontalBar) {
+			print("%d %d %d ", x/2+128, y/2+128, 255)
+		} else {
+			print("%d %d %d ", x, y, 128)
+		}
+	}
+	print("\n")
 }

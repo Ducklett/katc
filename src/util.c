@@ -31,31 +31,31 @@ typedef unsigned long u64;
 
 char* string_concat(const char *s1, const char *s2)
 {
-    char *result = malloc(strlen(s1) + strlen(s2) + 1);
-    strcpy(result, s1);
-    strcat(result, s2);
-    return result;
+	char *result = malloc(strlen(s1) + strlen(s2) + 1);
+	strcpy(result, s1);
+	strcat(result, s2);
+	return result;
 }
 
 char* read_file(const char* filename, u64* length) {
-    char * buffer = 0;
-    FILE * f = fopen (filename, "rb");
+	char * buffer = 0;
+	FILE * f = fopen (filename, "rb");
 
-    if (f) {
-        fseek (f, 0, SEEK_END);
-        *length = ftell (f);
-        fseek (f, 0, SEEK_SET);
-        buffer = malloc (*length+1);
-        if (buffer) {
-            fread (buffer, 1, *length, f);
-        }
-        fclose (f);
-        buffer[*length] = '\0';
-    }
+	if (f) {
+		fseek (f, 0, SEEK_END);
+		*length = ftell (f);
+		fseek (f, 0, SEEK_SET);
+		buffer = malloc (*length+1);
+		if (buffer) {
+			fread (buffer, 1, *length, f);
+		}
+		fclose (f);
+		buffer[*length] = '\0';
+	}
 
-    if (!buffer) {
-        fprintf(stderr, "%sFailed to read file: %s%s\n", TERMRED, filename, TERMRESET);
-        exit(1);
-    }
-    return buffer;
+	if (!buffer) {
+		fprintf(stderr, "%sFailed to read file: %s%s\n", TERMRED, filename, TERMRESET);
+		exit(1);
+	}
+	return buffer;
 }

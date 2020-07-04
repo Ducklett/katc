@@ -316,7 +316,7 @@ enum astType resolve_type_from_span(ast *tree, textspan span) {
 	for (int i = intType; i<= stringType; i++)
 		if (span_compare(text, span, astTypeText[i])) return i;
 	
-    report_diagnostic(&tree->diagnostics, unresolvedTypeDiagnostic, span, 0, 0, 0);
+	report_diagnostic(&tree->diagnostics, unresolvedTypeDiagnostic, span, 0, 0, 0);
 	return 0;
 }
 

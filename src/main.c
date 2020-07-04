@@ -2,8 +2,8 @@
  #include "header.c"
 
 static const char *const usage[] = {
-    "kc <entrypoint> [options] ",
-    NULL,
+	"kc <entrypoint> [options] ",
+	NULL,
 };
 
 int main(int argc, const char **argv) {
@@ -14,12 +14,12 @@ int main(int argc, const char **argv) {
 	const char *outputName = NULL;
 
 	struct argparse_option options[] = {
-    	OPT_HELP(),
-    	OPT_GROUP("Basic options"),
-    	OPT_BOOLEAN('r', "run", &run, "run as script"),
-    	OPT_STRING('t', "output-type", &outputType, outputTypes),
-    	OPT_STRING('o', "output-name", &outputName, "name for the output file"),
-    	OPT_END(),
+		OPT_HELP(),
+		OPT_GROUP("Basic options"),
+		OPT_BOOLEAN('r', "run", &run, "run as script"),
+		OPT_STRING('t', "output-type", &outputType, outputTypes),
+		OPT_STRING('o', "output-name", &outputName, "name for the output file"),
+		OPT_END(),
 	};
 
 	struct argparse argparse;
@@ -32,8 +32,8 @@ int main(int argc, const char **argv) {
 		exit(1);
 	}
 
-    bool parseOnly = outputType != NULL && !strcmp(outputType, "syntaxtree");
-    bool isAst = outputType != NULL && !strcmp(outputType, "ast");
+	bool parseOnly = outputType != NULL && !strcmp(outputType, "syntaxtree");
+	bool isAst = outputType != NULL && !strcmp(outputType, "ast");
 	bool isC = outputType != NULL && !strcmp(outputType, "c");
 	bool isBinary = outputType != NULL && !strcmp(outputType, "bin");
 
@@ -56,7 +56,7 @@ int main(int argc, const char **argv) {
 		return 1;
 	} 
 
-    bool verbose = true;
+	bool verbose = true;
 
 	if (parseOnly) print_syntaxtree(result->text, &result->parser.root, 0, verbose);
 	else if (isAst) print_ast(result->text, &result->root, 0, verbose);

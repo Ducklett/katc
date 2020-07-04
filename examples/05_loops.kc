@@ -1,8 +1,8 @@
 print("\nwhile loop counting down from 10 to 0\n")
 count := 10
 while(count >= 0) {
-    print("%d\n", count)
-    count = count - 1
+	print("%d\n", count)
+	count = count - 1
 }
 
 print("\nfor loop counting down from 10 to 0\n") 
@@ -10,5 +10,5 @@ for x in 10..0 print("%d\n", x)
 
 print("\nfor loop with index and value\n")
 for v,i in 20..10 {
-    print("value %d, key %d \n", v, i)
+	print("value %d, key %d \n", v, i)
 }
