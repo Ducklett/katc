@@ -7,4 +7,6 @@ print("hello\n");
 // string: %s
 print("name: %s\n", "Bob");
 print("age: %d\n", 21);
+print("age in hex: %d\n", 0x15);
+print("age in binary: %d\n", 0b00010101);
 print("registered: %s\n", true);
