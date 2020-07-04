@@ -168,13 +168,16 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 	case '{': return lex_basic_token(l, openCurlyToken, 1);
 	case '}': return lex_basic_token(l, closeCurlyToken, 1);
 
-	case '"':
-		t.kind = stringLiteral;
+	case '\'':
+	case '"': {
+		bool isChar = current == '\'';
+		char startEndChar = isChar ? '\'' : '"';
+		t.kind = isChar ? charLiteral : stringLiteral;
 		start =  l->index;
 		char sb[256];
 		u8 len=0;
 
-		lexer_match(l, d, '"'); // open "
+		lexer_match(l, d, startEndChar);
 
 		while (true) {
 			char current = lexer_current(l);
@@ -185,6 +188,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 					if (lookahead == 'r') sb[len++] = '\r';
 					else if (lookahead == 'n') sb[len++] = '\n';
 					else if (lookahead == '"') sb[len++] = '"';
+					else if (lookahead == '\'') sb[len++] = '\'';
 					else if (lookahead == '0') sb[len++] = '\0';
 					else if (lookahead == '\\') sb[len++] = '\\';
 					else sb[len++] = lookahead;
@@ -193,8 +197,9 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 					lexer_move_next(l);
 					break;
 				}
-				case '\0': case '\r': case '\n': case '"': goto end;
+				case '\0': case '\r': case '\n': goto end;
 				default:
+					if (current == startEndChar) goto end;
 					sb[len++] = current;
 					lexer_move_next(l);
 					break;
@@ -202,12 +207,19 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 		}
 		end:
 
-		lexer_match(l, d, '"'); // close "
+		lexer_match(l, d, startEndChar);
 		t.span = textspan_create(start, l->index - start);
-		if (len > 0) {
-			t.stringValue = allocate_string(sb,len);
+
+		if (isChar) {
+			if (len == 0) report_diagnostic(d, charEmptyDiagnostic, t.span, 0, 0, 0);
+			else if (len > 1) report_diagnostic(d, charTooLongDiagnostic, t.span, 0, 0, 0);
+			t.charValue = len==0 ? 0 : sb[0];
+		} else {
+			if (len > 0) {
+				t.stringValue = allocate_string(sb,len);
+			}
 		}
-		break;
+	} break;
 
 	case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': {
 		int value = 0;

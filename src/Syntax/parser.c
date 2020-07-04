@@ -467,6 +467,7 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 
 	case numberLiteral:
 	case stringLiteral:
+	case charLiteral:
 	case trueKeyword:
 	case falseKeyword:
 		return parser_next_token(p, d);

@@ -1,6 +1,8 @@
 static const char *diagnosticText[] = {
 	"Unexpected character '%c', expected '%c' (%d,%d)\n",
 	"bad token '%c' (%d,%d)\n",
+	"character literals cannot be empty (%d,%d)\n",
+	"character literals cannot contain more than one character (%d,%d)\n",
 	"number literals should not have leading zeroes (%d,%d)\n",
 	"'%c' is an invalid hexadecimal number (%d,%d)\n",
 	"'%c' is an invalid binary number (%d,%d)\n",
@@ -38,6 +40,10 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		} break;
 		case badTokenDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], sourceText[d.span.start], d.span.start, d.span.length); break;
+		case charEmptyDiagnostic:
+			fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
+		case charTooLongDiagnostic:
+			fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
 		case leadingZerosOnBase10NumberDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
 		case invalidHexadecimalNumberDiagnostic:

@@ -13,6 +13,7 @@ enum syntaxKind {
 
 	numberLiteral,
 	stringLiteral,
+	charLiteral,
 
 	plusOperator,
 	minusOperator,
@@ -99,6 +100,7 @@ static const char *syntaxKindText[] = {
 	";",
 	"numberLiteral",
 	"stringLiteral",
+	"charLiteral",
 	"+",
 	"-",
 	"++",
@@ -179,6 +181,7 @@ typedef struct node {
 		int numValue; 
 		bool boolValue; 
 		char* stringValue; 
+		char charValue; 
 	};
 } node;
 
@@ -373,7 +376,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 void print_syntaxtree(char *text, node *root, int indent, bool verbose) { print_syntaxtree_internal(text, root, indent, verbose, true); }
 void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose, bool newline) {
 
-	if (root->data == 0 || root->kind == numberLiteral || root->kind == stringLiteral || root->kind == trueKeyword || root->kind == falseKeyword) {
+	if (root->data == 0 || root->kind == numberLiteral || root->kind == stringLiteral || root->kind == charLiteral || root->kind == trueKeyword || root->kind == falseKeyword) {
 		char* tokenText = ast_substring(text, root->span);
 		if (verbose) {
 			printf ("%*s(", indent, "");
