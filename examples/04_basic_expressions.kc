@@ -22,6 +22,11 @@ print("5 > 5 = %s\n", 5 > 5)
 print("5 >= 5 = %s\n", 5 >= 5)
 print("6 < 6 = %s\n", 6 < 6)
 print("6 <= 6 = %s\n", 6 <= 6)
+print("'a' > 'z' = %s\n", 'a' > 'z')
+print("'a' >= 'a' = %s\n", 'a' >= 'a')
+print("'x' < 'y' = %s\n", 'x' < 'y')
+print("'y' <= 'y' = %s\n", 'y' <= 'y')
+print("'y' + 1 == 'z' = %s\n", 'y' + 1 == 'z')
 
 // compound assignments
 a := 70

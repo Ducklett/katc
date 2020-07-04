@@ -113,6 +113,15 @@ typedef struct typedOperator {
 } typedOperator;
 
 typedOperator get_binary_operator(enum syntaxKind operatorToken, enum astType left, enum astType right) {
+	if (operatorToken == plusOperator && left == charType && right == intType) return (typedOperator){ addOp, charType };
+	if (operatorToken == minusOperator && left == charType && right == intType) return (typedOperator){ subtractOp, charType };
+	if (operatorToken == euqualsEqualsOperator && left == charType && right == charType) return (typedOperator) { equalOp, boolType };
+	if (operatorToken == bangEqualsOperator && left == charType && right == charType) return (typedOperator){ inEqualOp, boolType };
+	if (operatorToken == lessOperator && left == charType && right == charType) return (typedOperator){ lessOp, boolType };
+	if (operatorToken == greaterOperator && left == charType && right == charType) return (typedOperator){ greaterOp, boolType };
+	if (operatorToken == lessEqualsOperator && left == charType && right == charType) return (typedOperator){ lessOrEqualOp, boolType };
+	if (operatorToken == greaterEqualsOperator && left == charType && right == charType) return (typedOperator){ greaterOrEqualOp, boolType };
+
 	if (operatorToken == plusOperator && left == intType && right == intType) return (typedOperator){ addOp, intType };
 	if (operatorToken == minusOperator && left == intType && right == intType) return (typedOperator){ subtractOp, intType };
 	if (operatorToken == multipliationOperator && left == intType && right == intType) return (typedOperator){ multiplyOp, intType };
@@ -171,6 +180,11 @@ static const char *astUnaryText[] = {
 };
 
 enum astUnaryOperator get_unary_operator(enum syntaxKind operatorToken, enum astType type, bool left) {
+	if (type == charType && operatorToken == plusPlusOperator && left) return preIncrementOp;
+	if (type == charType && operatorToken == plusPlusOperator && !left) return postIncrementOp;
+	if (type == charType && operatorToken == minusMinusOperator && left) return preDecrementOp;
+	if (type == charType && operatorToken == minusMinusOperator && !left) return postDecrementOp;
+
 	if (type == intType && operatorToken == plusPlusOperator && left) return preIncrementOp;
 	if (type == intType && operatorToken == plusPlusOperator && !left) return postIncrementOp;
 	if (type == intType && operatorToken == minusMinusOperator && left) return preDecrementOp;
