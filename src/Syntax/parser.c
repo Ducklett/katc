@@ -121,7 +121,7 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	case identifierToken:
 		if  (l2kind == colonToken) {
 			res = parser_parse_variable_declaration(p, d);
-		} else if (l2kind == equalsToken) {
+		} else if (isAssignmentOperator(l2kind)) {
 			res = parser_parse_variable_assignment(p, d);
 		} else if  (l2kind == openParenthesisToken) {
 			res = parser_parse_function_call(p, d);
@@ -336,12 +336,17 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 
 node parser_parse_variable_assignment(parser *p, diagnosticContainer *d) {
 	node identifier = parser_match_token(p, d, identifierToken);
-	node equals = parser_match_token(p, d, equalsToken);
+	node equals = parser_next_token(p, d);
+
+	if (!isAssignmentOperator(equals.kind) && equals.kind != badToken) {
+		report_diagnostic(d, notAnAssignmentOperatorDiagnostic, equals.span, equals.kind, 0, 0);
+	}
+
 	node expression = parser_parse_statement(p, d);
 
 	u16 index = p->variableAssignmentIndex;
 	p->variableAssignments[p->variableAssignmentIndex++] =
-		(variableAssignmentNode){ identifier,  equals, expression };
+		(variableAssignmentNode){ identifier, equals, expression };
 
 	return (node) { variableAssignment, textspan_from_bounds(&identifier, &expression), .data = &(p->variableAssignments[index]), };
 }

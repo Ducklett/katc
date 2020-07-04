@@ -108,37 +108,48 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 				}
 			}
 			t.span = textspan_create(start, l->index - start);
-		} else return lex_basic_token(l, divisionOperator, 1);
+		} else if (lexer_peek(l,1) == '=') return lex_basic_token(l, slashEqualsToken, 2);
+		else return lex_basic_token(l, divisionOperator, 1);
+
 	} break;
 
 	case '\0': return lex_basic_token(l, endOfFileToken, 1);
 
 	case '+': if (lexer_peek(l,1) == '+') return lex_basic_token(l, plusPlusOperator, 2);
+			  else if (lexer_peek(l,1) == '=') return lex_basic_token(l, plusEqualsToken, 2);
 			  else return lex_basic_token(l, plusOperator, 1);
 	case '-': if (lexer_peek(l,1) == '-') return lex_basic_token(l, minusMinusOperator, 2);
+			  else if (lexer_peek(l,1) == '=') return lex_basic_token(l, minusEqualsToken, 2);
 			  return lex_basic_token(l, minusOperator, 1);
 
-	case '*': return lex_basic_token(l, multipliationOperator, 1);
-	case '%': return lex_basic_token(l, modulusOperator, 1);
+	case '*': if (lexer_peek(l,1) == '=') return lex_basic_token(l, starEqualsToken, 2);
+			  else return lex_basic_token(l, multipliationOperator, 1);
+	case '%': if (lexer_peek(l,1) == '=') return lex_basic_token(l, percentEqualsToken, 2);
+			  else return lex_basic_token(l, modulusOperator, 1);
 
 	case '!': if (lexer_peek(l,1) == '=') return lex_basic_token(l, bangEqualsOperator, 2);
 			  else return lex_basic_token(l, bangOperator, 1);
 	case '=': if (lexer_peek(l,1) == '=') return lex_basic_token(l, euqualsEqualsOperator, 2);
 			  else return lex_basic_token(l, equalsToken, 1);
 	case '<': if (lexer_peek(l,1) == '=') return lex_basic_token(l, lessEqualsOperator, 2);
+			  else if (lexer_peek(l,1) == '<' && lexer_peek(l,2) == '=') return lex_basic_token(l, lessLessEqualsToken, 3);
 			  else if (lexer_peek(l,1) == '<') return lex_basic_token(l, lessLessOperator, 2);
 			  else return lex_basic_token(l, lessOperator, 1);
 	case '>': if (lexer_peek(l,1) == '=') return lex_basic_token(l, greaterEqualsOperator, 2);
+			  else if (lexer_peek(l,1) == '>' && lexer_peek(l,2) == '=') return lex_basic_token(l, greaterGreaterEqualsToken, 3);
 			  else if (lexer_peek(l,1) == '>') return lex_basic_token(l, greaterGreaterOperator, 2);
 			  else return lex_basic_token(l, greaterOperator, 1);
 
 	case '&': if (lexer_peek(l,1) == '&') return lex_basic_token(l, ampersandAmpersandOperator, 2);
+			  else if (lexer_peek(l,1) == '=') return lex_basic_token(l, ampersandEqualsToken, 2);
 			  else return lex_basic_token(l, ampersandOperator, 1);
 	case '|': if (lexer_peek(l,1) == '|') return lex_basic_token(l, pipePipeOperator, 2);
+			  else if (lexer_peek(l,1) == '=') return lex_basic_token(l, pipeEqualsToken, 2);
 			  else return lex_basic_token(l, pipeOperator, 1);
 
 	case '~': return lex_basic_token(l, tildeOperator, 1);
-	case '^': return lex_basic_token(l, caretOperator, 1);
+	case '^': if (lexer_peek(l,1) == '=') return lex_basic_token(l, caretEqualsToken, 2);
+			  else return lex_basic_token(l, caretOperator, 1);
 
 	case ':': return lex_basic_token(l, colonToken, 1);
 	case ';': return lex_basic_token(l, semicolonToken, 1);
@@ -156,7 +167,6 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 		char sb[256];
 		u8 len=0;
 
-		// TODO: store the value
 		lexer_match(l, d, '"'); // open "
 
 		while (true) {

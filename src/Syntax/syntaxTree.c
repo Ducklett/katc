@@ -44,6 +44,17 @@ enum syntaxKind {
 	commaToken,
 	dotDotToken,
 
+	plusEqualsToken,
+	minusEqualsToken,
+	starEqualsToken,
+	slashEqualsToken,
+	percentEqualsToken,
+	lessLessEqualsToken,
+	greaterGreaterEqualsToken,
+	ampersandEqualsToken,
+	caretEqualsToken,
+	pipeEqualsToken,
+
 	openParenthesisToken,
 	closeParenthesisToken,
 	openCurlyToken,
@@ -114,6 +125,16 @@ static const char *syntaxKindText[] = {
 	":",
 	",",
 	"..",
+	"+=",
+	"-=",
+	"*=",
+	"/=",
+	"%=",
+	"<<=",
+	">>=",
+	"&=",
+	"^=",
+	"|=",
 	"(",
 	")",
 	"{",
@@ -204,7 +225,7 @@ typedef struct variableDeclarationNode {
 
 typedef struct variableAssignmentNode {
 	node identifier;
-	node equals;
+	node assignmentOperator;
 	node expression;
 } variableAssignmentNode;
 
@@ -282,6 +303,21 @@ char* allocate_string(char *text, int length) {
 	return allocatedText;
 }
 
+static inline bool isAssignmentOperator(enum syntaxKind kind) {
+	return (
+		kind == equalsToken ||
+		kind == plusEqualsToken ||
+		kind == minusEqualsToken ||
+		kind == starEqualsToken ||
+		kind == slashEqualsToken ||
+		kind == percentEqualsToken ||
+		kind == lessLessEqualsToken ||
+		kind == greaterGreaterEqualsToken ||
+		kind == ampersandEqualsToken ||
+		kind == caretEqualsToken ||
+		kind == pipeEqualsToken);
+}
+
 static inline i8 getBinaryOperatorPrecedence(enum syntaxKind kind) {
 	switch(kind) {
 	case plusOperator: return 12;
@@ -354,7 +390,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 	case variableAssignment: {
 		variableAssignmentNode an = *(variableAssignmentNode*)root->data;
 		print_syntaxtree_internal(text, &an.identifier, indent, verbose, true);
-		print_syntaxtree_internal(text, &an.equals, indent, verbose, true);
+		print_syntaxtree_internal(text, &an.assignmentOperator, indent, verbose, true);
 		print_syntaxtree_internal(text, &an.expression, indent, verbose, false);
 		break;
 	}
