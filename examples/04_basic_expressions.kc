@@ -22,3 +22,18 @@ print("5 > 5 = %s\n", 5 > 5)
 print("5 >= 5 = %s\n", 5 >= 5)
 print("6 < 6 = %s\n", 6 < 6)
 print("6 <= 6 = %s\n", 6 <= 6)
+
+// compound assignments
+a := 70
+a += 1
+a -= 1
+a /= 3
+a *= 6
+a %= 10 
+a &= 10
+a |= 321
+a ^= 4
+a >>= 2
+a <<= 3
+print("\n")
+print("a after compound assignments: %d\n", a)

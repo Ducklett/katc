@@ -18,6 +18,13 @@ static inline bool isIdentifierStart(char c) { return isLetter(c) || c == '_'; }
 static inline bool isIdentifier(char c) { return isLetter(c) || isNumber(c) || c == '_'; }
 
 static inline int parse_numeric_char(char c) { return c - 48; }
+static inline int parse_hexadecimal_char(char c) {
+	if (c >= '0' && c <= '9') return c - 48;
+	if (c >= 'a' && c <= 'f') return c - 87;
+	if (c >= 'A' && c <= 'F') return c - 55;
+	return 0;
+}
+static inline int parse_binary_char(char c) { return c - 48; }
 
 bool span_compare(char* text, textspan span, const char* comp) {
 
@@ -206,9 +213,42 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 		int value = 0;
 		t.kind = numberLiteral;
 		start =  l->index;
-		while (isNumber(lexer_current(l))) {
+
+		#define BASE10 0
+		#define BASE16 1
+		#define BASE2 2
+		u8 radix = BASE10;
+		if (lexer_peek(l,1) == 'x') radix = BASE16;
+		if (lexer_peek(l,1) == 'b') radix = BASE2;
+		if (radix != BASE10) {
+			// skip the 0x and 0b prefix
+			lexer_move_next(l);
+			lexer_move_next(l);
+		}
+
+		bool foundIllegalCharacter=false;
+		while (isNumber(lexer_current(l)) || (radix == BASE16 && isLetter(lexer_current(l)) )) {
 			char nextNum = lexer_move_next(l);
-			value = value * 10 + parse_numeric_char(nextNum);
+			switch(radix) {
+				case BASE10: value = value * 10 + parse_numeric_char(nextNum); break;
+				case BASE16: {
+					u8 v = parse_hexadecimal_char(nextNum);
+					if (!foundIllegalCharacter && nextNum != '0' && v == 0) {
+						foundIllegalCharacter=true;
+						report_diagnostic(d, invalidHexadecimalNumberDiagnostic, textspan_create(l->index-1,1), 0, 0, 0);
+						t.kind=badToken;
+					}
+					value = (value << 4) + v; 
+				} break;
+				case BASE2: {
+					if (!foundIllegalCharacter && nextNum != '0' && nextNum != '1') {
+						foundIllegalCharacter=true;
+						report_diagnostic(d, invalidBinaryNumberDiagnostic, textspan_create(l->index-1,1), 0, 0, 0);
+						t.kind=badToken;
+					}
+					value = (value << 1) + parse_binary_char(nextNum); 
+				} break;
+			}
 		}
 		t.span = textspan_create(start, l->index - start);
 		t.numValue = value;
