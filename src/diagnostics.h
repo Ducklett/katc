@@ -14,6 +14,7 @@ typedef struct diagnosticContainer {
 enum diagnosticKind {
 	unexpectedCharacterDiagnostic,
 	badTokenDiagnostic,
+	leadingZerosOnBase10NumberDiagnostic,
 	invalidHexadecimalNumberDiagnostic,
 	invalidBinaryNumberDiagnostic,
 	unexpectedTokenDiagnostic,
@@ -34,6 +35,7 @@ enum diagnosticKind {
 static const char *diagnosticMetaText[] = {
 	"unexpectedCharacterDiagnostic",
 	"badTokenDiagnostic",
+	"leadingZerosOnBase10NumberDiagnostic",
 	"invalidHexadecimalNumberDiagnostic",
 	"invalidBinaryNumberDiagnostic",
 	"unexpectedTokenDiagnostic",

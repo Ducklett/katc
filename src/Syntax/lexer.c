@@ -220,10 +220,17 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 		u8 radix = BASE10;
 		if (lexer_peek(l,1) == 'x') radix = BASE16;
 		if (lexer_peek(l,1) == 'b') radix = BASE2;
+
 		if (radix != BASE10) {
 			// skip the 0x and 0b prefix
 			lexer_move_next(l);
 			lexer_move_next(l);
+		} else if (lexer_current(l) == '0') {
+			int leadingZeroCount=1;
+			while(lexer_peek(l,leadingZeroCount) == '0') leadingZeroCount++;
+
+			report_diagnostic(d, leadingZerosOnBase10NumberDiagnostic, textspan_create(l->index,leadingZeroCount), 0, 0, 0);
+			t.kind=badToken;
 		}
 
 		bool foundIllegalCharacter=false;
