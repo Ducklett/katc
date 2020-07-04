@@ -23,7 +23,7 @@ typedef unsigned long u64;
 
 #if BENCHMARK
 #define benchmark_start() clock_t t = clock();
-#define benchmark_end(name) t = clock() - t; printf("%s%s: %.0fms%s\n", TERMGREEN, name, ((double)t) / CLOCKS_PER_SEC * 1000, TERMRESET); 
+#define benchmark_end(name) t = clock() - t; fprintf(stderr, "%s%s: %.0fms%s\n", TERMGREEN, name, ((double)t) / CLOCKS_PER_SEC * 1000, TERMRESET); 
 #else
 #define benchmark_start() {}
 #define benchmark_end(name) {}
