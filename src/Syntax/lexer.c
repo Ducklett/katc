@@ -237,7 +237,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			// skip the 0x and 0b prefix
 			lexer_move_next(l);
 			lexer_move_next(l);
-		} else if (lexer_current(l) == '0') {
+		} else if (lexer_current(l) == '0' && isNumber(lexer_peek(l,1))) {
 			int leadingZeroCount=1;
 			while(lexer_peek(l,leadingZeroCount) == '0') leadingZeroCount++;
 
