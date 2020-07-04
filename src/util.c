@@ -29,9 +29,15 @@ typedef unsigned long u64;
 #define benchmark_end(name) {}
 #endif
 
+void panic(char* message) {
+	fprintf(stderr, "%sFatal error: %s%s\n", TERMRED, message, TERMRESET);
+	exit(1);
+}
+
 char* string_concat(const char *s1, const char *s2)
 {
 	char *result = malloc(strlen(s1) + strlen(s2) + 1);
+	if (result == NULL) panic("memory allocation failed\n");
 	strcpy(result, s1);
 	strcat(result, s2);
 	return result;
@@ -46,6 +52,7 @@ char* read_file(const char* filename, u64* length) {
 		*length = ftell (f);
 		fseek (f, 0, SEEK_SET);
 		buffer = malloc (*length+1);
+		if (buffer == NULL) panic("memory allocation failed\n");
 		if (buffer) {
 			fread (buffer, 1, *length, f);
 		}

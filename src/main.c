@@ -45,6 +45,7 @@ int main(int argc, const char **argv) {
 	const char* entrypoint = argv[0];
 
 	ast *result = calloc(1, sizeof(ast));
+	if (result == NULL) panic("memory allocation failed\n");
 
 
 	benchmark_start();

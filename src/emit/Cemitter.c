@@ -286,6 +286,7 @@ char* escape_string_c(char *str) {
 	int oldlength = i;
 
 	char *allocatedText = (char*)malloc(sizeof(char) * length);
+	if (allocatedText == NULL) panic("memory allocation failed\n");
 
 	int index = 0;
 	for (int j=0; j < oldlength; j++) {

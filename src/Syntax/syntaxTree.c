@@ -294,6 +294,7 @@ textspan textspan_from_bounds(node *start, node *end) {
 
 char* ast_substring(char* text, textspan span) {
 	char *tokenText = (char*)malloc(sizeof(char) * (span.length) + 1);
+	if (tokenText == NULL) panic("memory allocation failed\n");
 	tokenText[span.length] = '\0';
 	strncpy(tokenText, text + span.start, sizeof(char) * span.length);
 	return tokenText;
@@ -301,6 +302,7 @@ char* ast_substring(char* text, textspan span) {
 
 char* allocate_string(char *text, int length) {
 	char *allocatedText = (char*)malloc(sizeof(char) * length);
+	if (allocatedText == NULL) panic("memory allocation failed\n");
 	strncpy(allocatedText, text, sizeof(char) * length);
 	allocatedText[length] = '\0';
 	return allocatedText;
