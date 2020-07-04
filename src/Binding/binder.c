@@ -182,14 +182,19 @@ astNode bind_while_loop(node *n, ast *tree) {
 
 astNode bind_range_expression(node *n, ast *tree) {
 	rangeExpressionNode rn = *(rangeExpressionNode*)n->data;
-	int from = rn.start.numValue;
-	int to = rn.end.numValue;
+	enum astType type = rn.start.kind == numberLiteral ? intType : charType;
 
 	int index = tree->rangeIndex;
-	tree->ranges[tree->rangeIndex++] = 
-		 (rangeExpressionAst){ from, to };
 
-	return (astNode){ rangeExpressionKind, intType, .data = &tree->ranges[index] };
+	if (type == intType) {
+		tree->ranges[tree->rangeIndex++] = 
+		 	(rangeExpressionAst){ .fromInt = rn.start.numValue, .toInt = rn.end.numValue };
+	} else {
+		tree->ranges[tree->rangeIndex++] = 
+		 	(rangeExpressionAst){ .fromChar = rn.start.charValue, .toChar = rn.end.charValue };
+	}
+
+	return (astNode){ rangeExpressionKind, type, .data = &tree->ranges[index] };
 }
 
 astNode bind_for_loop(node *n, ast *tree) {

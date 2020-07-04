@@ -160,23 +160,23 @@ static inline void emit_c_forLoop(astNode *n, ast *tree) {
 	rangeExpressionAst rn = *(rangeExpressionAst*)fn.range.data;
 
 	if (fn.index == 0) {
-		char* compOp = rn.to > rn.from ? "<=" : ">=";
-		char* incOp = rn.to > rn.from ? "++" : "--";
+		char* compOp = rn.toInt > rn.fromInt ? "<=" : ">=";
+		char* incOp = rn.toInt > rn.fromInt ? "++" : "--";
 
 		fprintf(fp,"for (");
 		// int x = 1; 
-		fprintf(fp,"%s %s = %d; ", cTypeText[fn.value->type], fn.value->name, rn.from);
+		fprintf(fp,"%s %s = %d; ", cTypeText[fn.value->type], fn.value->name, rn.fromInt);
 		// x <= 100
-		fprintf(fp,"%s %s %d; ", fn.value->name, compOp, rn.to);
+		fprintf(fp,"%s %s %d; ", fn.value->name, compOp, rn.toInt);
 		// x++
 		fprintf(fp,"%s%s", fn.value->name, incOp);
 		fprintf(fp,") ");
 		emit_c_node(&fn.block, tree);
 	} else {
-		fprintf(fp,"for (int %s = 0; %s <= %d; %s++) {\n", fn.index->name, fn.index->name, abs(rn.from - rn.to), fn.index->name);
+		fprintf(fp,"for (int %s = 0; %s <= %d; %s++) {\n", fn.index->name, fn.index->name, abs(rn.fromInt - rn.toInt), fn.index->name);
 
-		if (rn.to > rn.from) fprintf(fp,"%s %s = i + %d;\n", cTypeText[fn.value->type], fn.value->name, rn.from);
-		else fprintf(fp,"%s %s = %d - i;\n",cTypeText[fn.value->type], fn.value->name, rn.from);
+		if (rn.toInt > rn.fromInt) fprintf(fp,"%s %s = i + %d;\n", cTypeText[fn.value->type], fn.value->name, rn.fromInt);
+		else fprintf(fp,"%s %s = %d - i;\n",cTypeText[fn.value->type], fn.value->name, rn.fromInt);
 
 		emit_c_node(&fn.block, tree);
 		fprintf(fp,";\n");

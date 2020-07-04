@@ -214,8 +214,14 @@ typedef struct binaryExpressionAst {
 
 // TODO: range expression should eventually also support identifiers for start and end values
 typedef struct rangeExpressionAst {
-	u16 from;
-	u16 to;
+	union {
+		u16 fromInt;
+		char fromChar;
+	};
+	union {
+		u16 toInt;
+		char toChar;
+	};
 } rangeExpressionAst;
 
 typedef struct callExpressionAst {
@@ -437,7 +443,8 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	case rangeExpressionKind: {
 
 		rangeExpressionAst rn = *(rangeExpressionAst*)root->data;
-		printf ("%*s%s%d..%d%s", indent, "", TERMMAGENTA, rn.from, rn.to, TERMRESET);
+		if (root->type == intType) printf ("%*s%s%d..%d%s", indent, "", TERMMAGENTA, rn.fromInt, rn.toInt, TERMRESET);
+		else printf ("%*s%s'%d'..'%d'%s", indent, "", TERMMAGENTA, rn.fromChar, rn.toChar, TERMRESET);
 		break;
 	}
 	case unaryExpressionKind: {
