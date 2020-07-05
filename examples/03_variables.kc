@@ -22,3 +22,8 @@ message = "Hey pals"
 print("\n")
 print("Number is now %d\n", number)
 print("Message is now %s\n", message)
+
+// constants are defined with :: instead of :=
+name :: "Bob"
+name2 :string: "Bob"
+print("Hello %s\n", name)
