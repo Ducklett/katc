@@ -370,18 +370,24 @@ astNode bind_variable_assignment(node *n, ast *tree) {
 	variableAssignmentNode an = *(variableAssignmentNode*)n->data;
 	enum syntaxKind opKind = getBinaryOperatorFromAssignmentOperator(an.assignmentOperator.kind);
 
-
 	astNode boundExpression = bind_expression(&an.expression, tree);
 
 	variableSymbol *variable = find_variable_in_scope(an.identifier.span, tree);
 
+	bool hasErrors = variable == 0 || boundExpression.type == errorType || boundExpression.type == unresolvedType;
+
 	typedOperator op = {0};
-	if (opKind != 0 && variable != 0) {
+	if (opKind != 0 && !hasErrors) {
 		op = get_binary_operator(opKind, variable->type, boundExpression.type);
 	}
 
-	if (variable != 0) {
-		if (variable->type != boundExpression.type) {
+	if (!op.operator) {
+		report_diagnostic(&tree->diagnostics, undefinedBinaryOperatorDiagnostic, n->span, opKind, variable->type, boundExpression.type);
+		hasErrors = true;
+	}
+
+	if (!hasErrors) {
+		if (opKind == 0 && variable->type != boundExpression.type) {
 			report_diagnostic(&tree->diagnostics, cannotAssignDiagnostic, an.identifier.span, variable->type, boundExpression.type, 0);
 		} else if (!(variable->flags & VARIABLE_MUTABLE)) {
 			report_diagnostic(&tree->diagnostics, cannotAssignConstantDiagnostic, an.expression.span, (u32)&an.identifier.span, 0, 0);
