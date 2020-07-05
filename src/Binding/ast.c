@@ -240,9 +240,21 @@ typedef struct astNode {
 	};
 } astNode;
 
+#define VARIABLE_MUTABLE 1
+#define VARIABLE_INITIALIZED 2
+#define VARIABLE_VALUE_KNOWN 4
+
 typedef struct variableSymbol {
 	char name[128];
 	enum astType type;
+	u8 flags;
+	union {
+		void* data; 
+		int numValue; 
+		bool boolValue; 
+		char* stringValue; 
+		char charValue; 
+	};
 } variableSymbol;
 
 typedef struct unaryExpressionAst {
@@ -520,7 +532,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	case variableDeclarationKind: {
 		variableDeclarationAst vn = *(variableDeclarationAst*)root->data;
 
-		printf ("%*s%s%s %s%s\n", indent, "", TERMMAGENTA, vn.variable->name, astTypeText[vn.variable->type], TERMRESET);
+		printf ("%*s%s%s %s (%s)%s\n", indent, "", TERMMAGENTA, vn.variable->name, astTypeText[vn.variable->type], (vn.variable->flags & VARIABLE_MUTABLE) ? "mutable" : "constant", TERMRESET);
 		print_ast_internal(text, &vn.initalizer, indent, verbose, false);
 		break;
 	}

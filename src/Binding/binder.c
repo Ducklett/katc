@@ -13,7 +13,7 @@ astNode bind_variable_declaration(node *n, ast *tree);
 astNode bind_variable_assignment(node *n, ast *tree);
 static inline int push_scope(ast *tree);
 static inline void pop_scope(ast *tree, int parentScopeIndex);
-variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableType);
+variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableType, u8 flags);
 variableSymbol* find_variable_in_scope(textspan nameSpan, ast *tree);
 astNode fold_binary_expression(typedOperator *op, int left, int right);
 astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand);
@@ -61,6 +61,13 @@ astNode bind_expression(node *n, ast* tree) {
 
 		case identifierToken: {
 			variableSymbol *variable = find_variable_in_scope(n->span, tree);
+			if (feature_constantfolding &&
+				variable != 0 &&
+				!(variable->flags & VARIABLE_MUTABLE) &&
+				(variable->flags & VARIABLE_VALUE_KNOWN)) {
+
+				return (astNode){ literalKind, variable->type, .numValue = variable->numValue };
+			}
 			return (astNode){ variableReferenceKind, variable == 0 ? errorType : variable->type, .data = variable };
 		}
 
@@ -227,8 +234,10 @@ astNode bind_for_loop(node *n, ast *tree) {
 	forLoopNode fn = *(forLoopNode*)n->data;
 
 	astNode range = bind_range_expression(&fn.range, tree);
-	variableSymbol *valueVar = declare_variable(tree, fn.value.span, range.type);
-	variableSymbol *keyVar = fn.key.kind == 0 ? 0 : declare_variable(tree, fn.key.span, intType);
+
+	u8 flags = VARIABLE_MUTABLE | VARIABLE_INITIALIZED;
+	variableSymbol *valueVar = declare_variable(tree, fn.value.span, range.type, flags);
+	variableSymbol *keyVar = fn.key.kind == 0 ? 0 : declare_variable(tree, fn.key.span, intType, flags);
 	astNode boundBlock = bind_expression(&fn.block, tree);
 
 	int index = tree->forLoopIndex;
@@ -245,10 +254,11 @@ astNode bind_unary_expression(node *n, ast *tree) {
 
 	bool hasErrors = boundOperand.type == errorType || boundOperand.type == unresolvedType;
 
-	if (boundOperand.kind != variableReferenceKind &&
-		(un.operator.kind == plusPlusOperator || un.operator.kind == minusMinusOperator)) {
-		hasErrors=true;
-		report_diagnostic(&tree->diagnostics, illegalIncrementOrDecrementDiagnostic, un.operand.span, 0, 0, 0);
+	if (un.operator.kind == plusPlusOperator || un.operator.kind == minusMinusOperator) {
+		if (boundOperand.kind != variableReferenceKind) {
+			hasErrors=true;
+			report_diagnostic(&tree->diagnostics, illegalIncrementOrDecrementDiagnostic, un.operand.span, 0, 0, 0);
+		}
 	}
 
 	enum astUnaryOperator op = get_unary_operator(un.operator.kind, boundOperand.type, un.left);
@@ -338,7 +348,15 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 		? bind_expression_of_type(&vn.expression, tree, resolve_type_from_span(tree, vn.type.span), vn.expression.span)
 		: bind_expression(&vn.expression, tree);
 
-	variableSymbol *variable = declare_variable(tree, vn.identifier.span, boundInitializer.type);
+	u8 flags = VARIABLE_INITIALIZED;
+	if (vn.mutabilityIndicator.kind == equalsToken) flags |= VARIABLE_MUTABLE;
+
+	variableSymbol *variable = declare_variable(tree, vn.identifier.span, boundInitializer.type, flags);
+
+	if (variable != 0 && boundInitializer.kind == literalKind) {
+		variable->flags |= VARIABLE_VALUE_KNOWN;
+		variable->numValue = boundInitializer.numValue;
+	}
 
 	int index = tree->variableDeclarationIndex;
 	tree->variableDeclarations[tree->variableDeclarationIndex++] =
@@ -365,6 +383,8 @@ astNode bind_variable_assignment(node *n, ast *tree) {
 	if (variable != 0) {
 		if (variable->type != boundExpression.type) {
 			report_diagnostic(&tree->diagnostics, cannotAssignDiagnostic, an.identifier.span, variable->type, boundExpression.type, 0);
+		} else if (!(variable->flags & VARIABLE_MUTABLE)) {
+			report_diagnostic(&tree->diagnostics, cannotAssignConstantDiagnostic, an.expression.span, (u32)&an.identifier.span, 0, 0);
 		}
 	}
 
@@ -391,7 +411,7 @@ static inline void pop_scope(ast *tree, int parentScopeIndex) {
 }
 
 
-variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableType) {
+variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableType, u8 flags) {
 	if (variableType == voidType) {
 		report_diagnostic(&tree->diagnostics, variableCannotBeVoidDiagnostic, nameSpan, 0, 0, 0);
 		return 0;
@@ -412,6 +432,7 @@ variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType vari
 			variable->name[i] = tree->text[i+nameSpan.start];
 	}
 	variable->type = variableType;
+	variable->flags = flags;
 
 	return variable;
 }

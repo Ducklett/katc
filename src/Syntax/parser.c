@@ -324,7 +324,10 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 		type = parser_next_token(p, d);
 	}
 
-	node equals = parser_match_token(p, d, equalsToken);
+	node equals; 
+
+	if (parser_current(p, d).kind == colonToken) equals = parser_next_token(p, d);
+	else equals = parser_match_token(p, d, equalsToken);
 	node expression = parser_parse_statement(p, d);
 
 	u16 index = p->variableDeclaratonIndex;

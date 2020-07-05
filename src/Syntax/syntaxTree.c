@@ -222,7 +222,7 @@ typedef struct variableDeclarationNode {
 	node identifier;
 	node colon;
 	node type;				// optional
-	node equals;
+	node mutabilityIndicator; // = or :
 	node expression;
 } variableDeclarationNode;
 
@@ -403,7 +403,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		print_syntaxtree_internal(text, &dn.identifier, indent, verbose, true);
 		print_syntaxtree_internal(text, &dn.colon, indent, verbose, true);
 		if (dn.type.kind != emptyToken)	print_syntaxtree_internal(text, &dn.type, indent, verbose, true);
-		print_syntaxtree_internal(text, &dn.equals, indent, verbose, true);
+		print_syntaxtree_internal(text, &dn.mutabilityIndicator, indent, verbose, true);
 		print_syntaxtree_internal(text, &dn.expression, indent, verbose, false);
 		break;
 	}
