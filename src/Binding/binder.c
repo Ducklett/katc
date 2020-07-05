@@ -189,16 +189,34 @@ astNode bind_while_loop(node *n, ast *tree) {
 
 astNode bind_range_expression(node *n, ast *tree) {
 	rangeExpressionNode rn = *(rangeExpressionNode*)n->data;
-	enum astType type = rn.start.kind == numberLiteral ? intType : charType;
+
+	astNode from = bind_expression(&rn.start, tree);
+
+	enum astType type = from.type;
+
+	if (from.kind != literalKind) {
+		report_diagnostic(&tree->diagnostics, nonConstantDiagnostic, rn.start.span, 0, 0, 0);
+	}
+
+
+	if (!isNumberType(type) && type != charType ) {
+		report_diagnostic(&tree->diagnostics, illegalRangeDiagnostic, rn.start.span, type, 0, 0);
+	}
+
+	astNode to = bind_expression_of_type(&rn.end, tree, type, rn.end.span);
+
+	if (to.kind != literalKind) {
+		report_diagnostic(&tree->diagnostics, nonConstantDiagnostic, rn.end.span, 0, 0, 0);
+	}
 
 	int index = tree->rangeIndex;
 
 	if (type == intType) {
 		tree->ranges[tree->rangeIndex++] = 
-		 	(rangeExpressionAst){ .fromInt = rn.start.numValue, .toInt = rn.end.numValue };
+		 	(rangeExpressionAst){ .fromInt = from.numValue, .toInt = to.numValue };
 	} else {
 		tree->ranges[tree->rangeIndex++] = 
-		 	(rangeExpressionAst){ .fromChar = rn.start.charValue, .toChar = rn.end.charValue };
+		 	(rangeExpressionAst){ .fromChar = from.charValue, .toChar = to.charValue };
 	}
 
 	return (astNode){ rangeExpressionKind, type, .data = &tree->ranges[index] };

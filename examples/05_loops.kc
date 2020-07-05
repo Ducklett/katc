@@ -5,8 +5,8 @@ while(count >= 0) {
 	count--
 }
 
-print("\nfor loop counting down from 10 to 0\n") 
-for x in 10..0 print("%d\n", x)
+print("\nfor loop counting down from 10 to -10 \n") 
+for x in 10..-10 print("%d\n", x)
 
 print("\nfor loop with index and value\n")
 for v,i in 'a'..'z' {

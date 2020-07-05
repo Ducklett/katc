@@ -8,9 +8,10 @@ static const char *diagnosticText[] = {
 	"'%c' is an invalid binary number (%d,%d)\n",
 	"unexpected token of kind '%s', expected '%s' (%d,%d)\n",
 	"unexpected token of kind '%s', expected an assignment operator (=, +=, -=, *=, /=, %=, <<=, >>=, &=, ^=, |=) (%d,%d)\n",
-	"unexpected token '%s' while parsing range expression. (%d,%d)\n",
+	"a value of type '%s' is not legal in a range expression. (%d,%d)\n",
 	"unexpected token '%s' while parsing primary expression. (%d,%d)\n",
 	"increment/decrement operators can only be used on variables. (%d,%d)\n",
+	"only constant expressions are allowed here (did you reference a variable?). (%d,%d)\n",
 	"undefined unary operator '%s' for value of type '%s' (%d,%d)\n",
 	"undefined binary operator '%s' for values of type '%s' and '%s' (%d,%d)\n",
 	"variable '%s' is already declared in this scope. (%d,%d)\n",
@@ -56,10 +57,12 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		case notAnAssignmentOperatorDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], d.span.start, d.span.length); break;
 		case illegalRangeDiagnostic:
-			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], d.span.start, d.span.length); break;
+			fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param1], d.span.start, d.span.length); break;
 		case illegalPrimaryExpressionDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], d.span.start, d.span.length); break;
 		case illegalIncrementOrDecrementDiagnostic:
+			fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
+		case nonConstantDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
 		case undefinedUnaryOperatorDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;

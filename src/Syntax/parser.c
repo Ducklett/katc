@@ -442,15 +442,10 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 }
 
 node parser_parse_range_expression(parser *p, diagnosticContainer *d) {
-	node current = parser_current(p, d);
 
-	if (current.kind != numberLiteral && current.kind != charLiteral && current.kind != badToken) {
-		report_diagnostic(d, illegalRangeDiagnostic, current.span, current.kind, 0, 0);
-	}
-
-	node from  = parser_match_token(p, d, current.kind);
+	node from  = parser_parse_expression(p, d);
 	node dotDot  = parser_match_token(p, d, dotDotToken);
-	node to  = parser_match_token(p, d, current.kind);
+	node to  = parser_parse_expression(p, d);
 
 	u16 index = p->rangeExpressionIndex;
 	p->rangeExpressions[p->rangeExpressionIndex++] =
@@ -462,9 +457,6 @@ node parser_parse_range_expression(parser *p, diagnosticContainer *d) {
 node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 	node current = parser_current(p, d);
 	node lookahead = parser_peek(p, d, 1);
-
-	if (current.kind == numberLiteral && lookahead.kind == dotDotToken)
-		return parser_parse_range_expression(p, d);
 
 	switch (current.kind) {
 	case identifierToken:

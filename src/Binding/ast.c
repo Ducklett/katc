@@ -259,11 +259,11 @@ typedef struct binaryExpressionAst {
 // TODO: range expression should eventually also support identifiers for start and end values
 typedef struct rangeExpressionAst {
 	union {
-		u16 fromInt;
+		i16 fromInt;
 		char fromChar;
 	};
 	union {
-		u16 toInt;
+		i16 toInt;
 		char toChar;
 	};
 } rangeExpressionAst;
