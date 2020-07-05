@@ -1,9 +1,9 @@
 typedef struct diagnostic {
 	u8 kind;
 	textspan span;
-	u32 param1;
-	u32 param2;
-	u32 param3;
+	u64 param1;
+	u64 param2;
+	u64 param3;
 } diagnostic;
 
 typedef struct diagnosticContainer {
@@ -63,5 +63,5 @@ static const char *diagnosticMetaText[] = {
 	"emptyCaseStatementDiagnostic",
 };
 
-void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u32 param1, u32 param2, u32 param3);
+void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u64 param1, u64 param2, u64 param3);
 void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText);

@@ -225,9 +225,9 @@ static inline void emit_c_unaryExpression(astNode *n, ast *tree) {
 	fprintf(fp,"(");
 	if (un.operator == postIncrementOp || un.operator == postDecrementOp) {
 		emit_c_node(&un.operand, tree);
-		fprintf(fp,cUnaryText[un.operator]);
+		fprintf(fp,"%s", cUnaryText[un.operator]);
 	} else {
-		fprintf(fp,cUnaryText[un.operator]);
+		fprintf(fp,"%s", cUnaryText[un.operator]);
 		emit_c_node(&un.operand, tree);
 	}
 	fprintf(fp,")");
@@ -261,7 +261,7 @@ static inline void emit_c_variableAssignment(astNode *n, ast *tree) {
 }
 
 static inline void emit_c_variableReference(astNode *n, ast *tree) {
-	fprintf(fp,((variableSymbol*) n->data)->name);
+	fprintf(fp, "%s", ((variableSymbol*) n->data)->name);
 }
 
 char* escape_string_c(char *str) {

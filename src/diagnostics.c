@@ -24,7 +24,7 @@ static const char *diagnosticText[] = {
 	"case statements should have at least one branch. (%d,%d)\n",
 };
 
-void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u32 param1, u32 param2, u32 param3) {
+void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u64 param1, u64 param2, u64 param3) {
 	if (d->index >= 10) return;
 
 	diagnostic dia = { kind, span, param1, param2, param3, };

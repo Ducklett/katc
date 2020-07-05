@@ -390,7 +390,7 @@ astNode bind_variable_assignment(node *n, ast *tree) {
 		if (opKind == 0 && variable->type != boundExpression.type) {
 			report_diagnostic(&tree->diagnostics, cannotAssignDiagnostic, an.identifier.span, variable->type, boundExpression.type, 0);
 		} else if (!(variable->flags & VARIABLE_MUTABLE)) {
-			report_diagnostic(&tree->diagnostics, cannotAssignConstantDiagnostic, an.expression.span, (u32)&an.identifier.span, 0, 0);
+			report_diagnostic(&tree->diagnostics, cannotAssignConstantDiagnostic, an.expression.span, (u64)&an.identifier.span, 0, 0);
 		}
 	}
 
@@ -427,7 +427,7 @@ variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType vari
 
 	for (int i = 0; i < currentScope->variableCount; i++) {
 		if (span_compare(tree->text, nameSpan, currentScope->variables[i].name)) {
-			report_diagnostic(&tree->diagnostics, redeclarationOfVariableDiagnostic, nameSpan, (u32)currentScope->variables[i].name, 0, 0);
+			report_diagnostic(&tree->diagnostics, redeclarationOfVariableDiagnostic, nameSpan, (u64)currentScope->variables[i].name, 0, 0);
 			return 0;
 		}
 	}
