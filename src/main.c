@@ -8,10 +8,12 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv) {
 
-	int run = 0;
+	int run = false;
 	const char *outputType = NULL;
 	const char *outputTypes = "syntaxtree|ast|c|bin";
 	const char *outputName = NULL;
+
+	int disableConstantFolding = false;
 
 	struct argparse_option options[] = {
 		OPT_HELP(),
@@ -19,18 +21,28 @@ int main(int argc, const char **argv) {
 		OPT_BOOLEAN('r', "run", &run, "run as script"),
 		OPT_STRING('t', "output-type", &outputType, outputTypes),
 		OPT_STRING('o', "output-name", &outputName, "name for the output file"),
+		OPT_GROUP("Feature flags"),
+		OPT_BOOLEAN('\0', "disable-constant-folding", &disableConstantFolding, "disable constant folding"),
 		OPT_END(),
 	};
+
 
 	struct argparse argparse;
 	argparse_init(&argparse, options, usage, 0);
 	argparse_describe(&argparse, "\nThe kat language compiler","");
 	argc = argparse_parse(&argparse, argc, argv);
 
+	if (argc == 0) {
+		fprintf(stderr, "%sMust supply a file as entrypoint.%s\n", TERMRED, TERMRESET);
+		exit(1);
+	}
+
 	if (argc > 1) {
 		fprintf(stderr, "%sMust supply only one file as entrypoint.%s\n", TERMRED, TERMRESET);
 		exit(1);
 	}
+
+	feature_constantfolding = !disableConstantFolding;
 
 	bool parseOnly = outputType != NULL && !strcmp(outputType, "syntaxtree");
 	bool isAst = outputType != NULL && !strcmp(outputType, "ast");

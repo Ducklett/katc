@@ -199,8 +199,9 @@ enum astUnaryOperator {
 
 static const char *astUnaryText[] = {
 	"missingUnary",
-	"negation",
+	"logicalNegation",
 	"bitwiseNegation",
+	"negation",
 	"identity",
 	"preIncrement",
 	"preDecrement",

@@ -66,3 +66,5 @@ char* read_file(const char* filename, u64* length) {
 	}
 	return buffer;
 }
+
+bool feature_constantfolding = true;

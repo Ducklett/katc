@@ -15,6 +15,8 @@ static inline int push_scope(ast *tree);
 static inline void pop_scope(ast *tree, int parentScopeIndex);
 variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableType);
 variableSymbol* find_variable_in_scope(textspan nameSpan, ast *tree);
+astNode fold_binary_expression(typedOperator *op, int left, int right);
+astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand);
 
 int bind_tree(ast* tree) {
 
@@ -223,14 +225,23 @@ astNode bind_unary_expression(node *n, ast *tree) {
 
 	astNode boundOperand = bind_expression(&un.operand, tree);
 
+	bool hasErrors = boundOperand.type == errorType || boundOperand.type == unresolvedType;
+
 	if (boundOperand.kind != variableReferenceKind &&
 		(un.operator.kind == plusPlusOperator || un.operator.kind == minusMinusOperator)) {
+		hasErrors=true;
 		report_diagnostic(&tree->diagnostics, illegalIncrementOrDecrementDiagnostic, un.operand.span, 0, 0, 0);
 	}
+
 	enum astUnaryOperator op = get_unary_operator(un.operator.kind, boundOperand.type, un.left);
 
 	if (!op) {
+		hasErrors=true;
 		report_diagnostic(&tree->diagnostics, undefinedUnaryOperatorDiagnostic, un.operator.span, un.operator.kind, boundOperand.type, 0);
+	}
+
+	if (!hasErrors && feature_constantfolding && boundOperand.kind == literalKind) {
+		return fold_unary_expression(op, &boundOperand);
 	}
 
 	if (op == identityOp) return boundOperand;
@@ -257,6 +268,10 @@ astNode bind_binary_expression(node *n, ast *tree) {
 	if (!op.operator && !hasErrors) {
 		report_diagnostic(&tree->diagnostics, undefinedBinaryOperatorDiagnostic, n->span, bn.operator.kind, boundLeft.type, boundRight.type);
 		hasErrors = true;
+	}
+
+	if (!hasErrors && feature_constantfolding && boundLeft.kind == literalKind && boundRight.kind == literalKind) {
+		return fold_binary_expression(&op, boundLeft.numValue, boundRight.numValue);
 	}
 
 	int index = tree->binaryExpressionsIndex;
@@ -400,4 +415,51 @@ variableSymbol* find_variable_in_scope_internal(textspan nameSpan, ast *tree, sc
 		return 0;
 	}
 	return find_variable_in_scope_internal(nameSpan, tree, currentScope->parentScope);
+}
+
+astNode fold_binary_expression(typedOperator *op, int left, int right) {
+	int v;
+	switch(op->operator) {
+		case addOp:            v = left +  right; break; 
+		case subtractOp:       v = left -  right; break; 
+		case multiplyOp:       v = left *  right; break;
+		case divideOp:         v = left /  right; break;
+		case moduloOp:         v = left %  right; break;
+
+		case equalOp:          v = left == right; break;
+		case inEqualOp:        v = left != right; break;
+		case lessOp:           v = left <  right; break;
+		case greaterOp:        v = left >  right; break;
+		case lessOrEqualOp:    v = left <= right; break;  
+		case greaterOrEqualOp: v = left >= right; break;     
+
+		case shiftLeftOp:      v = left << right; break;
+		case shiftRightOp:     v = left >> right; break;
+		case bitwiseAndOp:     v = left &  right; break;
+		case bitwiseXorOp:     v = left ^  right; break;
+		case bitwiseOrOp:      v = left |  right; break;
+
+		case logicalAndOp:     v = left && right; break;
+		case logicalOrOp:      v = left || right; break;
+		default:
+			fprintf(stderr, "%sUnhandled binary operator of type %s in binder%s", TERMRED, astBinaryText[op->operator], TERMRESET);
+			exit(1);
+	}
+
+	return (astNode){ literalKind, op->type, .numValue = v };
+}
+
+astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand) {
+	int v;
+	int operand = boundOperand->numValue;
+	switch(op) {
+	case logicalNegationOp: v = !operand; break;
+	case bitwiseNegationOp: v = ~operand; break;
+	case negationOp:        v = -operand; break;
+	case identityOp:        v =  operand; break;
+	default:
+		fprintf(stderr, "%sUnhandled unary operator of type %s in binder%s", TERMRED, astUnaryText[op], TERMRESET);
+		exit(1);
+	}
+	return (astNode){ literalKind , boundOperand->type, .numValue = v };
 }
