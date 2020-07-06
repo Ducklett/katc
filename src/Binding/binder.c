@@ -71,14 +71,23 @@ astNode bind_expression(node *n, ast* tree) {
 
 		case identifierToken: {
 			variableSymbol *variable = find_variable_in_scope(n->span, tree);
+
+			bool hasErrors = variable == 0;
+
 			if (feature_constantfolding &&
-				variable != 0 &&
+				!hasErrors &&
 				!(variable->flags & VARIABLE_MUTABLE) &&
 				(variable->flags & VARIABLE_VALUE_KNOWN)) {
 
 				return (astNode){ literalKind, variable->type, .numValue = variable->numValue };
 			}
-			return (astNode){ variableReferenceKind, variable == 0 ? errorType : variable->type, .data = variable };
+
+			if (!hasErrors &&  !(variable->flags & VARIABLE_INITIALIZED)) {
+				hasErrors=true;
+				report_diagnostic(&tree->diagnostics, variableNotInitializedDiagnostic, n->span, (u64)variable->name, 0, 0);
+			}
+
+			return (astNode){ variableReferenceKind, hasErrors ? errorType : variable->type, .data = variable };
 		}
 
 		case unaryExpression: return bind_unary_expression(n, tree);
@@ -354,14 +363,27 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 
 	variableDeclarationNode vn = *(variableDeclarationNode*)n->data;
 
-	astNode boundInitializer = vn.type.kind != 0
-		? bind_expression_of_type(&vn.expression, tree, resolve_type_from_span(tree, vn.type.span), vn.expression.span)
-		: bind_expression(&vn.expression, tree);
+	astNode boundInitializer = {0};
+	bool hasInitializer = vn.expression.kind != 0;
 
-	u8 flags = VARIABLE_INITIALIZED;
-	if (vn.mutabilityIndicator.kind == equalsToken) flags |= VARIABLE_MUTABLE;
+	u8 flags = vn.mutabilityIndicator.kind == equalsToken || !hasInitializer
+		? VARIABLE_MUTABLE
+		: 0;
 
-	variableSymbol *variable = declare_variable(tree, vn.identifier.span, boundInitializer.type, flags);
+	enum astType type =  0;
+	if (vn.type.kind != 0) type = resolve_type_from_span(tree, vn.type.span);
+
+	if (hasInitializer) {
+		boundInitializer = type != 0
+			? bind_expression_of_type(&vn.expression, tree, type, vn.expression.span)
+			: bind_expression(&vn.expression, tree);
+
+		if (type == 0) type = boundInitializer.type;
+
+		flags |= VARIABLE_INITIALIZED;
+	} 
+
+	variableSymbol *variable = declare_variable(tree, vn.identifier.span, type, flags);
 
 	if (variable != 0 && boundInitializer.kind == literalKind) {
 		variable->flags |= VARIABLE_VALUE_KNOWN;
@@ -372,7 +394,7 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 	tree->variableDeclarations[tree->variableDeclarationIndex++] =
 		(variableDeclarationAst){ variable, boundInitializer };
 
-	return (astNode){ variableDeclarationKind , boundInitializer.type, .data = &tree->variableDeclarations[index] };
+	return (astNode){ variableDeclarationKind , type, .data = &tree->variableDeclarations[index] };
 }
 
 astNode bind_variable_assignment(node *n, ast *tree) {
@@ -391,7 +413,7 @@ astNode bind_variable_assignment(node *n, ast *tree) {
 		op = get_binary_operator(opKind, variable->type, boundExpression.type);
 	}
 
-	if (!op.operator) {
+	if (opKind != 0 && !op.operator) {
 		report_diagnostic(&tree->diagnostics, undefinedBinaryOperatorDiagnostic, n->span, opKind, variable->type, boundExpression.type);
 		hasErrors = true;
 	}
@@ -401,6 +423,8 @@ astNode bind_variable_assignment(node *n, ast *tree) {
 			report_diagnostic(&tree->diagnostics, cannotAssignDiagnostic, an.identifier.span, variable->type, boundExpression.type, 0);
 		} else if (!(variable->flags & VARIABLE_MUTABLE)) {
 			report_diagnostic(&tree->diagnostics, cannotAssignConstantDiagnostic, an.expression.span, (u64)&an.identifier.span, 0, 0);
+		} else if (!(variable->flags & VARIABLE_INITIALIZED)) {
+			variable->flags |= VARIABLE_INITIALIZED;
 		}
 	}
 

@@ -319,16 +319,22 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 	node identifier = parser_match_token(p, d, identifierToken);
 	node colon = parser_match_token(p, d, colonToken);
 
+	enum syntaxKind mutKind = parser_current(p, d).kind;
+	if (mutKind == identifierToken) mutKind = parser_peek(p, d, 1).kind;
+	bool hasInitializer = mutKind == colonToken || mutKind == equalsToken;
+
 	node type = {0};
-	if (parser_current(p, d).kind == identifierToken) {
-		type = parser_next_token(p, d);
+	if (parser_current(p, d).kind == identifierToken || !hasInitializer) {
+		type = parser_match_token(p, d, identifierToken);
 	}
 
-	node equals; 
+	node equals = {0}; 
+	node expression = {0}; 
 
-	if (parser_current(p, d).kind == colonToken) equals = parser_next_token(p, d);
-	else equals = parser_match_token(p, d, equalsToken);
-	node expression = parser_parse_statement(p, d);
+	if (hasInitializer) {
+		equals = parser_next_token(p, d);
+		expression = parser_parse_statement(p, d);
+	}
 
 	u16 index = p->variableDeclaratonIndex;
 	p->variableDeclarations[p->variableDeclaratonIndex++] =

@@ -533,7 +533,8 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		variableDeclarationAst vn = *(variableDeclarationAst*)root->data;
 
 		printf ("%*s%s%s %s (%s)%s\n", indent, "", TERMMAGENTA, vn.variable->name, astTypeText[vn.variable->type], (vn.variable->flags & VARIABLE_MUTABLE) ? "mutable" : "constant", TERMRESET);
-		print_ast_internal(text, &vn.initalizer, indent, verbose, false);
+		if (vn.initalizer.kind != 0) print_ast_internal(text, &vn.initalizer, indent, verbose, false);
+		else printf ("%*s%s%s%s", indent, "", TERMMAGENTA, "<uninitialized>", TERMRESET);
 		break;
 	}
 	case variableAssignmentKind: {

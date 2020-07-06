@@ -28,6 +28,7 @@ enum diagnosticKind {
 	valueOutOfBoundsDiagnostic,
 	undefinedUnaryOperatorDiagnostic,
 	undefinedBinaryOperatorDiagnostic,
+	variableNotInitializedDiagnostic,
 	redeclarationOfVariableDiagnostic,
 	referenceToUndefinedVariableDiagnostic,
 	cannotAssignDiagnostic,
@@ -55,6 +56,7 @@ static const char *diagnosticMetaText[] = {
 	"valueOutOfBoundsDiagnostic"
 	"undefinedUnaryOperatorDiagnostic",
 	"undefinedBinaryOperatorDiagnostic",
+	"variableNotInitializedDiagnostic",
 	"redeclarationOfVariableDiagnostic",
 	"referenceToUndefinedVariableDiagnostic",
 	"cannotAssignDiagnostic",
