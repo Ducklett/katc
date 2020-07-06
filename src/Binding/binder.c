@@ -17,6 +17,7 @@ variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType vari
 variableSymbol* find_variable_in_scope(textspan nameSpan, ast *tree);
 astNode fold_binary_expression(typedOperator *op, int left, int right);
 astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand);
+bool check_bounds(astNode n, diagnosticContainer *d, textspan span);
 
 int bind_tree(ast* tree) {
 
@@ -31,9 +32,18 @@ astNode bind_expression_of_type(node *n, ast* tree, enum astType expectedType, t
 
 	if (expectedType != 0 && outNode.type != errorType && expectedType != outNode.type) {
 		// TODO: proper casting
+
 		if ((isNumberType(expectedType) && isNumberType(outNode.type))) {
 			outNode.type = expectedType;
-		} else {
+		} 
+
+		if (outNode.kind == literalKind) {
+			if (!check_bounds(outNode, &tree->diagnostics, n->span)) {
+				outNode.type = errorType;
+			}
+		}
+
+		if (outNode.type != errorType && outNode.type != expectedType){
 			report_diagnostic(&tree->diagnostics, cannotConvertDiagnostic, errorSpan, outNode.type, expectedType, 0);
 		}
 	}
@@ -507,4 +517,57 @@ astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand) {
 		exit(1);
 	}
 	return (astNode){ literalKind , boundOperand->type, .numValue = v };
+}
+
+bool check_bounds(astNode n, diagnosticContainer *d, textspan span) {
+	if (n.kind != literalKind) {
+		fprintf(stderr, "%scheck_bounds called on non-literal%s\n", TERMRED, TERMRESET);
+		exit(1);
+	}
+
+	i64 value = n.numValue;
+	bool errored=false;
+	bool overflow=false;
+
+	switch(n.type) {
+		case charType: {
+			if (value > CHAR_MAX ) { errored=true; overflow=true; }
+			else if (value < CHAR_MIN) { errored=true; } } break;
+		case intType: {
+			if (value > INT_MAX ) { errored=true; overflow=true; }
+			else if (value < INT_MIN) { errored=true; } } break;
+		case i8Type: {
+			if (value > I8_MAX ) { errored=true; overflow=true; }
+			else if (value < I8_MIN) { errored=true; } } break;
+		case i16Type: {
+			if (value > I16_MAX ) { errored=true; overflow=true; }
+			else if (value < I16_MIN) { errored=true; } } break;
+		case i32Type: {
+			if (value > I32_MAX ) { errored=true; overflow=true; }
+			else if (value < I32_MIN) { errored=true; } } break;
+		case u8Type: {
+			if (value > U8_MAX ) { errored=true; overflow=true; }
+			else if (value < U8_MIN) { errored=true; } } break;
+		case u16Type: {
+			if (value > U16_MAX ) { errored=true; overflow=true; }
+			else if (value < U16_MIN) { errored=true; } } break;
+		case u32Type: {
+			if (value > U32_MAX ) { errored=true; overflow=true; }
+			else if (value < U32_MIN) { errored=true; } } break;
+
+		case i64Type:
+		case u64Type:
+		case stringType:
+		case boolType: break;
+
+		default:
+			fprintf(stderr, "%sUnhandled type %s in check_bounds%s", TERMRED, astTypeText[n.type], TERMRESET);
+			exit(1);
+	}
+
+	if (errored) {
+		report_diagnostic(d, valueOutOfBoundsDiagnostic, span, n.type, overflow, 0);
+	}
+
+	return !errored;
 }

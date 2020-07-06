@@ -25,6 +25,7 @@ enum diagnosticKind {
 	illegalPrimaryExpressionDiagnostic,
 	illegalIncrementOrDecrementDiagnostic,
 	nonConstantDiagnostic,
+	valueOutOfBoundsDiagnostic,
 	undefinedUnaryOperatorDiagnostic,
 	undefinedBinaryOperatorDiagnostic,
 	redeclarationOfVariableDiagnostic,
@@ -51,6 +52,7 @@ static const char *diagnosticMetaText[] = {
 	"illegalPrimaryExpressionDiagnostic",
 	"illegalIncrementOrDecrementDiagnostic",
 	"nonConstantDiagnostic"
+	"valueOutOfBoundsDiagnostic"
 	"undefinedUnaryOperatorDiagnostic",
 	"undefinedBinaryOperatorDiagnostic",
 	"redeclarationOfVariableDiagnostic",

@@ -178,7 +178,7 @@ typedef struct node {
 	textspan span;
 	union {
 		void* data; 
-		int numValue; 
+		i64 numValue; 
 		bool boolValue; 
 		char* stringValue; 
 		char charValue; 

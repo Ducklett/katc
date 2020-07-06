@@ -7,6 +7,35 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 typedef unsigned long u64;
 
+// already defined on tcc
+#undef CHAR_MAX
+#undef CHAR_MIN
+#undef INT_MAX
+#undef INT_MIN
+
+#define CHAR_MAX 255
+#define CHAR_MIN 0
+#define INT_MAX +2147483647
+#define INT_MIN -2147483648
+
+#define I8_MAX  +127
+#define I8_MIN  -128
+#define I16_MAX +32767
+#define I16_MIN -32768
+#define I32_MAX +2147483647
+#define I32_MIN -2147483648
+#define I64_MAX +9223372036854775807
+#define I64_MIN -9223372036854775808
+
+#define U8_MAX  255
+#define U8_MIN  0
+#define U16_MAX 65535
+#define U16_MIN 0
+#define U32_MAX 4294967295
+#define U32_MIN 0
+#define U64_MAX 18446744073709551615
+#define U64_MIN 0
+
 #define TERMRED "\033[0;31m"
 #define TERMBOLDRED "\033[1;31m"
 #define TERMGREEN "\033[0;32m"
