@@ -6,6 +6,7 @@ enum astKind {
 	binaryExpressionKind,
 	rangeExpressionKind,
 	callExpressionKind,
+	castExpressionKind,
 	variableDeclarationKind,
 	variableAssignmentKind,
 	variableReferenceKind,
@@ -27,6 +28,7 @@ static const char *astKindText[] = {
 	"binaryExpression",
 	"rangeExpression",
 	"callExpression",
+	"castExpression",
 	"variableDeclaration",
 	"variableAssignment",
 	"variableReferenceKind",
@@ -87,6 +89,20 @@ bool isNumberType(enum astType t) {
 		t == i16Type ||
 		t == i32Type ||
 		t == i64Type );
+}
+
+#define CAST_IDENTITY 0
+#define CAST_IMPLICIT 1
+#define CAST_EXPLICIT 2
+#define CAST_ILLEGAL  3
+u8 getCastInformation(enum astType from, enum astType to) {
+	if (from == to) return CAST_IDENTITY;
+
+	if (from == stringType && to != boolType) return CAST_ILLEGAL;
+
+	if (from == intType && isNumberType(to)) return CAST_IMPLICIT;
+
+	return CAST_EXPLICIT;
 }
 
 enum astBinaryOperator {
@@ -527,6 +543,13 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		for(int i=0;i<cn.argumentCount;i++) {
 			print_ast_internal(text, &cn.arguments[i], indent, verbose, i!=cn.argumentCount-1);
 		}
+		break;
+	}
+	case castExpressionKind: {
+		astNode en = *(astNode*)root->data;
+
+		printf ("%*s%scast<%s>%s\n", indent, "", TERMMAGENTA, astTypeText[root->type], TERMRESET);
+		print_ast_internal(text, &en, indent, verbose, false);
 		break;
 	}
 	case variableDeclarationKind: {

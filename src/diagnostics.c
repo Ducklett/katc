@@ -11,7 +11,7 @@ static const char *diagnosticText[] = {
 	"a value of type '%s' is not legal in a range expression. (%d,%d)\n",
 	"unexpected token '%s' while parsing primary expression. (%d,%d)\n",
 	"increment/decrement operators can only be used on variables. (%d,%d)\n",
-	"only constant expressions are allowed here (did you reference a variable?). (%d,%d)\n",
+	"only constant expressions are allowed here. (did you reference a variable?) (%d,%d)\n",
 	"value is too %s for %s and will %s. (%d,%d)\n",
 	"undefined unary operator '%s' for value of type '%s' (%d,%d)\n",
 	"undefined binary operator '%s' for values of type '%s' and '%s' (%d,%d)\n",
@@ -24,6 +24,9 @@ static const char *diagnosticText[] = {
 	"cannot convert expression of type '%s' to the expected type '%s'. (%d,%d)\n",
 	"unresolved type '%s'. (%d,%d)\n",
 	"case statements should have at least one branch. (%d,%d)\n",
+	"cast should take exactly one argument. (%d,%d)\n",
+	"cast from '%s' to '%s' doesn't exist. (%d,%d)\n",
+	"cannot implicitly convert from '%s' to '%s', an explicit conversion exists. (are you missing a cast?) (%d,%d)\n",
 };
 
 void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u64 param1, u64 param2, u64 param3) {
@@ -104,6 +107,9 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 			free(typeText);
 		} break;
 		case emptyCaseStatementDiagnostic: fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
+		case oneArgumentCastDiagnostic: fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
+		case illegalCastDiagnostic: fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
+		case illegalImplicitCastDiagnostic: fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
 		default: {
 			fprintf(stderr, "Unhandled case %s in print_diagnostics%s\n", diagnosticMetaText[d.kind], TERMRESET);
 			exit(1);

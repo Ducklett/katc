@@ -10,6 +10,7 @@ static inline void emit_c_literal(astNode *n, ast *tree);
 static inline void emit_c_binaryExpression(astNode *n, ast *tree);
 static inline void emit_c_unaryExpression(astNode *n, ast *tree);
 static inline void emit_c_callExpression(astNode *n, ast *tree);
+static inline void emit_c_castExpression(astNode *n, ast *tree);
 static inline void emit_c_variableDeclaration(astNode *n, ast *tree);
 static inline void emit_c_variableAssignment(astNode *n, ast *tree);
 static inline void emit_c_variableReference(astNode *n, ast *tree);
@@ -99,6 +100,7 @@ void emit_c_node(astNode *n, ast *tree) {
 	case binaryExpressionKind: return emit_c_binaryExpression(n, tree);
 	case unaryExpressionKind: return emit_c_unaryExpression(n, tree);
 	case callExpressionKind: return emit_c_callExpression(n, tree);
+	case castExpressionKind: return emit_c_castExpression(n, tree);
 	case variableDeclarationKind: return emit_c_variableDeclaration(n, tree);
 	case variableAssignmentKind: return emit_c_variableAssignment(n, tree);
 	case variableReferenceKind: return emit_c_variableReference(n, tree);
@@ -241,6 +243,13 @@ static inline void emit_c_callExpression(astNode *n, ast *tree) {
 		if (cn.arguments[i].type == boolType) fprintf(fp, " ? \"true\" : \"false\"");
 		if (i != cn.argumentCount-1) fprintf(fp,", ");
 	}
+	fprintf(fp,")");
+}
+
+static inline void emit_c_castExpression(astNode *n, ast *tree) {
+	astNode cn = *(astNode*)n->data;
+	fprintf(fp,"((%s)", cTypeText[n->type]);
+	emit_c_node(&cn, tree);
 	fprintf(fp,")");
 }
 

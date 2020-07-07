@@ -18,6 +18,7 @@ variableSymbol* find_variable_in_scope(textspan nameSpan, ast *tree);
 astNode fold_binary_expression(typedOperator *op, int left, int right);
 astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand);
 bool check_bounds(astNode n, diagnosticContainer *d, textspan span);
+astNode cast_expression(node *n, ast *tree, enum astType toType, bool isExplicit);
 
 int bind_tree(ast* tree) {
 
@@ -331,6 +332,27 @@ astNode bind_binary_expression(node *n, ast *tree) {
 astNode bind_call_expression(node *n, ast *tree) {
 	functionCallNode cn = *(functionCallNode*)n->data;
 
+	u8 cast = 0;
+	for (int i=0;i<=charType;i++) {
+		if (span_compare(tree->text, cn.identifier.span, astTypeText[i])) {
+			cast = i;
+			break;
+		}
+	}
+
+	if (cast > 2) {
+		if (cn.argumentCount != 1) {
+			textspan errSpan = cn.argumentCount == 0
+				?  textspan_from_bounds(&cn.openParen, &cn.closeParen)
+				:  textspan_from_bounds(&cn.arguments[1], &cn.arguments[cn.argumentCount-1]);
+
+			report_diagnostic(&tree->diagnostics, oneArgumentCastDiagnostic, errSpan, 0, 0, 0);
+			return (astNode){ castExpressionKind, errorType, .data = 0 };
+		}
+
+		return cast_expression(&cn.arguments[0], tree, cast, true);
+	}
+
 	if (!span_compare(tree->text, cn.identifier.span, "print")) {
 		fprintf(stderr, "only print function supported currently\n");
 		exit(1);
@@ -357,6 +379,37 @@ astNode bind_call_expression(node *n, ast *tree) {
 		 (callExpressionAst){ nodesStart, argumentCount };
 
 	return (astNode){ callExpressionKind , voidType, .data = &tree->functionCalls[index] };
+}
+
+astNode cast_expression(node *n, ast *tree, enum astType toType, bool isExplicit) {
+	astNode bn = bind_expression(n, tree);
+
+	bool hasErrors = bn.type == errorType;
+
+	u8 castType = getCastInformation(bn.type, toType);
+
+	if (hasErrors || castType == CAST_IDENTITY || toType <= 2) return bn;
+
+	if (!hasErrors && castType == CAST_ILLEGAL) {
+		hasErrors = true;
+		report_diagnostic(&tree->diagnostics, illegalCastDiagnostic, n->span, bn.type, toType, 0);
+	}
+
+	if (!hasErrors && castType == CAST_EXPLICIT && !isExplicit) {
+		hasErrors = true;
+		report_diagnostic(&tree->diagnostics, illegalImplicitCastDiagnostic, n->span, bn.type, toType, 0);
+	}
+
+	if (hasErrors) return (astNode){ castExpressionKind, errorType, .data = 0 };
+
+	if (feature_constantfolding && bn.kind == literalKind) {
+		bn.type = toType;
+		return bn;
+	}
+
+	tree->nodes[tree->nodesIndex++] = bn;
+
+	return (astNode){ castExpressionKind, toType, .data = &tree->nodes[tree->nodesIndex-1] };
 }
 
 astNode bind_variable_declaration(node *n, ast *tree) {

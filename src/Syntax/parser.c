@@ -123,8 +123,6 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 			res = parser_parse_variable_declaration(p, d);
 		} else if (isAssignmentOperator(l2kind)) {
 			res = parser_parse_variable_assignment(p, d);
-		} else if  (l2kind == openParenthesisToken) {
-			res = parser_parse_function_call(p, d);
 		} else {
 			res = parser_parse_expression(p, d);
 		} break;
