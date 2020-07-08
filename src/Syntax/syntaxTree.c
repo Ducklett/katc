@@ -292,11 +292,14 @@ textspan textspan_from_bounds(node *start, node *end) {
 	return span;
 }
 
-char* ast_substring(char* text, textspan span) {
-	char *tokenText = (char*)malloc(sizeof(char) * (span.length + 1));
-	if (tokenText == NULL) panic("memory allocation failed\n");
-	tokenText[span.length] = '\0';
+char* ast_substring(char* text, textspan span, arena_t *arena) {
+	size_t size = sizeof(char) * (span.length + 1);
+	char *tokenText = arena == NULL
+		? malloc(size)
+		: arena_malloc(arena, size);
+
 	strncpy(tokenText, text + span.start, sizeof(char) * span.length);
+	tokenText[span.length] = '\0';
 	return tokenText;
 }
 
@@ -378,7 +381,7 @@ void print_syntaxtree(char *text, node *root, int indent, bool verbose) { print_
 void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose, bool newline) {
 
 	if (root->data == 0 || root->kind == numberLiteral || root->kind == stringLiteral || root->kind == charLiteral || root->kind == trueKeyword || root->kind == falseKeyword) {
-		char* tokenText = ast_substring(text, root->span);
+		char* tokenText = ast_substring(text, root->span, NULL);
 		if (verbose) {
 			printf ("%*s(", indent, "");
 			printf ("%s'%s'%s", TERMBLUE, tokenText, TERMRESET);

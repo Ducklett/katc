@@ -96,4 +96,8 @@ char* read_file(const char* filename, u64* length) {
 	return buffer;
 }
 
+// (temporary) globals
+
 bool feature_constantfolding = true;
+
+arena_t* string_arena = NULL;

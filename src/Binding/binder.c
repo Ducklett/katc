@@ -519,9 +519,7 @@ variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType vari
 
 	variableSymbol *variable = &currentScope->variables[currentScope->variableCount++];
 
-	for (int i= 0;i<nameSpan.length;i++) {
-			variable->name[i] = tree->text[i+nameSpan.start];
-	}
+	variable->name = ast_substring(tree->text, nameSpan, string_arena);
 	variable->type = variableType;
 	variable->flags = flags;
 

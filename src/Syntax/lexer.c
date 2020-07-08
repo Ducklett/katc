@@ -4,7 +4,6 @@ typedef struct lexer {
 	char *text;
 	u16 text_length;
 	u32 index;
-	arena_t* string_arena;
 } lexer;
 
 static inline bool isWhitespace(char c) { return c == ' ' || c == '\t'; }
@@ -218,7 +217,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			t.charValue = len==0 ? 0 : sb[0];
 		} else {
 			if (len > 0) {
-				t.stringValue = allocate_string(sb, len, l->string_arena);
+				t.stringValue = allocate_string(sb, len, string_arena);
 			}
 		}
 		sb_free(sb);

@@ -80,27 +80,27 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		case redeclarationOfVariableDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], d.param1, d.span.start, d.span.length); break;
 		case referenceToUndefinedVariableDiagnostic: {
-			char* identifierText = ast_substring(sourceText, d.span);
+			char* identifierText = ast_substring(sourceText, d.span, NULL);
 			fprintf(stderr, diagnosticText[d.kind], identifierText, d.span.start, d.span.length);
 			free(identifierText);
 		} break;
 		case cannotAssignDiagnostic: {
-			char* identifierText = ast_substring(sourceText, d.span);
+			char* identifierText = ast_substring(sourceText, d.span, NULL);
 			fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param2], identifierText, astTypeText[d.param1], d.span.start, d.span.length);
 			free(identifierText);
 		} break;
 		case cannotAssignConstantDiagnostic: {
-			char* identifierText = ast_substring(sourceText, *(textspan*)d.param1);
+			char* identifierText = ast_substring(sourceText, *(textspan*)d.param1, NULL);
 			fprintf(stderr, diagnosticText[d.kind], identifierText, d.span.start, d.span.length);
 			free(identifierText);
 		} break;
 		case variableCannotBeVoidDiagnostic: {
-			char* identifierText = ast_substring(sourceText, d.span);
+			char* identifierText = ast_substring(sourceText, d.span, NULL);
 			fprintf(stderr, diagnosticText[d.kind], identifierText, d.span.start, d.span.length);
 			free(identifierText);
 		} break;
 		case unresolvedTypeDiagnostic: {
-			char* typeText = ast_substring(sourceText, d.span);
+			char* typeText = ast_substring(sourceText, d.span, NULL);
 			fprintf(stderr, diagnosticText[d.kind], typeText, d.span.start, d.span.length);
 			free(typeText);
 		} break;

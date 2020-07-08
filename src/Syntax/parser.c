@@ -498,8 +498,10 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 
 int create_syntaxtree(char* text, u64 length, parser* p, diagnosticContainer* d)  {
 
-	p->lexer = (lexer){ .text = text, .text_length = length, .index = 0, .string_arena = arena_create() };
-	if (p->lexer.string_arena == NULL) panic("memory allocation for lexer.string_arena failed\n");
+	p->lexer = (lexer){ .text = text, .text_length = length, .index = 0 };
+
+	string_arena = arena_create();
+	if (string_arena == NULL) panic("memory allocation for lexer.string_arena failed\n");
 
 	//printf("Input: %s\n", text);
 	{

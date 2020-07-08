@@ -261,7 +261,7 @@ typedef struct astNode {
 #define VARIABLE_VALUE_KNOWN 4
 
 typedef struct variableSymbol {
-	char name[128];
+	char* name;
 	enum astType type;
 	u8 flags;
 	union {
