@@ -1,4 +1,5 @@
 astNode bind_expression(node *n, ast *tree);
+astNode bind_expression_internal(node *n, ast* tree);
 astNode bind_expression_of_type(node *n, ast *tree, enum astType expectedType, textspan errorSpan);
 astNode bind_block_statement(node *n, ast *tree);
 astNode bind_if_statement(node *n, ast *tree);
@@ -17,6 +18,7 @@ variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType vari
 variableSymbol* find_variable_in_scope(textspan nameSpan, ast *tree);
 astNode fold_binary_expression(typedOperator *op, int left, int right);
 astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand);
+astNode fold_cast_expression(enum astType from, enum astType to, i64 value);
 bool check_bounds(astNode n, diagnosticContainer *d, textspan span);
 astNode cast_expression(node *n, ast *tree, enum astType toType, bool isExplicit);
 
@@ -29,30 +31,20 @@ int bind_tree(ast* tree) {
 }
 
 astNode bind_expression_of_type(node *n, ast* tree, enum astType expectedType, textspan errorSpan) {
-	astNode outNode = bind_expression(n, tree);
 
-	if (expectedType != 0 && outNode.type != errorType && expectedType != outNode.type) {
-		// TODO: proper casting
+	astNode outNode = cast_expression(n, tree, expectedType, /*isExplicit:*/ false);
 
-		if ((isNumberType(expectedType) && isNumberType(outNode.type))) {
-			outNode.type = expectedType;
-		} 
-
-		if (outNode.kind == literalKind) {
-			if (!check_bounds(outNode, &tree->diagnostics, n->span)) {
-				outNode.type = errorType;
-			}
-		}
-
-		if (outNode.type != errorType && outNode.type != expectedType){
-			report_diagnostic(&tree->diagnostics, cannotConvertDiagnostic, errorSpan, outNode.type, expectedType, 0);
+	if (outNode.type != errorType && outNode.kind == literalKind) {
+		if (!check_bounds(outNode, &tree->diagnostics, n->span)) {
+			outNode.type = errorType;
 		}
 	}
 
 	return outNode;
 }
 
-astNode bind_expression(node *n, ast* tree) {
+astNode bind_expression(node *n, ast* tree) { return bind_expression_of_type(n, tree, 0, n->span); }
+astNode bind_expression_internal(node *n, ast* tree) {
 	switch(n->kind) {
 		case fileStatement:
 		case blockStatement: return bind_block_statement(n, tree);
@@ -382,7 +374,7 @@ astNode bind_call_expression(node *n, ast *tree) {
 }
 
 astNode cast_expression(node *n, ast *tree, enum astType toType, bool isExplicit) {
-	astNode bn = bind_expression(n, tree);
+	astNode bn = bind_expression_internal(n, tree);
 
 	bool hasErrors = bn.type == errorType;
 
@@ -403,6 +395,8 @@ astNode cast_expression(node *n, ast *tree, enum astType toType, bool isExplicit
 	if (hasErrors) return (astNode){ castExpressionKind, errorType, .data = 0 };
 
 	if (feature_constantfolding && bn.kind == literalKind) {
+		if (isExplicit) return fold_cast_expression(bn.type, toType, bn.numValue);
+		// implicit casts should keep their literal value so they can be bounds checked
 		bn.type = toType;
 		return bn;
 	}
@@ -594,6 +588,27 @@ astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand) {
 		exit(1);
 	}
 	return (astNode){ literalKind , boundOperand->type, .numValue = v };
+}
+
+astNode fold_cast_expression(enum astType from, enum astType to, i64 value) {
+	switch (to) {
+	case intType : value = (int )value; break;
+	case u8Type  : value = (u8  )value; break;
+	case u16Type : value = (u16 )value; break;
+	case u32Type : value = (u32 )value; break;
+	case u64Type : value = (u64 )value; break;
+	case i8Type  : value = (i8  )value; break;
+	case i16Type : value = (i16 )value; break;
+	case i32Type : value = (i32 )value; break;
+	case i64Type : value = (i64 )value; break;
+	case boolType: value = (bool)value; break;
+	case charType: value = (char)value; break;
+	default:
+		fprintf(stderr, "%sUnhandled type %s in fold_cast_expression%s", TERMRED, astTypeText[to], TERMRESET);
+		exit(1);
+	}
+
+	return (astNode){ literalKind, to, .numValue = value };
 }
 
 bool check_bounds(astNode n, diagnosticContainer *d, textspan span) {

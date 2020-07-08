@@ -98,7 +98,7 @@ bool isNumberType(enum astType t) {
 u8 getCastInformation(enum astType from, enum astType to) {
 	if (from == to) return CAST_IDENTITY;
 
-	if (from == stringType && to != boolType) return CAST_ILLEGAL;
+	if (to == stringType || (from == stringType && to != boolType)) return CAST_ILLEGAL;
 
 	if (from == intType && isNumberType(to)) return CAST_IMPLICIT;
 

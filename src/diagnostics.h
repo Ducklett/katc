@@ -34,7 +34,6 @@ enum diagnosticKind {
 	cannotAssignDiagnostic,
 	cannotAssignConstantDiagnostic,
 	variableCannotBeVoidDiagnostic,
-	cannotConvertDiagnostic,
 	unresolvedTypeDiagnostic,
 	emptyCaseStatementDiagnostic,
 	oneArgumentCastDiagnostic,
@@ -65,7 +64,6 @@ static const char *diagnosticMetaText[] = {
 	"cannotAssignDiagnostic",
 	"cannotAssignConstantDiagnostic",
 	"variableCannotBeVoidDiagnostic",
-	"cannotConvertDiagnostic",
 	"unresolvedTypeDiagnostic",
 	"emptyCaseStatementDiagnostic",
 	"oneArgumentCastDiagnostic,"

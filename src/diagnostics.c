@@ -12,7 +12,7 @@ static const char *diagnosticText[] = {
 	"unexpected token '%s' while parsing primary expression. (%d,%d)\n",
 	"increment/decrement operators can only be used on variables. (%d,%d)\n",
 	"only constant expressions are allowed here. (did you reference a variable?) (%d,%d)\n",
-	"value is too %s for %s and will %s. (%d,%d)\n",
+	"value is too %s for %s and will %s, use an explicit cast if this is intentional. (%d,%d)\n",
 	"undefined unary operator '%s' for value of type '%s' (%d,%d)\n",
 	"undefined binary operator '%s' for values of type '%s' and '%s' (%d,%d)\n",
 	"variable '%s' is not initialized. (%d,%d)\n",
@@ -21,7 +21,6 @@ static const char *diagnosticText[] = {
 	"cannot assign expression of type '%s' to variable '%s' of type '%s'. (%d,%d)\n",
 	"'%s' is constant and cannot be assigned to. (%d,%d)\n",
 	"variable '%s' cannot be void. (%d,%d)\n",
-	"cannot convert expression of type '%s' to the expected type '%s'. (%d,%d)\n",
 	"unresolved type '%s'. (%d,%d)\n",
 	"case statements should have at least one branch. (%d,%d)\n",
 	"cast should take exactly one argument. (%d,%d)\n",
@@ -100,7 +99,6 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 			fprintf(stderr, diagnosticText[d.kind], identifierText, d.span.start, d.span.length);
 			free(identifierText);
 		} break;
-		case cannotConvertDiagnostic: fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
 		case unresolvedTypeDiagnostic: {
 			char* typeText = ast_substring(sourceText, d.span);
 			fprintf(stderr, diagnosticText[d.kind], typeText, d.span.start, d.span.length);
