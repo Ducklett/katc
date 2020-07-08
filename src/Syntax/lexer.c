@@ -248,8 +248,9 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 		}
 
 		bool foundIllegalCharacter=false;
-		while (isNumber(lexer_current(l)) || (radix == BASE16 && isLetter(lexer_current(l)) )) {
+		while (isNumber(lexer_current(l)) || lexer_current(l) == '_' || (radix == BASE16 && isLetter(lexer_current(l)) )) {
 			char nextNum = lexer_move_next(l);
+			if (nextNum == '_') continue;
 			switch(radix) {
 				case BASE10: value = value * 10 + parse_numeric_char(nextNum); break;
 				case BASE16: {
