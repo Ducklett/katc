@@ -175,8 +175,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 		char startEndChar = isChar ? '\'' : '"';
 		t.kind = isChar ? charLiteral : stringLiteral;
 		start =  l->index;
-		char sb[256];
-		u8 len=0;
+		char *sb = NULL;
 
 		lexer_match(l, d, startEndChar);
 
@@ -186,13 +185,13 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 
 			switch(current) {
 				case '\\': {
-					if (lookahead == 'r') sb[len++] = '\r';
-					else if (lookahead == 'n') sb[len++] = '\n';
-					else if (lookahead == '"') sb[len++] = '"';
-					else if (lookahead == '\'') sb[len++] = '\'';
-					else if (lookahead == '0') sb[len++] = '\0';
-					else if (lookahead == '\\') sb[len++] = '\\';
-					else sb[len++] = lookahead;
+					if (lookahead == 'r') sb_push(sb, '\r');
+					else if (lookahead == 'n') sb_push(sb, '\n');
+					else if (lookahead == '"') sb_push(sb, '"');
+					else if (lookahead == '\'') sb_push(sb, '\'');
+					else if (lookahead == '0') sb_push(sb, '\0');
+					else if (lookahead == '\\') sb_push(sb, '\\');
+					else sb_push(sb, lookahead);
 
 					lexer_move_next(l);
 					lexer_move_next(l);
@@ -201,7 +200,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 				case '\0': case '\r': case '\n': goto end;
 				default:
 					if (current == startEndChar) goto end;
-					sb[len++] = current;
+					sb_push(sb, current);
 					lexer_move_next(l);
 					break;
 			}
@@ -210,6 +209,8 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 
 		lexer_match(l, d, startEndChar);
 		t.span = textspan_create(start, l->index - start);
+
+		int len = sb_count(sb);
 
 		if (isChar) {
 			if (len == 0) report_diagnostic(d, charEmptyDiagnostic, t.span, 0, 0, 0);
@@ -220,6 +221,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 				t.stringValue = allocate_string(sb, len, l->string_arena);
 			}
 		}
+		sb_free(sb);
 	} break;
 
 	case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': {

@@ -97,27 +97,28 @@ astNode bind_expression_internal(node *n, ast* tree) {
 }
 
 astNode bind_block_statement(node *n, ast *tree) {
-	astNode boundStatements[100];
-	int statementCount = 0;
+	astNode *boundStatements = NULL;
 
 	blockStatementNode bn = *(blockStatementNode*)n->data;
 
 	int parentScopeIndex = push_scope(tree);
 
 	for (int i = 0; i < bn.statementsCount; i++) {
-		boundStatements[statementCount++] = bind_expression(&bn.statements[i], tree);
+		sb_push(boundStatements, bind_expression(&bn.statements[i], tree));
 	}
 	
 	pop_scope(tree, parentScopeIndex);
 
 	astNode* nodesStart = &tree->nodes[tree->nodesIndex];
-	for (int i = 0; i < statementCount; i++) {
+	for (int i = 0; i < sb_count(boundStatements); i++) {
 		tree->nodes[tree->nodesIndex++] = boundStatements[i];
 	}
 
 	int index = tree->blockStatementsIndex;
 	tree->blockStatements[tree->blockStatementsIndex++] =
-		(blockStatementAst){ nodesStart, statementCount };
+		(blockStatementAst){ nodesStart, sb_count(boundStatements) };
+
+	sb_free(boundStatements);
 
 	return (astNode){ n->kind == blockStatement ? blockStatementKind : fileStatementKind, voidType, .data = &tree->blockStatements[index] };
 }
@@ -159,8 +160,7 @@ astNode bind_case_branch(node *n, ast *tree) {
 
 astNode bind_case_statement(node *n, ast *tree) {
 
-	astNode boundBranches[100];
-	int branchCount = 0;
+	astNode *boundBranches = NULL;
 
 	caseStatementNode cn = *(caseStatementNode*)n->data;
 
@@ -169,25 +169,27 @@ astNode bind_case_statement(node *n, ast *tree) {
 	enum astType caseType;
 
 	for (int i = 0; i < cn.branchCount; i++) {
-		boundBranches[branchCount++] = bind_case_branch(&cn.branches[i], tree);
+		sb_push(boundBranches, bind_case_branch(&cn.branches[i], tree));
 		if (i == 0) caseType = boundBranches[i].type;
 		else if (caseType != boundBranches[i].type) caseType = voidType;
 	}
 	
 	pop_scope(tree, parentScopeIndex);
 
-	if (branchCount == 0) {
+	if (sb_count(boundBranches) == 0) {
 		report_diagnostic(&tree->diagnostics, emptyCaseStatementDiagnostic, n->span, 0, 0, 0);
 	}
 
 	astNode* nodesStart = &tree->nodes[tree->nodesIndex];
-	for (int i = 0; i < branchCount; i++) {
+	for (int i = 0; i < sb_count(boundBranches); i++) {
 		tree->nodes[tree->nodesIndex++] = boundBranches[i];
 	}
 
 	int index = tree->caseStatementsIndex;
 	tree->caseStatements[tree->caseStatementsIndex++] =
-		(caseStatementAst){ nodesStart, branchCount };
+		(caseStatementAst){ nodesStart, sb_count(boundBranches) };
+	
+	sb_free(boundBranches);
 
 	return (astNode){ caseStatementKind, caseType, .data = &tree->caseStatements[index], };
 }
@@ -350,25 +352,27 @@ astNode bind_call_expression(node *n, ast *tree) {
 		exit(1);
 	}
 
-	astNode arguments[128];
-	u8 argumentCount=0;
+	astNode *arguments = NULL;
+
 	// skip the comma tokens
 	for (int i=0;i<cn.argumentCount;i+=2) {
 		if (i == 0) {
-			arguments[argumentCount++] = bind_expression_of_type(&cn.arguments[i], tree, stringType, cn.arguments[i].span);
+			sb_push(arguments, bind_expression_of_type(&cn.arguments[i], tree, stringType, cn.arguments[i].span));
 		} else {
-			arguments[argumentCount++] = bind_expression(&cn.arguments[i],tree);
+			sb_push(arguments, bind_expression(&cn.arguments[i],tree));
 		}
 	}
 
 	astNode* nodesStart = &tree->nodes[tree->nodesIndex];
-	for (int i = 0; i < argumentCount; i++) {
+	for (int i = 0; i < sb_count(arguments); i++) {
 		tree->nodes[tree->nodesIndex++] = arguments[i];
 	}
 
 	int index = tree->functionCallIndex;
 	tree->functionCalls[tree->functionCallIndex++] =
-		 (callExpressionAst){ nodesStart, argumentCount };
+		 (callExpressionAst){ nodesStart, sb_count(arguments) };
+
+	sb_free(arguments);
 
 	return (astNode){ callExpressionKind , voidType, .data = &tree->functionCalls[index] };
 }

@@ -135,9 +135,7 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 }
 
 node parser_parse_file_statement(parser *p, diagnosticContainer *d) {
-	// TODO: add dynamic arrays so this doesn't have to be fixed size
-	node nodes[100];
-	int nodeIndex = 0;
+	node *nodes = NULL;
 
 	while (true) {
 		node token = parser_current(p, d);
@@ -145,17 +143,17 @@ node parser_parse_file_statement(parser *p, diagnosticContainer *d) {
 		if (token.kind == endOfFileToken) break;
 
 		node exprNode = parser_parse_statement(p, d);
-		nodes[nodeIndex++] = exprNode;
-		if (nodeIndex >=100) {
-		}
+		sb_push(nodes, exprNode);
 	}
 
 	// TODO: some kind of memcpy is probably faster
 	u16 startIndex = p->nodeIndex;
-	u16 statementCount = nodeIndex;
+	u16 statementCount = sb_count(nodes);
 	for (int i = 0; i < statementCount; i++) {
 		p->nodes[p->nodeIndex++] = nodes[i];
 	}
+
+	sb_free(nodes);
 
 	node voidNode = {0};
 
@@ -170,9 +168,7 @@ node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
 	node openCurly = parser_match_token(p, d, openCurlyToken);
 	node closeCurly;
 
-	// TODO: add dynamic arrays so this doesn't have to be fixed size
-	node nodes[100];
-	int nodeIndex = 0;
+	node *nodes = NULL;
 
 	while (true) {
 		node token = parser_current(p, d);
@@ -189,15 +185,17 @@ node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
 		}
 
 		node exprNode = parser_parse_statement(p, d);
-		nodes[nodeIndex++] = exprNode;
+		sb_push(nodes, exprNode);
 	}
 
 	// TODO: some kind of memcpy is probably faster
 	u16 startIndex = p->nodeIndex;
-	u16 statementCount = nodeIndex;
+	u16 statementCount = sb_count(nodes);
 	for (int i = 0; i < statementCount; i++) {
 		p->nodes[p->nodeIndex++] = nodes[i];
 	}
+
+	sb_free(nodes);
 
 	u16 blockIndex = p->blockIndex;
 	p->blockStatements[p->blockIndex++] =
@@ -246,23 +244,25 @@ node parser_parse_case_statement(parser *p, diagnosticContainer *d) {
 	node caseToken = parser_match_token(p, d, caseKeyword);
 	node openCurly = parser_match_token(p, d, openCurlyToken);
 
-	node branches[100];
-	u8 branchCount=0;
+	node *branches = NULL;
+
 	while(true) {
 		enum syntaxKind currentKind = parser_current(p, d).kind;
 		if (currentKind == closeCurlyToken || currentKind == endOfFileToken) break;
-		branches[branchCount++] = parser_parse_case_branch(p, d);
+		sb_push(branches, parser_parse_case_branch(p, d));
 	}
 
 	node closeCurly = parser_match_token(p, d, closeCurlyToken);
 
 	node* branchesStart = &(p->nodes[p->nodeIndex]);
-	for (int i=0; i<branchCount; i++)
+	for (int i=0; i < sb_count(branches); i++)
 		p->nodes[p->nodeIndex++] = branches[i];
 
 	u16 index = p->caseStatementIndex;
 	p->caseStatements[p->caseStatementIndex++] =
-		(caseStatementNode){ caseToken, openCurly, branchesStart, branchCount, closeCurly };
+		(caseStatementNode){ caseToken, openCurly, branchesStart, sb_count(branches), closeCurly };
+
+	sb_free(branches);
 
 	return (node) { caseStatement, textspan_from_bounds(&caseToken, &closeCurly), .data = &(p->caseStatements[index]), };
 }
@@ -361,8 +361,7 @@ node parser_parse_variable_assignment(parser *p, diagnosticContainer *d) {
 }
 
 node parser_parse_function_call(parser *p, diagnosticContainer *d) {
-	node arguments[20];
-	u8 argumentCount = 0;
+	node *arguments = NULL;
 
 	node identifier = parser_match_token(p, d, identifierToken);
 	node openParen = parser_match_token(p, d, openParenthesisToken);
@@ -370,23 +369,24 @@ node parser_parse_function_call(parser *p, diagnosticContainer *d) {
 	if (parser_current(p,d).kind == closeParenthesisToken) goto end;
 	while (true) {
 
-		arguments[argumentCount++] = parser_parse_expression(p, d);
+		sb_push(arguments, parser_parse_expression(p, d));
 
 		node cur = parser_current(p,d);
 		if (cur.kind == closeParenthesisToken || cur.kind == endOfFileToken) break;
 
-		arguments[argumentCount++] = parser_match_token(p, d, commaToken);
+		sb_push(arguments, parser_match_token(p, d, commaToken));
 	}
-	end:
-	if (true) {}
+	end: ;
 	node closeParen = parser_match_token(p, d, closeParenthesisToken);
 
 	int argStart = p->nodeIndex;
-	for (int i = 0; i<argumentCount;i++) p->nodes[p->nodeIndex++] = arguments[i];
+	for (int i = 0; i < sb_count(arguments); i++) p->nodes[p->nodeIndex++] = arguments[i];
 
 	u16 index = p->functionCallIndex;
 	p->functionCalls[p->functionCallIndex++] =
-		(functionCallNode){ identifier,  openParen, &(p->nodes[argStart]), argumentCount, closeParen };
+		(functionCallNode){ identifier,  openParen, &(p->nodes[argStart]), sb_count(arguments), closeParen };
+
+	sb_free(arguments);
 
 	return (node) { callExpression, textspan_from_bounds(&identifier, &closeParen), .data = &(p->functionCalls[index]), };
 }
