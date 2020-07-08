@@ -204,7 +204,6 @@ static inline void emit_c_literal(astNode *n, ast *tree) {
 		char *escapedStr = escape_string_c(n->stringValue);
 		fprintf(fp,"\"%s\"", escapedStr); break;
 		free(escapedStr);
-		free(n->stringValue);
 	}
 	case charType: fprintf(fp,"'%c'", n->charValue); break;
 	default:

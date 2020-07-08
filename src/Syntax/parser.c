@@ -146,6 +146,8 @@ node parser_parse_file_statement(parser *p, diagnosticContainer *d) {
 
 		node exprNode = parser_parse_statement(p, d);
 		nodes[nodeIndex++] = exprNode;
+		if (nodeIndex >=100) {
+		}
 	}
 
 	// TODO: some kind of memcpy is probably faster
@@ -496,8 +498,8 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 
 int create_syntaxtree(char* text, u64 length, parser* p, diagnosticContainer* d)  {
 
-	lexer l = { .text = text, .text_length = length, .index = 0, };
-	p->lexer = l;
+	p->lexer = (lexer){ .text = text, .text_length = length, .index = 0, .string_arena = arena_create() };
+	if (p->lexer.string_arena == NULL) panic("memory allocation for lexer.string_arena failed\n");
 
 	//printf("Input: %s\n", text);
 	{

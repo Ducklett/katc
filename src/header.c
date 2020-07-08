@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "../lib/argparse.c"
+#include "../lib/arena.c"
 #include "util.c"
 #include "syntax/syntaxTree.c"
 #include "diagnostics.h"
