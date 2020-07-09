@@ -488,8 +488,8 @@ astNode bind_variable_assignment(node *n, ast *tree) {
 
 static inline int push_scope(ast *tree) {
 	int parentScopeIndex = tree->currentScopeIndex;
-	tree->currentScopeIndex = tree->scopesIndex;
-	scope*  newScope = &tree->scopes[tree->scopesIndex++];
+	tree->currentScopeIndex = sb_count(tree->scopes);
+	scope*  newScope = sb_add(tree->scopes, 1);
 
 	if (parentScopeIndex != tree->currentScopeIndex) {
 		newScope->parentScope = &tree->scopes[parentScopeIndex];

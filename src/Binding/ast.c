@@ -361,7 +361,7 @@ typedef struct ast {
 	diagnosticContainer diagnostics;
 	astNode root;
 	astNode nodes[1024];
-	scope scopes[20];
+	scope *scopes;
 	rangeExpressionAst ranges[1024];
 	blockStatementAst blockStatements[1024];
 	ifStatementAst ifStatements[1024];
@@ -375,7 +375,6 @@ typedef struct ast {
 	variableDeclarationAst variableDeclarations[1024];
 	variableAssignmentAst variableAssignments[1024];
 	int nodesIndex;
-	int scopesIndex;
 	int rangeIndex;
 	int currentScopeIndex;
 	int blockStatementsIndex;
