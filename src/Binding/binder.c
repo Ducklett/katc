@@ -510,14 +510,14 @@ variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType vari
 
 	scope *currentScope = &tree->scopes[tree->currentScopeIndex];
 
-	for (int i = 0; i < currentScope->variableCount; i++) {
+	for (int i = 0; i < sb_count(currentScope->variables); i++) {
 		if (span_compare(tree->text, nameSpan, currentScope->variables[i].name)) {
 			report_diagnostic(&tree->diagnostics, redeclarationOfVariableDiagnostic, nameSpan, (u64)currentScope->variables[i].name, 0, 0);
 			return 0;
 		}
 	}
 
-	variableSymbol *variable = &currentScope->variables[currentScope->variableCount++];
+	variableSymbol *variable = sb_add(currentScope->variables, 1);
 
 	variable->name = ast_substring(tree->text, nameSpan, string_arena);
 	variable->type = variableType;
@@ -532,7 +532,7 @@ variableSymbol* find_variable_in_scope(textspan nameSpan, ast *tree) {
 }
 variableSymbol* find_variable_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope) {
 
-	for (int i = 0; i < currentScope->variableCount; i++) {
+	for (int i = 0; i < sb_count(currentScope->variables); i++) {
 		if (span_compare(tree->text, nameSpan, currentScope->variables[i].name)) {
 			return &currentScope->variables[i];
 		}
@@ -542,6 +542,7 @@ variableSymbol* find_variable_in_scope_internal(textspan nameSpan, ast *tree, sc
 		report_diagnostic(&tree->diagnostics, referenceToUndefinedVariableDiagnostic, nameSpan, 0, 0, 0);
 		return 0;
 	}
+
 	return find_variable_in_scope_internal(nameSpan, tree, currentScope->parentScope);
 }
 

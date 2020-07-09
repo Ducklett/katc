@@ -351,8 +351,7 @@ typedef struct jumpAst {
 
 typedef struct scope {
 	struct scope* parentScope;
-	variableSymbol variables[10];
-	u8 variableCount;
+	variableSymbol *variables;
 } scope;
 
 typedef struct ast {

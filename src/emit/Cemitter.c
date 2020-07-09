@@ -310,6 +310,7 @@ char* escape_string_c(char *str) {
 			case '\\':
 				allocatedText[index++] = '\\';
 				allocatedText[index++] = '\\';
+				break;
 			case '\"':
 				allocatedText[index++] = '\\';
 				allocatedText[index++] = '"';
