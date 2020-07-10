@@ -4,7 +4,6 @@ typedef struct parser {
 	lexer lexer;
 	node token_buffer[MAX_LOOKAHEAD];	// ring buffer that caches token lookaheads
 	node root;
-	functionCallNode functionCalls[1024];
 	blockStatementNode blockStatements[1024];
 	ifStatementNode ifStatements[1024];
 	caseStatementNode caseStatements[1024];
@@ -16,7 +15,6 @@ typedef struct parser {
 	parenthesizedExpressionNode parenthesizedExpressions[1024];
 	rangeExpressionNode rangeExpressions[1024];
 	u8 tokenBufferIndex;
-	u16 functionCallIndex;
 	u16 blockIndex;
 	u16 ifStatementIndex;
 	u16 caseStatementIndex;
@@ -373,13 +371,12 @@ node parser_parse_function_call(parser *p, diagnosticContainer *d) {
 	node* argStorage = arena_malloc(parser_arena, argSize);
 	memcpy(argStorage, arguments, argSize);
 
-	u16 index = p->functionCallIndex;
-	p->functionCalls[p->functionCallIndex++] =
-		(functionCallNode){ identifier,  openParen, argStorage, argCount, closeParen };
+	functionCallNode *call = arena_malloc(parser_arena, sizeof(functionCallNode));
+	*call = (functionCallNode){ identifier,  openParen, argStorage, argCount, closeParen };
 
 	sb_free(arguments);
 
-	return (node) { callExpression, textspan_from_bounds(&identifier, &closeParen), .data = &(p->functionCalls[index]), };
+	return (node) { callExpression, textspan_from_bounds(&identifier, &closeParen), .data = call };
 }
 
 node parser_parse_expression(parser *p, diagnosticContainer *d) { return parser_parse_binary_expression(p, d,-2); }
