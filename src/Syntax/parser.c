@@ -4,8 +4,6 @@ typedef struct parser {
 	lexer lexer;
 	node token_buffer[MAX_LOOKAHEAD];	// ring buffer that caches token lookaheads
 	node root;
-	caseStatementNode caseStatements[1024];
-	caseBranchNode caseBranches[1024];
 	whileLoopNode whileLoops[1024];
 	forLoopNode forLoops[1024];
 	unaryExpressionNode unaryExpressions[1024];
@@ -13,8 +11,6 @@ typedef struct parser {
 	parenthesizedExpressionNode parenthesizedExpressions[1024];
 	rangeExpressionNode rangeExpressions[1024];
 	u8 tokenBufferIndex;
-	u16 caseStatementIndex;
-	u16 caseBranchIndex;
 	u16 whileLoopIndex;
 	u16 forLoopIndex;
 	u16 unaryExpressionIndex;
@@ -214,11 +210,10 @@ node parser_parse_case_branch(parser *p, diagnosticContainer *d) {
 	node colon = parser_match_token(p, d, colonToken);
 	node thenStatement = parser_parse_statement(p, d);
 
-	u16 index = p->caseBranchIndex;
-	p->caseBranches[p->caseBranchIndex++] = 
-		(caseBranchNode){ condition, colon, thenStatement };
+	caseBranchNode *cbNode = arena_malloc(parser_arena, sizeof(caseBranchNode));
+	*cbNode = (caseBranchNode){ condition, colon, thenStatement };
 
-	return (node) { caseBranch, textspan_from_bounds(&condition, &thenStatement), .data = &(p->caseBranches[index]), };
+	return (node) { caseBranch, textspan_from_bounds(&condition, &thenStatement), .data = cbNode, };
 }
 
 node parser_parse_case_statement(parser *p, diagnosticContainer *d) {
@@ -240,13 +235,12 @@ node parser_parse_case_statement(parser *p, diagnosticContainer *d) {
 	node* branchesStart = arena_malloc(parser_arena, branchesSize);
 	memcpy(branchesStart, branches, branchesSize);
 
-	u16 index = p->caseStatementIndex;
-	p->caseStatements[p->caseStatementIndex++] =
-		(caseStatementNode){ caseToken, openCurly, branchesStart, branchCount, closeCurly };
+	caseStatementNode *caseNode = arena_malloc(parser_arena, sizeof(caseStatementNode));
+	*caseNode = (caseStatementNode){ caseToken, openCurly, branchesStart, branchCount, closeCurly };
 
 	sb_free(branches);
 
-	return (node) { caseStatement, textspan_from_bounds(&caseToken, &closeCurly), .data = &(p->caseStatements[index]), };
+	return (node) { caseStatement, textspan_from_bounds(&caseToken, &closeCurly), .data = caseNode, };
 }
 
 node parser_parse_while_loop(parser *p, diagnosticContainer *d) {
