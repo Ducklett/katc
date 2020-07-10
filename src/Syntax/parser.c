@@ -4,7 +4,6 @@ typedef struct parser {
 	lexer lexer;
 	node token_buffer[MAX_LOOKAHEAD];	// ring buffer that caches token lookaheads
 	node root;
-	blockStatementNode blockStatements[1024];
 	ifStatementNode ifStatements[1024];
 	caseStatementNode caseStatements[1024];
 	caseBranchNode caseBranches[1024];
@@ -15,7 +14,6 @@ typedef struct parser {
 	parenthesizedExpressionNode parenthesizedExpressions[1024];
 	rangeExpressionNode rangeExpressions[1024];
 	u8 tokenBufferIndex;
-	u16 blockIndex;
 	u16 ifStatementIndex;
 	u16 caseStatementIndex;
 	u16 caseBranchIndex;
@@ -147,11 +145,10 @@ node parser_parse_file_statement(parser *p, diagnosticContainer *d) {
 
 	node voidNode = {0};
 
-	u16 blockIndex = p->blockIndex;
-	p->blockStatements[p->blockIndex++] =
-		(blockStatementNode){ voidNode, nodeStorage, statementCount, voidNode, };
+	blockStatementNode *block = arena_malloc(parser_arena, sizeof(blockStatementNode));
+	*block = (blockStatementNode){ voidNode, nodeStorage, statementCount, voidNode, };
 
-	return (node) { fileStatement, textspan_from_bounds(&voidNode, &voidNode), .data = &(p->blockStatements[blockIndex]), };
+	return (node) { fileStatement, textspan_from_bounds(&voidNode, &voidNode), .data = block, };
 }
 
 node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
@@ -185,11 +182,10 @@ node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
 
 	sb_free(nodes);
 
-	u16 blockIndex = p->blockIndex;
-	p->blockStatements[p->blockIndex++] =
-		(blockStatementNode){ openCurly, nodeStorage, statementCount, closeCurly, };
+	blockStatementNode *block = arena_malloc(parser_arena, sizeof(blockStatementNode));
+	*block = (blockStatementNode){ openCurly, nodeStorage, statementCount, closeCurly, };
 
-	return (node) { blockStatement, textspan_from_bounds(&openCurly, &closeCurly), .data = &(p->blockStatements[blockIndex]), };
+	return (node) { blockStatement, textspan_from_bounds(&openCurly, &closeCurly), .data = block, };
 }
 
 node parser_parse_if_statement(parser *p, diagnosticContainer *d) {
