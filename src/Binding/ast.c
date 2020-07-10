@@ -351,7 +351,7 @@ typedef struct jumpAst {
 
 typedef struct scope {
 	struct scope* parentScope;
-	variableSymbol *variables;
+	variableSymbol **variables;
 } scope;
 
 typedef struct ast {
@@ -361,7 +361,7 @@ typedef struct ast {
 	diagnosticContainer diagnostics;
 	astNode root;
 	astNode nodes[1024];
-	scope *scopes;
+	scope **scopes;
 	rangeExpressionAst ranges[1024];
 	blockStatementAst blockStatements[1024];
 	ifStatementAst ifStatements[1024];
