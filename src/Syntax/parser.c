@@ -4,7 +4,6 @@ typedef struct parser {
 	lexer lexer;
 	node token_buffer[MAX_LOOKAHEAD];	// ring buffer that caches token lookaheads
 	node root;
-	variableDeclarationNode variableDeclarations[1024];
 	variableAssignmentNode variableAssignments[1024];
 	functionCallNode functionCalls[1024];
 	blockStatementNode blockStatements[1024];
@@ -18,7 +17,6 @@ typedef struct parser {
 	parenthesizedExpressionNode parenthesizedExpressions[1024];
 	rangeExpressionNode rangeExpressions[1024];
 	u8 tokenBufferIndex;
-	u16 variableDeclaratonIndex;
 	u16 variableAssignmentIndex;
 	u16 functionCallIndex;
 	u16 blockIndex;
@@ -331,11 +329,10 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 		expression = parser_parse_statement(p, d);
 	}
 
-	u16 index = p->variableDeclaratonIndex;
-	p->variableDeclarations[p->variableDeclaratonIndex++] =
-		(variableDeclarationNode){ identifier, colon, type, equals, expression };
+	variableDeclarationNode *var = arena_malloc(parser_arena, sizeof(variableDeclarationNode));
+	*var = (variableDeclarationNode){ identifier, colon, type, equals, expression };
 
-	return (node) { variableDeclaration, textspan_from_bounds(&identifier, &expression), .data = &(p->variableDeclarations[index]), };
+	return (node) { variableDeclaration, textspan_from_bounds(&identifier, &expression), .data = var, };
 }
 
 node parser_parse_variable_assignment(parser *p, diagnosticContainer *d) {
