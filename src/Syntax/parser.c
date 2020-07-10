@@ -4,7 +4,6 @@ typedef struct parser {
 	lexer lexer;
 	node token_buffer[MAX_LOOKAHEAD];	// ring buffer that caches token lookaheads
 	node root;
-	node nodes[1024];	// stores the nodes from arbitrarily sized sequences like paramater lists and block statements
 	variableDeclarationNode variableDeclarations[1024];
 	variableAssignmentNode variableAssignments[1024];
 	functionCallNode functionCalls[1024];
@@ -19,7 +18,6 @@ typedef struct parser {
 	parenthesizedExpressionNode parenthesizedExpressions[1024];
 	rangeExpressionNode rangeExpressions[1024];
 	u8 tokenBufferIndex;
-	u16 nodeIndex;
 	u16 variableDeclaratonIndex;
 	u16 variableAssignmentIndex;
 	u16 functionCallIndex;
@@ -146,12 +144,10 @@ node parser_parse_file_statement(parser *p, diagnosticContainer *d) {
 		sb_push(nodes, exprNode);
 	}
 
-	// TODO: some kind of memcpy is probably faster
-	u16 startIndex = p->nodeIndex;
 	u16 statementCount = sb_count(nodes);
-	for (int i = 0; i < statementCount; i++) {
-		p->nodes[p->nodeIndex++] = nodes[i];
-	}
+	size_t statementsSize = sizeof(node) * statementCount;
+	node* nodeStorage = arena_malloc(parser_arena, statementsSize);
+	memcpy(nodeStorage, nodes, statementsSize);
 
 	sb_free(nodes);
 
@@ -159,7 +155,7 @@ node parser_parse_file_statement(parser *p, diagnosticContainer *d) {
 
 	u16 blockIndex = p->blockIndex;
 	p->blockStatements[p->blockIndex++] =
-		(blockStatementNode){ voidNode, &(p->nodes[startIndex]), statementCount, voidNode, };
+		(blockStatementNode){ voidNode, nodeStorage, statementCount, voidNode, };
 
 	return (node) { fileStatement, textspan_from_bounds(&voidNode, &voidNode), .data = &(p->blockStatements[blockIndex]), };
 }
@@ -188,18 +184,16 @@ node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
 		sb_push(nodes, exprNode);
 	}
 
-	// TODO: some kind of memcpy is probably faster
-	u16 startIndex = p->nodeIndex;
 	u16 statementCount = sb_count(nodes);
-	for (int i = 0; i < statementCount; i++) {
-		p->nodes[p->nodeIndex++] = nodes[i];
-	}
+	size_t statementsSize = sizeof(node) * statementCount;
+	node* nodeStorage = arena_malloc(parser_arena, statementsSize);
+	memcpy(nodeStorage, nodes, statementsSize);
 
 	sb_free(nodes);
 
 	u16 blockIndex = p->blockIndex;
 	p->blockStatements[p->blockIndex++] =
-		(blockStatementNode){ openCurly, &(p->nodes[startIndex]), statementCount, closeCurly, };
+		(blockStatementNode){ openCurly, nodeStorage, statementCount, closeCurly, };
 
 	return (node) { blockStatement, textspan_from_bounds(&openCurly, &closeCurly), .data = &(p->blockStatements[blockIndex]), };
 }
@@ -254,13 +248,14 @@ node parser_parse_case_statement(parser *p, diagnosticContainer *d) {
 
 	node closeCurly = parser_match_token(p, d, closeCurlyToken);
 
-	node* branchesStart = &(p->nodes[p->nodeIndex]);
-	for (int i=0; i < sb_count(branches); i++)
-		p->nodes[p->nodeIndex++] = branches[i];
+	u16 branchCount = sb_count(branches);
+	size_t branchesSize = sizeof(node) * branchCount;
+	node* branchesStart = arena_malloc(parser_arena, branchesSize);
+	memcpy(branchesStart, branches, branchesSize);
 
 	u16 index = p->caseStatementIndex;
 	p->caseStatements[p->caseStatementIndex++] =
-		(caseStatementNode){ caseToken, openCurly, branchesStart, sb_count(branches), closeCurly };
+		(caseStatementNode){ caseToken, openCurly, branchesStart, branchCount, closeCurly };
 
 	sb_free(branches);
 
@@ -379,12 +374,14 @@ node parser_parse_function_call(parser *p, diagnosticContainer *d) {
 	end: ;
 	node closeParen = parser_match_token(p, d, closeParenthesisToken);
 
-	int argStart = p->nodeIndex;
-	for (int i = 0; i < sb_count(arguments); i++) p->nodes[p->nodeIndex++] = arguments[i];
+	u16 argCount = sb_count(arguments);
+	size_t argSize = sizeof(node) * argCount;
+	node* argStorage = arena_malloc(parser_arena, argSize);
+	memcpy(argStorage, arguments, argSize);
 
 	u16 index = p->functionCallIndex;
 	p->functionCalls[p->functionCallIndex++] =
-		(functionCallNode){ identifier,  openParen, &(p->nodes[argStart]), sb_count(arguments), closeParen };
+		(functionCallNode){ identifier,  openParen, argStorage, argCount, closeParen };
 
 	sb_free(arguments);
 
@@ -501,7 +498,7 @@ int create_syntaxtree(char* text, u64 length, parser* p, diagnosticContainer* d)
 	p->lexer = (lexer){ .text = text, .text_length = length, .index = 0 };
 
 	string_arena = arena_create();
-	if (string_arena == NULL) panic("memory allocation for lexer.string_arena failed\n");
+	if (string_arena == NULL) panic("memory allocation for string_arena failed\n");
 
 	//printf("Input: %s\n", text);
 	{

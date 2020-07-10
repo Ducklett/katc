@@ -101,3 +101,5 @@ char* read_file(const char* filename, u64* length) {
 bool feature_constantfolding = true;
 
 arena_t* string_arena = NULL;
+arena_t* parser_arena = NULL;
+arena_t* binder_arena = NULL;
