@@ -4,7 +4,6 @@ typedef struct parser {
 	lexer lexer;
 	node token_buffer[MAX_LOOKAHEAD];	// ring buffer that caches token lookaheads
 	node root;
-	ifStatementNode ifStatements[1024];
 	caseStatementNode caseStatements[1024];
 	caseBranchNode caseBranches[1024];
 	whileLoopNode whileLoops[1024];
@@ -14,7 +13,6 @@ typedef struct parser {
 	parenthesizedExpressionNode parenthesizedExpressions[1024];
 	rangeExpressionNode rangeExpressions[1024];
 	u8 tokenBufferIndex;
-	u16 ifStatementIndex;
 	u16 caseStatementIndex;
 	u16 caseBranchIndex;
 	u16 whileLoopIndex;
@@ -200,13 +198,12 @@ node parser_parse_if_statement(parser *p, diagnosticContainer *d) {
 		elseStatement = parser_parse_statement(p, d);
 	} 
 
-	u16 index = p->ifStatementIndex;
-	p->ifStatements[p->ifStatementIndex++] =
-		(ifStatementNode){ ifToken, condition, thenStatement, elseToken, elseStatement };
+	ifStatementNode *ifNode = arena_malloc(parser_arena, sizeof(ifStatementNode));
+	*ifNode = (ifStatementNode){ ifToken, condition, thenStatement, elseToken, elseStatement };
 
 	node lastToken = elseToken.kind == emptyToken ? thenStatement : elseStatement;
 
-	return (node) { ifStatement, textspan_from_bounds(&ifToken, &lastToken), .data = &(p->ifStatements[index]), };
+	return (node) { ifStatement, textspan_from_bounds(&ifToken, &lastToken), .data = ifNode, };
 }
 
 node parser_parse_case_branch(parser *p, diagnosticContainer *d) {
