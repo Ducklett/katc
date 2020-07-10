@@ -71,8 +71,9 @@ astNode bind_expression_internal(node *n, ast* tree) {
 				!hasErrors &&
 				!(variable->flags & VARIABLE_MUTABLE) &&
 				(variable->flags & VARIABLE_VALUE_KNOWN)) {
-
-				return (astNode){ literalKind, variable->type, .numValue = variable->numValue };
+				if (variable->type == stringType)
+					return (astNode){ literalKind, variable->type, .stringValue = variable->stringValue };
+				else return (astNode){ literalKind, variable->type, .numValue = variable->numValue };
 			}
 
 			if (!hasErrors &&  !(variable->flags & VARIABLE_INITIALIZED)) {
@@ -438,7 +439,12 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 
 	if (variable != 0 && boundInitializer.kind == literalKind) {
 		variable->flags |= VARIABLE_VALUE_KNOWN;
-		variable->numValue = boundInitializer.numValue;
+
+		if (variable->type == stringType) {
+			variable->stringValue = boundInitializer.stringValue;
+		} else {
+			variable->numValue = boundInitializer.numValue;
+		}
 	}
 
 	int index = tree->variableDeclarationIndex;
