@@ -489,10 +489,12 @@ astNode bind_variable_assignment(node *n, ast *tree) {
 static inline int push_scope(ast *tree) {
 	int parentScopeIndex = tree->currentScopeIndex;
 	tree->currentScopeIndex = sb_count(tree->scopes);
-	scope*  newScope = sb_add(tree->scopes, 1);
+
+	scope*  newScope = arena_malloc(binder_arena, sizeof(scope));
+	sb_push(tree->scopes, newScope);
 
 	if (parentScopeIndex != tree->currentScopeIndex) {
-		newScope->parentScope = &tree->scopes[parentScopeIndex];
+		newScope->parentScope = tree->scopes[parentScopeIndex];
 	} 
 	return parentScopeIndex;
 }
@@ -508,16 +510,17 @@ variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType vari
 		return 0;
 	}
 
-	scope *currentScope = &tree->scopes[tree->currentScopeIndex];
+	scope *currentScope = tree->scopes[tree->currentScopeIndex];
 
 	for (int i = 0; i < sb_count(currentScope->variables); i++) {
-		if (span_compare(tree->text, nameSpan, currentScope->variables[i].name)) {
-			report_diagnostic(&tree->diagnostics, redeclarationOfVariableDiagnostic, nameSpan, (u64)currentScope->variables[i].name, 0, 0);
+		if (span_compare(tree->text, nameSpan, currentScope->variables[i]->name)) {
+			report_diagnostic(&tree->diagnostics, redeclarationOfVariableDiagnostic, nameSpan, (u64)currentScope->variables[i]->name, 0, 0);
 			return 0;
 		}
 	}
 
-	variableSymbol *variable = sb_add(currentScope->variables, 1);
+	variableSymbol *variable = arena_malloc(binder_arena, sizeof(variableSymbol));
+	sb_push(currentScope->variables, variable);
 
 	variable->name = ast_substring(tree->text, nameSpan, string_arena);
 	variable->type = variableType;
@@ -528,13 +531,13 @@ variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType vari
 
 variableSymbol* find_variable_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope);
 variableSymbol* find_variable_in_scope(textspan nameSpan, ast *tree) {
-	return find_variable_in_scope_internal(nameSpan, tree, &tree->scopes[tree->currentScopeIndex]);
+	return find_variable_in_scope_internal(nameSpan, tree, tree->scopes[tree->currentScopeIndex]);
 }
 variableSymbol* find_variable_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope) {
 
 	for (int i = 0; i < sb_count(currentScope->variables); i++) {
-		if (span_compare(tree->text, nameSpan, currentScope->variables[i].name)) {
-			return &currentScope->variables[i];
+		if (span_compare(tree->text, nameSpan, currentScope->variables[i]->name)) {
+			return currentScope->variables[i];
 		}
 	}
 
