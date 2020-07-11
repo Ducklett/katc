@@ -22,10 +22,10 @@ astNode fold_cast_expression(enum astType from, enum astType to, i64 value);
 bool check_bounds(astNode n, diagnosticContainer *d, textspan span);
 astNode cast_expression(node *n, ast *tree, enum astType toType, bool isExplicit);
 
-int bind_tree(ast* tree) {
+int bind_tree(ast* tree, node *root) {
 
 	benchmark_start();
-	tree->root = bind_expression(&tree->parser.root, tree);
+	tree->root = bind_expression(root, tree);
 	benchmark_end("Binding");
 	return tree->diagnostics.index == 0;
 }
@@ -115,13 +115,12 @@ astNode bind_block_statement(node *n, ast *tree) {
 	astNode* nodesStorage = arena_malloc(binder_arena, nodesSize);
 	memcpy(nodesStorage, boundStatements, nodesSize);
 
-	int index = tree->blockStatementsIndex;
-	tree->blockStatements[tree->blockStatementsIndex++] =
-		(blockStatementAst){ nodesStorage, nodesCount };
+	blockStatementAst *blockNode = arena_malloc(binder_arena, sizeof(blockStatementAst));
+	*blockNode = (blockStatementAst){ nodesStorage, nodesCount };
 
 	sb_free(boundStatements);
 
-	return (astNode){ n->kind == blockStatement ? blockStatementKind : fileStatementKind, voidType, .data = &tree->blockStatements[index] };
+	return (astNode){ n->kind == blockStatement ? blockStatementKind : fileStatementKind, voidType, .data = blockNode };
 }
 
 astNode bind_if_statement(node *n, ast *tree) {
@@ -134,13 +133,13 @@ astNode bind_if_statement(node *n, ast *tree) {
 		? (astNode){0}
 		: bind_expression(&in.elseExpression, tree);
 
-	int index = tree->ifStatementsIndex;
-	tree->ifStatements[tree->ifStatementsIndex++] =
-		(ifStatementAst){ boundCondition, boundthen, boundElse }; 
+
+	ifStatementAst *ifNode = arena_malloc(binder_arena, sizeof(ifStatementAst));
+	*ifNode = (ifStatementAst){ boundCondition, boundthen, boundElse }; 
 
 	enum astType ifType = boundthen.type == boundElse.type ? boundthen.type : voidType;
 
-	return (astNode){ ifStatementKind, ifType, .data = &tree->ifStatements[index] };
+	return (astNode){ ifStatementKind, ifType, .data = ifNode };
 }
 
 astNode bind_case_branch(node *n, ast *tree) {
@@ -152,11 +151,10 @@ astNode bind_case_branch(node *n, ast *tree) {
 
 	astNode boundthen = bind_expression(&cn.thenExpression, tree);
 
-	int index = tree->caseBranchesIndex;
-	tree->caseBranches[tree->caseBranchesIndex++] =
-		(caseBranchAst){ boundCondition, boundthen  }; 
+	caseBranchAst *branchNode = arena_malloc(binder_arena, sizeof(caseBranchAst));
+	*branchNode = (caseBranchAst){ boundCondition, boundthen }; 
 
-	return (astNode){ caseBranchKind, boundthen.type, .data = &tree->caseBranches[index] };
+	return (astNode){ caseBranchKind, boundthen.type, .data = branchNode };
 }
 
 astNode bind_case_statement(node *n, ast *tree) {
@@ -186,13 +184,12 @@ astNode bind_case_statement(node *n, ast *tree) {
 	astNode* nodesStorage = arena_malloc(binder_arena, nodesSize);
 	memcpy(nodesStorage, boundBranches, nodesSize);
 
-	int index = tree->caseStatementsIndex;
-	tree->caseStatements[tree->caseStatementsIndex++] =
-		(caseStatementAst){ nodesStorage, nodesCount };
+	caseStatementAst *caseNode = arena_malloc(binder_arena, sizeof(caseStatementAst));
+	*caseNode = (caseStatementAst){ nodesStorage, nodesCount };
 	
 	sb_free(boundBranches);
 
-	return (astNode){ caseStatementKind, caseType, .data = &tree->caseStatements[index], };
+	return (astNode){ caseStatementKind, caseType, .data = caseNode, };
 }
 
 astNode bind_while_loop(node *n, ast *tree) {
@@ -202,11 +199,10 @@ astNode bind_while_loop(node *n, ast *tree) {
 	astNode boundCondition = bind_expression_of_type(&wn.condition, tree, boolType, wn.condition.span);
 	astNode boundBlock = bind_expression(&wn.block, tree);
 
-	int index = tree->whileLoopIndex;
-	tree->whileLoops[tree->whileLoopIndex++] = 
-		(whileLoopAst){ boundCondition, boundBlock };
+	whileLoopAst *whileNode = arena_malloc(binder_arena, sizeof(whileLoopAst));
+	*whileNode = (whileLoopAst){ boundCondition, boundBlock };
 
-	return (astNode){ whileLoopKind, voidType, .data = &tree->whileLoops[index] };
+	return (astNode){ whileLoopKind, voidType, .data = whileNode };
 }
 
 astNode bind_range_expression(node *n, ast *tree) {
@@ -231,17 +227,15 @@ astNode bind_range_expression(node *n, ast *tree) {
 		report_diagnostic(&tree->diagnostics, nonConstantDiagnostic, rn.end.span, 0, 0, 0);
 	}
 
-	int index = tree->rangeIndex;
+	rangeExpressionAst *rangeNode = arena_malloc(binder_arena, sizeof(rangeExpressionAst));
 
 	if (type == intType) {
-		tree->ranges[tree->rangeIndex++] = 
-		 	(rangeExpressionAst){ .fromInt = from.numValue, .toInt = to.numValue };
+		*rangeNode = (rangeExpressionAst){ .fromInt = from.numValue, .toInt = to.numValue };
 	} else {
-		tree->ranges[tree->rangeIndex++] = 
-		 	(rangeExpressionAst){ .fromChar = from.charValue, .toChar = to.charValue };
+		*rangeNode = (rangeExpressionAst){ .fromChar = from.charValue, .toChar = to.charValue };
 	}
 
-	return (astNode){ rangeExpressionKind, type, .data = &tree->ranges[index] };
+	return (astNode){ rangeExpressionKind, type, .data = rangeNode };
 }
 
 astNode bind_for_loop(node *n, ast *tree) {
@@ -255,11 +249,10 @@ astNode bind_for_loop(node *n, ast *tree) {
 	variableSymbol *keyVar = fn.key.kind == 0 ? 0 : declare_variable(tree, fn.key.span, intType, flags);
 	astNode boundBlock = bind_expression(&fn.block, tree);
 
-	int index = tree->forLoopIndex;
-	tree->forLoops[tree->forLoopIndex++] = 
-		 (forLoopAst){ valueVar, keyVar, range, boundBlock };
+	forLoopAst *forNode = arena_malloc(binder_arena, sizeof(forLoopAst));
+	*forNode = (forLoopAst){ valueVar, keyVar, range, boundBlock };
 
-	return (astNode){ forLoopKind, voidType, .data = &tree->forLoops[index] };
+	return (astNode){ forLoopKind, voidType, .data = forNode };
 }
 
 astNode bind_unary_expression(node *n, ast *tree) {
@@ -289,11 +282,10 @@ astNode bind_unary_expression(node *n, ast *tree) {
 
 	if (op == identityOp) return boundOperand;
 
-	int index = tree->unaryExpressionsIndex;
-	tree->unaryExpressions[tree->unaryExpressionsIndex++] =
-		(unaryExpressionAst){ op, boundOperand };
+	unaryExpressionAst *unaryNode = arena_malloc(binder_arena, sizeof(unaryExpressionAst));
+	*unaryNode = (unaryExpressionAst){ op, boundOperand };
 
-	return (astNode){ unaryExpressionKind , boundOperand.type, .data = &tree->unaryExpressions[index] };
+	return (astNode){ unaryExpressionKind , boundOperand.type, .data = unaryNode };
 }
 
 astNode bind_binary_expression(node *n, ast *tree) {
@@ -317,11 +309,10 @@ astNode bind_binary_expression(node *n, ast *tree) {
 		return fold_binary_expression(&op, boundLeft.numValue, boundRight.numValue);
 	}
 
-	int index = tree->binaryExpressionsIndex;
-	tree->binaryExpressions[tree->binaryExpressionsIndex++] =
-		(binaryExpressionAst){ op.operator, boundLeft, boundRight };
+	binaryExpressionAst *binaryNode = arena_malloc(binder_arena, sizeof(binaryExpressionAst));
+	*binaryNode = (binaryExpressionAst){ op.operator, boundLeft, boundRight };
 
-	return (astNode){ binaryExpressionKind, hasErrors ? errorType : op.type, .data = &tree->binaryExpressions[index] };
+	return (astNode){ binaryExpressionKind, hasErrors ? errorType : op.type, .data = binaryNode };
 }
 
 astNode bind_call_expression(node *n, ast *tree) {
@@ -369,13 +360,12 @@ astNode bind_call_expression(node *n, ast *tree) {
 	astNode* nodesStorage = arena_malloc(binder_arena, nodesSize);
 	memcpy(nodesStorage, arguments, nodesSize);
 
-	int index = tree->functionCallIndex;
-	tree->functionCalls[tree->functionCallIndex++] =
-		 (callExpressionAst){ nodesStorage, nodesCount };
+	callExpressionAst *callNode = arena_malloc(binder_arena, sizeof(callExpressionAst));
+	*callNode = (callExpressionAst){ nodesStorage, nodesCount };
 
 	sb_free(arguments);
 
-	return (astNode){ callExpressionKind , voidType, .data = &tree->functionCalls[index] };
+	return (astNode){ callExpressionKind , voidType, .data = callNode };
 }
 
 astNode cast_expression(node *n, ast *tree, enum astType toType, bool isExplicit) {
@@ -448,11 +438,10 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 		}
 	}
 
-	int index = tree->variableDeclarationIndex;
-	tree->variableDeclarations[tree->variableDeclarationIndex++] =
-		(variableDeclarationAst){ variable, boundInitializer };
+	variableDeclarationAst *declNode = arena_malloc(binder_arena, sizeof(variableDeclarationAst));
+	*declNode = (variableDeclarationAst){ variable, boundInitializer };
 
-	return (astNode){ variableDeclarationKind , type, .data = &tree->variableDeclarations[index] };
+	return (astNode){ variableDeclarationKind , type, .data = declNode };
 }
 
 astNode bind_variable_assignment(node *n, ast *tree) {
@@ -486,11 +475,10 @@ astNode bind_variable_assignment(node *n, ast *tree) {
 		}
 	}
 
-	int index = tree->variableAssignmentIndex;
-	tree->variableAssignments[tree->variableAssignmentIndex++] =
-		(variableAssignmentAst){ variable, boundExpression, op.operator };
+	variableAssignmentAst *assignmentNode = arena_malloc(binder_arena, sizeof(variableAssignmentAst));
+	*assignmentNode = (variableAssignmentAst){ variable, boundExpression, op.operator };
 
-	return (astNode){ variableAssignmentKind, variable == 0 ? errorType : variable->type, .data = &tree->variableAssignments[index] };
+	return (astNode){ variableAssignmentKind, variable == 0 ? errorType : variable->type, .data = assignmentNode };
 }
 
 static inline int push_scope(ast *tree) {

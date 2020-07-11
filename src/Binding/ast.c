@@ -361,30 +361,7 @@ typedef struct ast {
 	diagnosticContainer diagnostics;
 	astNode root;
 	scope **scopes;
-	rangeExpressionAst ranges[1024];
-	blockStatementAst blockStatements[1024];
-	ifStatementAst ifStatements[1024];
-	caseBranchAst caseBranches[1024];
-	caseStatementAst caseStatements[1024];
-	whileLoopAst whileLoops[1024];
-	forLoopAst forLoops[1024];
-	unaryExpressionAst unaryExpressions[1024];
-	binaryExpressionAst binaryExpressions[1024];
-	callExpressionAst functionCalls[1024];
-	variableDeclarationAst variableDeclarations[1024];
-	variableAssignmentAst variableAssignments[1024];
-	int rangeIndex;
 	int currentScopeIndex;
-	int blockStatementsIndex;
-	int ifStatementsIndex;
-	int caseBranchesIndex;
-	int caseStatementsIndex;
-	int whileLoopIndex;
-	int forLoopIndex;
-	int unaryExpressionsIndex;
-	int binaryExpressionsIndex;
-	int functionCallIndex;
-	int variableDeclarationIndex;
 	int variableAssignmentIndex;
 } ast;
 
@@ -397,7 +374,7 @@ enum astType resolve_type_from_span(ast *tree, textspan span) {
 	return 0;
 }
 
-int bind_tree(ast* tree);
+int bind_tree(ast* tree, node *root);
 
 int create_ast(const char* filename, ast* tree, bool parseOnly) {
 	{
@@ -417,7 +394,7 @@ int create_ast(const char* filename, ast* tree, bool parseOnly) {
 
 	binder_arena = arena_create();
 	if (binder_arena == NULL) panic("memory allocation for binder_arena failed\n");
-	return bind_tree(tree);
+	return bind_tree(tree, &tree->parser.root);
 }
 
 void print_ast_internal(char *text, astNode *root, int indent, bool verbose, bool newline);
