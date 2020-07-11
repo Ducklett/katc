@@ -26,7 +26,7 @@ node parser_parse_function_call(parser *p, diagnosticContainer *d);
 node parser_parse_expression(parser *p, diagnosticContainer *d);
 node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parentPrecedence);
 node parser_parse_primary_expression(parser *p, diagnosticContainer *d);
-node parser_parse_range_expression(parser *p, diagnosticContainer *d);
+node parser_parse_range_expression(parser *p, diagnosticContainer *d, bool allowEarlyExit);
 
 node parser_parse_token(parser *p, diagnosticContainer *d) {
 	while(true) {
@@ -242,7 +242,7 @@ node parser_parse_switch_branch(parser *p, diagnosticContainer *d) {
 
 	node condition = isDefault
 		? (node){0}
-		: parser_parse_expression(p, d);
+		: parser_parse_range_expression(p, d, true);
 
 	node colon = parser_match_token(p, d, colonToken);
 	node thenStatement = parser_parse_statement(p, d);
@@ -315,7 +315,7 @@ node parser_parse_for_loop(parser *p, diagnosticContainer *d) {
 
 	node inToken = parser_match_token(p, d, inKeyword);
 
-	node range = parser_parse_range_expression(p, d);
+	node range = parser_parse_range_expression(p, d, false);
 
 	if (hasParens) closeParen = parser_match_token(p, d, closeParenthesisToken);
 
@@ -459,9 +459,11 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 	return left;
 }
 
-node parser_parse_range_expression(parser *p, diagnosticContainer *d) {
+node parser_parse_range_expression(parser *p, diagnosticContainer *d, bool allowEarlyExit) {
 
 	node from  = parser_parse_expression(p, d);
+	if (allowEarlyExit && parser_current(p, d).kind != dotDotToken) return from;
+
 	node dotDot  = parser_match_token(p, d, dotDotToken);
 	node to  = parser_parse_expression(p, d);
 

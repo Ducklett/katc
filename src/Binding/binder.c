@@ -7,6 +7,7 @@ astNode bind_case_branch(node *n, ast *tree);
 astNode bind_case_statement(node *n, ast *tree);
 astNode bind_switch_branch(node *n, ast *tree, enum astType caseType);
 astNode bind_switch_statement(node *n, ast *tree);
+astNode bind_range_expression(node *n, ast *tree);
 astNode bind_while_loop(node *n, ast *tree);
 astNode bind_for_loop(node *n, ast *tree);
 astNode bind_unary_expression(node *n, ast *tree);
@@ -53,6 +54,7 @@ astNode bind_expression_internal(node *n, ast* tree) {
 		case ifStatement: return bind_if_statement(n, tree);
 		case caseStatement: return bind_case_statement(n, tree);
 		case switchStatement: return bind_switch_statement(n, tree);
+		case rangeExpression: return bind_range_expression(n, tree);
 		case whileLoop: return bind_while_loop(n, tree);
 		case forLoop: return bind_for_loop(n, tree);
 
@@ -202,7 +204,7 @@ astNode bind_switch_branch(node *n, ast *tree, enum astType caseType) {
 		? (astNode){0}
 		: bind_expression_of_type(&cn.condition, tree, caseType, cn.condition.span);
 
-	if (boundCondition.kind != literalKind && boundCondition.type > 2) {
+	if (boundCondition.kind != rangeExpressionKind && boundCondition.kind != literalKind && boundCondition.type > 2) {
 		report_diagnostic(&tree->diagnostics, nonConstantDiagnostic, cn.condition.span, 0, 0, 0);
 		boundCondition.type = errorType;
 	} 

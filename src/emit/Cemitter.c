@@ -170,9 +170,18 @@ static inline void emit_c_switchStatement(astNode *n, ast *tree) {
 		if (cb.condition.kind == 0) {
 			fprintf(fp,"default: ");
 		} else {
-			fprintf(fp,"case ");
-			emit_c_node(&cb.condition, tree);
-			fprintf(fp,": ");
+			if (cb.condition.kind == rangeExpressionKind) {
+				rangeExpressionAst rn = *(rangeExpressionAst*)cb.condition.data;
+				for (int i=rn.fromInt; i <= rn.toInt; i++) {
+					if (cb.condition.type == charType) fprintf(fp,"case '%c': ", i);
+					else fprintf(fp,"case %d: ", i);
+				}
+				fprintf(fp,"\n");
+			} else {
+				fprintf(fp,"case ");
+				emit_c_node(&cb.condition, tree);
+				fprintf(fp,": ");
+			}
 		}
 		emit_c_node(&cb.thenStatement, tree);
 		fprintf(fp,"; break;\n");
