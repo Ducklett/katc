@@ -4,19 +4,7 @@ typedef struct parser {
 	lexer lexer;
 	node token_buffer[MAX_LOOKAHEAD];	// ring buffer that caches token lookaheads
 	node root;
-	whileLoopNode whileLoops[1024];
-	forLoopNode forLoops[1024];
-	unaryExpressionNode unaryExpressions[1024];
-	binaryExpressionNode binaryExpressions[1024];
-	parenthesizedExpressionNode parenthesizedExpressions[1024];
-	rangeExpressionNode rangeExpressions[1024];
 	u8 tokenBufferIndex;
-	u16 whileLoopIndex;
-	u16 forLoopIndex;
-	u16 unaryExpressionIndex;
-	u16 binaryExpressionIndex;
-	u16 parenthesizedExpressionIndex;
-	u16 rangeExpressionIndex;
 } parser;
 
 node parser_next_token(parser *p, diagnosticContainer *d);
@@ -248,11 +236,10 @@ node parser_parse_while_loop(parser *p, diagnosticContainer *d) {
 	node condition = parser_parse_expression(p, d);
 	node block = parser_parse_statement(p, d);
 
-	u16 index = p->whileLoopIndex;
-	p->whileLoops[p->whileLoopIndex++] =
-		(whileLoopNode){ whileToken, condition, block };
+	whileLoopNode *wnode = arena_malloc(parser_arena, sizeof(whileLoopNode));
+	*wnode = (whileLoopNode){ whileToken, condition, block };
 
-	return (node) { whileLoop, textspan_from_bounds(&whileToken, &block), .data = &(p->whileLoops[index]), };
+	return (node) { whileLoop, textspan_from_bounds(&whileToken, &block), .data = wnode, };
 }
 
 node parser_parse_for_loop(parser *p, diagnosticContainer *d) {
@@ -284,11 +271,10 @@ node parser_parse_for_loop(parser *p, diagnosticContainer *d) {
 
 	node block = parser_parse_statement(p, d);
 
-	u16 index = p->forLoopIndex;
-	p->forLoops[p->forLoopIndex++] =
-		(forLoopNode){ forToken, openParen, value, comma, key, inToken, range, closeParen, block };
+	forLoopNode *forNode = arena_malloc(parser_arena, sizeof(forLoopNode));
+	*forNode = (forLoopNode){ forToken, openParen, value, comma, key, inToken, range, closeParen, block };
 
-	return (node) { forLoop, textspan_from_bounds(&forToken, &block), .data = &(p->forLoops[index]), };
+	return (node) { forLoop, textspan_from_bounds(&forToken, &block), .data = forNode, };
 }
 
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
@@ -400,11 +386,10 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 			// ensure it doesn't get used a second time
 			unaryPrecedence = -1;
 
-			u16 index = p->unaryExpressionIndex;
-			p->unaryExpressions[p->unaryExpressionIndex++] =
-				(unaryExpressionNode){ unaryOp, left, unaryOnLeft };
+			unaryExpressionNode *unaryNode = arena_malloc(parser_arena, sizeof(unaryExpressionNode));
+			*unaryNode = (unaryExpressionNode){ unaryOp, left, unaryOnLeft };
 
-			left = (node) { unaryExpression, textspan_from_bounds(&unaryOp, &left), .data = &(p->unaryExpressions[index]), };
+			left = (node) { unaryExpression, textspan_from_bounds(&unaryOp, &left), .data = unaryNode, };
 		}
 
 		if (precedence == -1 || precedence <= parentPrecedence) {
@@ -415,11 +400,10 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 
 		node right = parser_parse_binary_expression(p, d, precedence);
 
-		u16 index = p->binaryExpressionIndex;
-		p->binaryExpressions[p->binaryExpressionIndex++] =
-			(binaryExpressionNode){ left, operator, right, };
+		binaryExpressionNode *binaryNode = arena_malloc(parser_arena, sizeof(binaryExpressionNode));
+		*binaryNode = (binaryExpressionNode){ left, operator, right, };
 
-		left = (node) { binaryExpression, textspan_from_bounds(&left, &right), .data = &(p->binaryExpressions[index]), };
+		left = (node) { binaryExpression, textspan_from_bounds(&left, &right), .data = binaryNode, };
 	}
 
 	return left;
@@ -431,11 +415,10 @@ node parser_parse_range_expression(parser *p, diagnosticContainer *d) {
 	node dotDot  = parser_match_token(p, d, dotDotToken);
 	node to  = parser_parse_expression(p, d);
 
-	u16 index = p->rangeExpressionIndex;
-	p->rangeExpressions[p->rangeExpressionIndex++] =
-		(rangeExpressionNode){ from, dotDot, to };
+	rangeExpressionNode *rangeNode = arena_malloc(parser_arena, sizeof(rangeExpressionNode));
+	*rangeNode = (rangeExpressionNode){ from, dotDot, to };
 
-	return (node) { rangeExpression, textspan_from_bounds(&from, &to), .data = &(p->rangeExpressions[index]), };
+	return (node) { rangeExpression, textspan_from_bounds(&from, &to), .data = rangeNode, };
 }
 
 node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
@@ -459,11 +442,10 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 		node expr = parser_parse_expression(p, d);
 		node closeParen = parser_match_token(p, d, closeParenthesisToken);
 
-		u16 index = p->parenthesizedExpressionIndex;
-		p->parenthesizedExpressions[p->parenthesizedExpressionIndex++] =
-			(parenthesizedExpressionNode){ openParen, expr, closeParen };
+		parenthesizedExpressionNode *parenNode = arena_malloc(parser_arena, sizeof(parenthesizedExpressionNode));
+		*parenNode = (parenthesizedExpressionNode){ openParen, expr, closeParen };
 
-		return (node) { parenthesizedExpression, textspan_from_bounds(&current, &closeParen), .data = &(p->parenthesizedExpressions[index]), };
+		return (node) { parenthesizedExpression, textspan_from_bounds(&current, &closeParen), .data = parenNode, };
 	}
 	default: 
 		if (current.kind != badToken) report_diagnostic(d, illegalPrimaryExpressionDiagnostic, current.span, current.kind, 0, 0);
