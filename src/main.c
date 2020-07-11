@@ -71,9 +71,18 @@ int main(int argc, const char **argv) {
 
 	bool verbose = true;
 
-	if (parseOnly) print_syntaxtree(astResult.text, &parseResult.root, 0, verbose);
-	else if (isAst) print_ast(astResult.text, &astResult.root, 0, verbose);
+	if (parseOnly) {
+		print_syntaxtree(astResult.text, &parseResult.root, 0, verbose);
+		return 0;
+	}
+
+	arena_destroy(parser_arena);
+
+	if (isAst) print_ast(astResult.text, &astResult.root, 0, verbose);
 	else emit_c_from_ast(&astResult, outputName, run, isC);
+
+	arena_destroy(binder_arena);
+	arena_destroy(string_arena);
 
 	return 0;
 }
