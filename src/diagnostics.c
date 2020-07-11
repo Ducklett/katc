@@ -1,5 +1,6 @@
 static const char *diagnosticText[] = {
 	"Unexpected character '%c', expected '%c' (%d,%d)\n",
+	"unterminated comment, exprected */ (%d,%d)\n",
 	"bad token '%c' (%d,%d)\n",
 	"character literals cannot be empty (%d,%d)\n",
 	"character literals cannot contain more than one character (%d,%d)\n",
@@ -45,6 +46,8 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 			if (param1 == '\r' || param1 == '\n' || param1 == '\0') param1 = ' ';
 			fprintf(stderr, diagnosticText[d.kind], param1, d.param2, d.span.start, d.span.length); 
 		} break;
+		case unterminatedCommentDiagnostic:
+			fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
 		case badTokenDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], sourceText[d.span.start], d.span.start, d.span.length); break;
 		case charEmptyDiagnostic:

@@ -83,7 +83,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			// single line comment
 			t.kind = singleLineComment;
 			start =  l->index;
-			while (!isNewline(lexer_current(l))) lexer_move_next(l);
+			while (!isNewline(lexer_current(l)) && lexer_current(l) != '\0') lexer_move_next(l);
 			t.span = textspan_create(start, l->index - start);
 		} else if (lexer_peek(l,1) == '*') {
 			// multi line comment
@@ -98,7 +98,10 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			while (true) {
 				char current = lexer_current(l);
 				char lookahead = lexer_peek(l,1);
-				if (current == '/' && lookahead == '*') {
+				if (current == '\0') {
+					report_diagnostic(d, unterminatedCommentDiagnostic, textspan_create(start, l->index - start), 0, 0, 0);
+					break;
+				} else if (current == '/' && lookahead == '*') {
 					nestLevel++;
 					lexer_move_next(l);
 					lexer_move_next(l);
