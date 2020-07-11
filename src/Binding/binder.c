@@ -110,14 +110,14 @@ astNode bind_block_statement(node *n, ast *tree) {
 	
 	pop_scope(tree, parentScopeIndex);
 
-	astNode* nodesStart = &tree->nodes[tree->nodesIndex];
-	for (int i = 0; i < sb_count(boundStatements); i++) {
-		tree->nodes[tree->nodesIndex++] = boundStatements[i];
-	}
+	u16 nodesCount = sb_count(boundStatements);
+	size_t nodesSize = nodesCount * sizeof(astNode);
+	astNode* nodesStorage = arena_malloc(binder_arena, nodesSize);
+	memcpy(nodesStorage, boundStatements, nodesSize);
 
 	int index = tree->blockStatementsIndex;
 	tree->blockStatements[tree->blockStatementsIndex++] =
-		(blockStatementAst){ nodesStart, sb_count(boundStatements) };
+		(blockStatementAst){ nodesStorage, nodesCount };
 
 	sb_free(boundStatements);
 
@@ -181,14 +181,14 @@ astNode bind_case_statement(node *n, ast *tree) {
 		report_diagnostic(&tree->diagnostics, emptyCaseStatementDiagnostic, n->span, 0, 0, 0);
 	}
 
-	astNode* nodesStart = &tree->nodes[tree->nodesIndex];
-	for (int i = 0; i < sb_count(boundBranches); i++) {
-		tree->nodes[tree->nodesIndex++] = boundBranches[i];
-	}
+	u16 nodesCount = sb_count(boundBranches);
+	size_t nodesSize = nodesCount * sizeof(astNode);
+	astNode* nodesStorage = arena_malloc(binder_arena, nodesSize);
+	memcpy(nodesStorage, boundBranches, nodesSize);
 
 	int index = tree->caseStatementsIndex;
 	tree->caseStatements[tree->caseStatementsIndex++] =
-		(caseStatementAst){ nodesStart, sb_count(boundBranches) };
+		(caseStatementAst){ nodesStorage, nodesCount };
 	
 	sb_free(boundBranches);
 
@@ -364,14 +364,14 @@ astNode bind_call_expression(node *n, ast *tree) {
 		}
 	}
 
-	astNode* nodesStart = &tree->nodes[tree->nodesIndex];
-	for (int i = 0; i < sb_count(arguments); i++) {
-		tree->nodes[tree->nodesIndex++] = arguments[i];
-	}
+	u16 nodesCount = sb_count(arguments);
+	size_t nodesSize = nodesCount * sizeof(astNode);
+	astNode* nodesStorage = arena_malloc(binder_arena, nodesSize);
+	memcpy(nodesStorage, arguments, nodesSize);
 
 	int index = tree->functionCallIndex;
 	tree->functionCalls[tree->functionCallIndex++] =
-		 (callExpressionAst){ nodesStart, sb_count(arguments) };
+		 (callExpressionAst){ nodesStorage, nodesCount };
 
 	sb_free(arguments);
 
@@ -406,9 +406,10 @@ astNode cast_expression(node *n, ast *tree, enum astType toType, bool isExplicit
 		return bn;
 	}
 
-	tree->nodes[tree->nodesIndex++] = bn;
+	astNode *bNode = arena_malloc(binder_arena, sizeof(astNode));
+	*bNode = bn;
 
-	return (astNode){ castExpressionKind, toType, .data = &tree->nodes[tree->nodesIndex-1] };
+	return (astNode){ castExpressionKind, toType, .data = bNode };
 }
 
 astNode bind_variable_declaration(node *n, ast *tree) {

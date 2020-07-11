@@ -360,7 +360,6 @@ typedef struct ast {
 	parser parser;
 	diagnosticContainer diagnostics;
 	astNode root;
-	astNode nodes[1024];
 	scope **scopes;
 	rangeExpressionAst ranges[1024];
 	blockStatementAst blockStatements[1024];
@@ -374,7 +373,6 @@ typedef struct ast {
 	callExpressionAst functionCalls[1024];
 	variableDeclarationAst variableDeclarations[1024];
 	variableAssignmentAst variableAssignments[1024];
-	int nodesIndex;
 	int rangeIndex;
 	int currentScopeIndex;
 	int blockStatementsIndex;
