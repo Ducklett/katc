@@ -357,12 +357,10 @@ typedef struct scope {
 typedef struct ast {
 	char* text;
 	u64 length;
-	parser parser;
 	diagnosticContainer diagnostics;
 	astNode root;
 	scope **scopes;
 	int currentScopeIndex;
-	int variableAssignmentIndex;
 } ast;
 
 enum astType resolve_type_from_span(ast *tree, textspan span) {
@@ -376,7 +374,7 @@ enum astType resolve_type_from_span(ast *tree, textspan span) {
 
 int bind_tree(ast* tree, node *root);
 
-int create_ast(const char* filename, ast* tree, bool parseOnly) {
+int create_ast(const char* filename, ast *tree, parser *p, bool parseOnly) {
 	{
 		benchmark_start();
 		tree->text = read_file(filename, &tree->length);
@@ -386,7 +384,7 @@ int create_ast(const char* filename, ast* tree, bool parseOnly) {
 	parser_arena = arena_create();
 	if (parser_arena == NULL) panic("memory allocation for parser_arena failed\n");
 
-	if (!create_syntaxtree(tree->text, tree->length, &tree->parser, &tree->diagnostics)) {
+	if (!create_syntaxtree(tree->text, tree->length, p, &tree->diagnostics)) {
 		return 0;
 	}
 
@@ -394,7 +392,7 @@ int create_ast(const char* filename, ast* tree, bool parseOnly) {
 
 	binder_arena = arena_create();
 	if (binder_arena == NULL) panic("memory allocation for binder_arena failed\n");
-	return bind_tree(tree, &tree->parser.root);
+	return bind_tree(tree, &p->root);
 }
 
 void print_ast_internal(char *text, astNode *root, int indent, bool verbose, bool newline);

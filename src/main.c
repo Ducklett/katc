@@ -56,24 +56,24 @@ int main(int argc, const char **argv) {
 
 	const char* entrypoint = argv[0];
 
-	ast *result = calloc(1, sizeof(ast));
-	if (result == NULL) panic("memory allocation failed\n");
+	ast astResult = {0};
+	parser parseResult = {0};
 
 
 	benchmark_start();
-	bool success = create_ast(entrypoint, result, parseOnly);
+	bool success = create_ast(entrypoint, &astResult, &parseResult, parseOnly);
 	benchmark_end("Total");
 
 	if (!success) {
-		print_diagnostics(&result->diagnostics, result->text);
+		print_diagnostics(&astResult.diagnostics, astResult.text);
 		return 1;
 	} 
 
 	bool verbose = true;
 
-	if (parseOnly) print_syntaxtree(result->text, &result->parser.root, 0, verbose);
-	else if (isAst) print_ast(result->text, &result->root, 0, verbose);
-	else emit_c_from_ast(result, outputName, run, isC);
+	if (parseOnly) print_syntaxtree(astResult.text, &parseResult.root, 0, verbose);
+	else if (isAst) print_ast(astResult.text, &astResult.root, 0, verbose);
+	else emit_c_from_ast(&astResult, outputName, run, isC);
 
 	return 0;
 }
