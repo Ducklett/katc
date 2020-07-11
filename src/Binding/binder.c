@@ -5,6 +5,8 @@ astNode bind_block_statement(node *n, ast *tree);
 astNode bind_if_statement(node *n, ast *tree);
 astNode bind_case_branch(node *n, ast *tree);
 astNode bind_case_statement(node *n, ast *tree);
+astNode bind_switch_branch(node *n, ast *tree, enum astType caseType);
+astNode bind_switch_statement(node *n, ast *tree);
 astNode bind_while_loop(node *n, ast *tree);
 astNode bind_for_loop(node *n, ast *tree);
 astNode bind_unary_expression(node *n, ast *tree);
@@ -50,6 +52,7 @@ astNode bind_expression_internal(node *n, ast* tree) {
 		case blockStatement: return bind_block_statement(n, tree);
 		case ifStatement: return bind_if_statement(n, tree);
 		case caseStatement: return bind_case_statement(n, tree);
+		case switchStatement: return bind_switch_statement(n, tree);
 		case whileLoop: return bind_while_loop(n, tree);
 		case forLoop: return bind_for_loop(n, tree);
 
@@ -190,6 +193,65 @@ astNode bind_case_statement(node *n, ast *tree) {
 	sb_free(boundBranches);
 
 	return (astNode){ caseStatementKind, caseType, .data = caseNode, };
+}
+
+astNode bind_switch_branch(node *n, ast *tree, enum astType caseType) {
+	switchBranchNode cn = *(switchBranchNode*)n->data;
+
+	astNode boundCondition = cn.condition.kind == 0
+		? (astNode){0}
+		: bind_expression_of_type(&cn.condition, tree, caseType, cn.condition.span);
+
+	if (boundCondition.kind != literalKind && boundCondition.type > 2) {
+		report_diagnostic(&tree->diagnostics, nonConstantDiagnostic, cn.condition.span, 0, 0, 0);
+		boundCondition.type = errorType;
+	} 
+
+	astNode boundthen = bind_expression(&cn.thenExpression, tree);
+
+	switchBranchAst *branchNode = arena_malloc(binder_arena, sizeof(switchBranchAst));
+	*branchNode = (switchBranchAst){ boundCondition, boundthen }; 
+
+	return (astNode){ switchBranchKind, boundthen.type, .data = branchNode };
+}
+
+astNode bind_switch_statement(node *n, ast *tree) {
+
+	astNode *boundBranches = NULL;
+
+	switchStatementNode cn = *(switchStatementNode*)n->data;
+
+	astNode boundTarget = bind_expression(&cn.targetExpression, tree);
+
+	if (boundTarget.type == stringType || boundTarget.type == boolType) {
+		report_diagnostic(&tree->diagnostics, invalidSwitchTypeDiagnostic, cn.targetExpression.span, boundTarget.type, 0, 0);
+	}
+
+	int parentScopeIndex = push_scope(tree);
+
+	enum astType caseType = boundTarget.type;
+
+	for (int i = 0; i < cn.branchCount; i++) {
+		sb_push(boundBranches, bind_switch_branch(&cn.branches[i], tree, caseType));
+	}
+	
+	pop_scope(tree, parentScopeIndex);
+
+	if (sb_count(boundBranches) == 0) {
+		report_diagnostic(&tree->diagnostics, emptyCaseStatementDiagnostic, n->span, 0, 0, 0);
+	}
+
+	u16 nodesCount = sb_count(boundBranches);
+	size_t nodesSize = nodesCount * sizeof(astNode);
+	astNode* nodesStorage = arena_malloc(binder_arena, nodesSize);
+	memcpy(nodesStorage, boundBranches, nodesSize);
+
+	switchStatementAst *switchNode = arena_malloc(binder_arena, sizeof(switchStatementAst));
+	*switchNode = (switchStatementAst){ boundTarget, nodesStorage, nodesCount };
+	
+	sb_free(boundBranches);
+
+	return (astNode){ switchStatementKind, caseType, .data = switchNode, };
 }
 
 astNode bind_while_loop(node *n, ast *tree) {

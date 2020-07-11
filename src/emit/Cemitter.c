@@ -3,6 +3,7 @@ static inline void emit_c_file(astNode *n, ast *tree);
 static inline void emit_c_blockStatement(astNode *n, ast *tree);
 static inline void emit_c_ifStatement(astNode *n, ast *tree);
 static inline void emit_c_caseStatement(astNode *n, ast *tree);
+static inline void emit_c_switchStatement(astNode *n, ast *tree);
 static inline void emit_c_whileLoop(astNode *n, ast *tree);
 static inline void emit_c_forLoop(astNode *n, ast *tree);
 
@@ -93,6 +94,7 @@ void emit_c_node(astNode *n, ast *tree) {
 	case blockStatementKind: return emit_c_blockStatement(n, tree);
 	case ifStatementKind: return emit_c_ifStatement(n, tree);
 	case caseStatementKind: return emit_c_caseStatement(n, tree);
+	case switchStatementKind: return emit_c_switchStatement(n, tree);
 	case whileLoopKind: return emit_c_whileLoop(n, tree);
 	case forLoopKind: return emit_c_forLoop(n, tree);
 
@@ -156,6 +158,26 @@ static inline void emit_c_caseStatement(astNode *n, ast *tree) {
 		emit_c_node(&cb.thenStatement, tree);
 		fprintf(fp,";\n");
 	}
+}
+
+static inline void emit_c_switchStatement(astNode *n, ast *tree) {
+	switchStatementAst cn = *(switchStatementAst*)n->data;
+	fprintf(fp,"switch(");
+	emit_c_node(&cn.target, tree);
+	fprintf(fp,") {\n");
+	for (int i=0;i<cn.branchCount;i++) {
+		switchBranchAst cb = *(switchBranchAst*)((cn.branches + i)->data);
+		if (cb.condition.kind == 0) {
+			fprintf(fp,"default: ");
+		} else {
+			fprintf(fp,"case ");
+			emit_c_node(&cb.condition, tree);
+			fprintf(fp,": ");
+		}
+		emit_c_node(&cb.thenStatement, tree);
+		fprintf(fp,"; break;\n");
+	}
+	fprintf(fp,"}\n");
 }
 
 static inline void emit_c_whileLoop(astNode *n, ast *tree) {

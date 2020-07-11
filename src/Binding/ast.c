@@ -15,6 +15,8 @@ enum astKind {
 	ifStatementKind,
 	caseStatementKind,
 	caseBranchKind,
+	switchStatementKind,
+	switchBranchKind,
 	whileLoopKind,
 	forLoopKind,
 	jumpKind,
@@ -37,6 +39,8 @@ static const char *astKindText[] = {
 	"ifStatement",
 	"caseStatement",
 	"caseBranch",
+	"switchStatement",
+	"switchBranch",
 	"whileLoop",
 	"forLoop",
 	"jump",
@@ -333,6 +337,17 @@ typedef struct caseStatementAst {
 	u16 branchCount;
 } caseStatementAst;
 
+typedef struct switchBranchAst {
+	astNode condition;
+	astNode thenStatement;
+} switchBranchAst;
+
+typedef struct switchStatementAst {
+	astNode target;
+	astNode* branches;
+	u16 branchCount;
+} switchStatementAst;
+
 typedef struct whileLoopAst {
 	astNode condition;
 	astNode block;
@@ -465,6 +480,26 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	}
 	case caseStatementKind: {
 		caseStatementAst cn = *(caseStatementAst*)root->data;
+
+		for(int i=0;i<cn.branchCount;i++) {
+			print_ast_internal(text, &cn.branches[i], indent, verbose, i!=cn.branchCount-1);
+		}
+		break;
+	}
+	case switchBranchKind: {
+		switchBranchAst cn = *(switchBranchAst*)root->data;
+		if (cn.condition.kind==0) {
+			printf ("%*s%s%s%s\n", indent, "", TERMMAGENTA, "default", TERMRESET);
+		} else {
+			print_ast_internal(text, &cn.condition, indent, verbose, true);
+		}
+		print_ast_internal(text, &cn.thenStatement, indent, verbose, false);
+		break;
+	}
+	case switchStatementKind: {
+		switchStatementAst cn = *(switchStatementAst*)root->data;
+
+		print_ast_internal(text, &cn.target, indent, verbose, cn.branchCount != 0);
 
 		for(int i=0;i<cn.branchCount;i++) {
 			print_ast_internal(text, &cn.branches[i], indent, verbose, i!=cn.branchCount-1);
