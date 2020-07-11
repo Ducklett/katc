@@ -174,11 +174,19 @@ static const char *syntaxKindText[] = {
 	"fileStatement",
 };
 
+// marks a span in the source text
+// used to show the span of text that caused an error,
+// and also the span of identifiers for symbol lookups
 typedef struct textspan {
 	u32 start;
 	u16 length;
 } textspan;
 
+// the base struct for every syntax node,
+// tokens produced by the lexer are also nodes
+// literals will store their value in the data section
+// complex syntax nodes use the `data` pointer to point 
+// to another struct which holds the remaining info
 typedef struct node {
 	enum syntaxKind kind;
 	textspan span;
@@ -191,30 +199,51 @@ typedef struct node {
 	};
 } node;
 
+// !true
+// -10
+// +20
+// x++
+// --y
+// ~1234
+// pre-increment/decrement operators appear on the left
+// the `left` property will be set to true for these nodes
+// for others it is set to false
 typedef struct unaryExpressionNode {
 	node operator;
 	node operand;
-	bool left;
+	bool left;			
 } unaryExpressionNode;
 
+// 10 + 10
+// true || false
+// 'a' + 1
 typedef struct binaryExpressionNode {
 	node left;
 	node operator;
 	node right;
 } binaryExpressionNode;
 
+// (10)
+// (a * b)
 typedef struct parenthesizedExpressionNode {
 	node openParen;
 	node expression;
 	node closeParen;
 } parenthesizedExpressionNode;
 
+// used in for loops to specify what range to iterate over
+// 10..20
+// 0..10
+// 'a'..'z'
+// x..x+4
 typedef struct rangeExpressionNode {
 	node start;
 	node dotDot;
 	node end;
 } rangeExpressionNode;
 
+// print("Hello world")
+// add(10, 20)
 typedef struct functionCallNode {
 	node identifier;
 	node openParen;
@@ -223,21 +252,37 @@ typedef struct functionCallNode {
 	node closeParen;
 } functionCallNode;
 
-
+// variables can be mutable or immutable
+// the `mutabilityIndicator` is a : if it is immutable
+// and an = if it is mutable
+// the initialization expression is optional
+// when `expression` is provided, the type of the variable
+// can be inferred and thus becomes optional
+// a := 10
+// b :int= 20
+// c :: 30
+// d :int: 40
+// e:int		// not initialized
 typedef struct variableDeclarationNode {
 	node identifier;
 	node colon;
-	node type;				// optional
-	node mutabilityIndicator; // = or :
+	node type;
+	node mutabilityIndicator;
 	node expression;
 } variableDeclarationNode;
 
+// a = 10
+// b = true
 typedef struct variableAssignmentNode {
 	node identifier;
 	node assignmentOperator;
 	node expression;
 } variableAssignmentNode;
 
+// {
+// 	name := "Bob"
+// 	print("hello %s\n", name)
+// }
 typedef struct blockStatementNode {
 	node openCurly;
 	node* statements;
@@ -245,20 +290,35 @@ typedef struct blockStatementNode {
 	node closeCurly;
 } blockStatementNode;
 
+// the else clause of if statements is optional
+// then `thenExpression` and `elseExpression` can be any statment
+// including block statements
+
+// if (x > y) print("it is")
+
+// if (x > y) { } else { }
 typedef struct ifStatementNode {
 	node ifKeyword;
 	node condition;
 	node thenExpression;
-	node elseKeyword;		// optional
-	node elseExpression;	// if elseKeyword exists
+	node elseKeyword;
+	node elseExpression;
 } ifStatementNode;
 
+// a single branch in a case statement
 typedef struct caseBranchNode {
 	node condition;
 	node colon;
 	node thenExpression;
 } caseBranchNode;
 
+// provides an alternative syntax for if statement chains
+// x := 10
+// case {
+// 	x < 10: print("small")
+// 	x < 20: print("medium")
+// 	default: print("large")
+// }
 typedef struct caseStatementNode {
 	node caseKeyword;
 	node openCurly;
@@ -267,6 +327,9 @@ typedef struct caseStatementNode {
 	node closeCurly;
 } caseStatementNode;
 
+// a single branch in a switch statement
+// the `caseKeyword` can also match a default keyword
+// no condition is expected in this case
 typedef struct switchBranchNode {
 	node caseKeyword;
 	node condition;
@@ -274,6 +337,13 @@ typedef struct switchBranchNode {
 	node thenExpression;
 } switchBranchNode;
 
+// x := 2
+// switch x {
+// 	case 1: print("one")
+// 	case 2: print("two")
+// 	case 3: print("three")
+// 	default: print("a high number")
+// }
 typedef struct switchStatementNode {
 	node switchKeyword;
 	node targetExpression;
@@ -283,21 +353,38 @@ typedef struct switchStatementNode {
 	node closeCurly;
 } switchStatementNode;
 
+// i := 0
+// while ++i {
+// 	print("%d\n",i)
+// }
 typedef struct whileLoopNode {
 	node whileKeyword;
 	node condition;
 	node block;
 } whileLoopNode;
 
+// most grammars implicitly support parenthesized conditions
+// for loops need to implement them explicitly
+// the paretheses *are* optional
+// the `key` variale is optional,
+// the `comma` is left out if the key is not provided
+
+// for (x in 10..-10) print("%d\n", x)
+
+// for x in 10..-10 print("%d\n", x)
+
+// for v,i in 'a'..'z' {
+// 	print("value %c, key %d \n", v, i)
+// }
 typedef struct forLoopNode {
 	node forKeyword;
-	node openParen;			// optional
+	node openParen;
 	node value;
-	node comma;				// optional
-	node key;				// if comma exists
+	node comma;
+	node key;
 	node inKeyword;
 	node range;
-	node closeParen;		// if openParen exists
+	node closeParen;
 	node block;
 } forLoopNode;
 
