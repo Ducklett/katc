@@ -15,6 +15,8 @@ node parser_parse_block_statement(parser *p, diagnosticContainer *d);
 node parser_parse_if_statement(parser *p, diagnosticContainer *d);
 node parser_parse_case_statement(parser *p, diagnosticContainer *d);
 node parser_parse_case_branch(parser *p, diagnosticContainer *d);
+node parser_parse_switch_statement(parser *p, diagnosticContainer *d);
+node parser_parse_switch_branch(parser *p, diagnosticContainer *d);
 node parser_parse_while_loop(parser *p, diagnosticContainer *d);
 node parser_parse_for_loop(parser *p, diagnosticContainer *d);
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d);
@@ -88,6 +90,7 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	case openCurlyToken: res = parser_parse_block_statement(p, d); break;
 	case ifKeyword: res = parser_parse_if_statement(p, d); break;
 	case caseKeyword: res = parser_parse_case_statement(p, d); break;
+	case switchKeyword: res = parser_parse_switch_statement(p, d); break;
 	case whileKeyword: res = parser_parse_while_loop(p, d); break;
 	case forKeyword: res = parser_parse_for_loop(p, d); break;
 	case identifierToken:
@@ -229,6 +232,53 @@ node parser_parse_case_statement(parser *p, diagnosticContainer *d) {
 	sb_free(branches);
 
 	return (node) { caseStatement, textspan_from_bounds(&caseToken, &closeCurly), .data = caseNode, };
+}
+
+node parser_parse_switch_branch(parser *p, diagnosticContainer *d) {
+	bool isDefault = parser_current(p,d).kind == defaultKeyword;
+	node caseToken = isDefault
+		? parser_next_token(p, d)
+		: parser_match_token(p, d, caseKeyword);
+
+	node condition = isDefault
+		? (node){0}
+		: parser_parse_expression(p, d);
+
+	node colon = parser_match_token(p, d, colonToken);
+	node thenStatement = parser_parse_statement(p, d);
+
+	switchBranchNode *sbNode = arena_malloc(parser_arena, sizeof(switchBranchNode));
+	*sbNode = (switchBranchNode){ caseToken, condition, colon, thenStatement };
+
+	return (node) { switchBranch, textspan_from_bounds(&condition, &thenStatement), .data = sbNode, };
+}
+
+node parser_parse_switch_statement(parser *p, diagnosticContainer *d) {
+	node switchToken = parser_match_token(p, d, switchKeyword);
+	node targetExpression = parser_parse_expression(p, d);
+	node openCurly = parser_match_token(p, d, openCurlyToken);
+
+	node *branches = NULL;
+
+	while(true) {
+		enum syntaxKind currentKind = parser_current(p, d).kind;
+		if (currentKind == closeCurlyToken || currentKind == endOfFileToken) break;
+		sb_push(branches, parser_parse_switch_branch(p, d));
+	}
+
+	node closeCurly = parser_match_token(p, d, closeCurlyToken);
+
+	u16 branchCount = sb_count(branches);
+	size_t branchesSize = sizeof(node) * branchCount;
+	node* branchesStart = arena_malloc(parser_arena, branchesSize);
+	memcpy(branchesStart, branches, branchesSize);
+
+	switchStatementNode *switchNode = arena_malloc(parser_arena, sizeof(switchStatementNode));
+	*switchNode = (switchStatementNode){ switchToken, targetExpression, openCurly, branchesStart, branchCount, closeCurly };
+
+	sb_free(branches);
+
+	return (node) { switchStatement, textspan_from_bounds(&switchToken, &closeCurly), .data = switchNode, };
 }
 
 node parser_parse_while_loop(parser *p, diagnosticContainer *d) {

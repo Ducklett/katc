@@ -65,6 +65,7 @@ enum syntaxKind {
 	falseKeyword,
 	ifKeyword,
 	elseKeyword,
+	switchKeyword,
 	caseKeyword,
 	defaultKeyword,
 	whileKeyword,
@@ -82,6 +83,8 @@ enum syntaxKind {
 	ifStatement,
 	caseStatement,
 	caseBranch,
+	switchStatement,
+	switchBranch,
 	whileLoop,
 	forLoop,
 	singleLineComment,
@@ -145,6 +148,7 @@ static const char *syntaxKindText[] = {
 	"false",
 	"if",
 	"else",
+	"switch",
 	"case",
 	"default",
 	"while",
@@ -161,6 +165,8 @@ static const char *syntaxKindText[] = {
 	"ifStatement",
 	"caseStatement",
 	"caseBranch",
+	"switchStatement",
+	"switchBranch",
 	"whileLoop",
 	"forLoop",
 	"singleLineComment",
@@ -260,6 +266,22 @@ typedef struct caseStatementNode {
 	u16 branchCount;
 	node closeCurly;
 } caseStatementNode;
+
+typedef struct switchBranchNode {
+	node caseKeyword;
+	node condition;
+	node colon;
+	node thenExpression;
+} switchBranchNode;
+
+typedef struct switchStatementNode {
+	node switchKeyword;
+	node targetExpression;
+	node openCurly;
+	node* branches;
+	u16 branchCount;
+	node closeCurly;
+} switchStatementNode;
 
 typedef struct whileLoopNode {
 	node whileKeyword;
@@ -452,6 +474,26 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		print_syntaxtree_internal(text, &cb.condition, indent, verbose, true);
 		print_syntaxtree_internal(text, &cb.colon, indent, verbose, true);
 		print_syntaxtree_internal(text, &cb.thenExpression, indent, verbose, false);
+		break;
+	}
+	case switchStatement: {
+		switchStatementNode sn = *(switchStatementNode*)root->data;
+		print_syntaxtree_internal(text, &sn.switchKeyword, indent, verbose, true);
+		print_syntaxtree_internal(text, &sn.targetExpression, indent, verbose, true);
+		print_syntaxtree_internal(text, &sn.openCurly, indent, verbose, true);
+		for (int i = 0; i< sn.branchCount; i++) {
+			print_syntaxtree_internal(text, &sn.branches[i], indent, verbose, true);
+		}
+		print_syntaxtree_internal(text, &sn.closeCurly, indent, verbose, false);
+		break;
+	}
+	case switchBranch: {
+		switchBranchNode sb = *(switchBranchNode*)root->data;
+		print_syntaxtree_internal(text, &sb.caseKeyword, indent, verbose, true);
+		if (sb.caseKeyword.kind != defaultKeyword)
+			print_syntaxtree_internal(text, &sb.condition, indent, verbose, true);
+		print_syntaxtree_internal(text, &sb.colon, indent, verbose, true);
+		print_syntaxtree_internal(text, &sb.thenExpression, indent, verbose, false);
 		break;
 	}
 	case whileLoop: {
