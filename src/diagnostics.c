@@ -28,6 +28,7 @@ static const char *diagnosticText[] = {
 	"cast from '%s' to '%s' doesn't exist. (%d,%d)\n",
 	"cannot implicitly convert from '%s' to '%s', an explicit conversion exists. (are you missing a cast?) (%d,%d)\n",
 	"a value of type '%s' cannot be used in switch statements. (%d,%d)\n",
+	"duplicate value in switch case. (%d,%d)\n",
 };
 
 void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u64 param1, u64 param2, u64 param3) {
@@ -113,6 +114,7 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		case illegalCastDiagnostic: fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
 		case illegalImplicitCastDiagnostic: fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
 		case invalidSwitchTypeDiagnostic: fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param1], d.span.start, d.span.length); break;
+		case duplicateSwitchValueDiagnostic: fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
 		default: {
 			fprintf(stderr, "Unhandled case %s in print_diagnostics%s\n", diagnosticMetaText[d.kind], TERMRESET);
 			exit(1);

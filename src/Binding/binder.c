@@ -220,6 +220,7 @@ astNode bind_switch_branch(node *n, ast *tree, enum astType caseType) {
 astNode bind_switch_statement(node *n, ast *tree) {
 
 	astNode *boundBranches = NULL;
+	int *branchValues = NULL;
 
 	switchStatementNode cn = *(switchStatementNode*)n->data;
 
@@ -234,9 +235,35 @@ astNode bind_switch_statement(node *n, ast *tree) {
 	enum astType caseType = boundTarget.type;
 
 	for (int i = 0; i < cn.branchCount; i++) {
-		sb_push(boundBranches, bind_switch_branch(&cn.branches[i], tree, caseType));
+		astNode bn = bind_switch_branch(&cn.branches[i], tree, caseType);
+		sb_push(boundBranches, bn);
+		astNode bc = (*(switchBranchAst*)bn.data).condition;
+		if (bc.kind == literalKind) {
+			bool hasDup = false;
+			for (int j=0;j<sb_count(branchValues); j++) {
+				if (branchValues[j] == bc.numValue) {
+					report_diagnostic(&tree->diagnostics, duplicateSwitchValueDiagnostic, cn.branches[i].span, 0, 0, 0);
+					hasDup=true;
+					break;
+				}
+			}
+			if (!hasDup) sb_push(branchValues, bc.numValue);
+		} else if (bc.kind == rangeExpressionKind) {
+			rangeExpressionAst rn = *(rangeExpressionAst*)bc.data;
+			for (int v=rn.fromInt; v <= rn.toInt; v++) {
+				bool hasDup = false;
+				for (int j=0;j<sb_count(branchValues); j++) {
+					if (branchValues[j] == v) {
+						report_diagnostic(&tree->diagnostics, duplicateSwitchValueDiagnostic, cn.branches[i].span, 0, 0, 0);
+						hasDup=true;
+						break;
+					}
+				}
+				if (!hasDup) sb_push(branchValues, v);
+			}
+		}
 	}
-	
+
 	pop_scope(tree, parentScopeIndex);
 
 	if (sb_count(boundBranches) == 0) {
