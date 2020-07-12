@@ -96,6 +96,58 @@ char* read_file(const char* filename, u64* length) {
 	return buffer;
 }
 
+char* escape_string_c(char *str) {
+	int escapedCharacters = 0;
+	int i = 0;
+	bool endFound = false;
+	while (!endFound) {
+		switch(str[i]) {
+			case '\0': endFound=true; break;
+
+			case '\r':
+			case '\n':
+			case '\\':
+			case '\"':
+				escapedCharacters++; /* FALLTHROUGH */
+		
+			default: i++;
+		}
+	}
+
+	int length = i + escapedCharacters + 1;
+	int oldlength = i;
+
+	char *allocatedText = (char*)malloc(sizeof(char) * length);
+	if (allocatedText == NULL) panic("memory allocation failed\n");
+
+	int index = 0;
+	for (int j=0; j < oldlength; j++) {
+		switch(str[j]) {
+			case '\r':
+				allocatedText[index++] = '\\';
+				allocatedText[index++] = 'r';
+				break;
+			case '\n':
+				allocatedText[index++] = '\\';
+				allocatedText[index++] = 'n';
+				break;
+			case '\\':
+				allocatedText[index++] = '\\';
+				allocatedText[index++] = '\\';
+				break;
+			case '\"':
+				allocatedText[index++] = '\\';
+				allocatedText[index++] = '"';
+				break;
+		
+			default: allocatedText[index++] = str[j];
+		}
+	}
+
+	allocatedText[length-1] = '\0';
+	return allocatedText;
+}
+
 // (temporary) globals
 
 bool feature_constantfolding = true;
