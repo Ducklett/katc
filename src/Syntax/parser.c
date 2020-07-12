@@ -7,6 +7,8 @@ typedef struct parser {
 	u8 tokenBufferIndex;
 } parser;
 
+bool in_loop = false;
+
 node parser_next_token(parser *p, diagnosticContainer *d);
 
 node parser_parse_statement(parser *p, diagnosticContainer *d);
@@ -93,6 +95,8 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	case switchKeyword: res = parser_parse_switch_statement(p, d); break;
 	case whileKeyword: res = parser_parse_while_loop(p, d); break;
 	case forKeyword: res = parser_parse_for_loop(p, d); break;
+	case breakKeyword: res = parser_next_token(p, d); break;
+	case continueKeyword: res = parser_next_token(p, d); break;
 	case identifierToken:
 		if  (l2kind == colonToken) {
 			res = parser_parse_variable_declaration(p, d);
@@ -105,6 +109,10 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	}
 
 	while (parser_current(p, d).kind == semicolonToken) parser_next_token(p, d);
+
+	if (!in_loop && (res.kind == breakKeyword || res.kind == continueKeyword)) {
+		report_diagnostic(d, notInLoopDiagnostic, res.span, res.kind, 0, 0);
+	}
 
 	return res;
 }
@@ -284,7 +292,10 @@ node parser_parse_switch_statement(parser *p, diagnosticContainer *d) {
 node parser_parse_while_loop(parser *p, diagnosticContainer *d) {
 	node whileToken = parser_match_token(p, d, whileKeyword);
 	node condition = parser_parse_expression(p, d);
+
+	in_loop = true;
 	node block = parser_parse_statement(p, d);
+	in_loop = false;
 
 	whileLoopNode *wnode = arena_malloc(parser_arena, sizeof(whileLoopNode));
 	*wnode = (whileLoopNode){ whileToken, condition, block };
@@ -319,7 +330,9 @@ node parser_parse_for_loop(parser *p, diagnosticContainer *d) {
 
 	if (hasParens) closeParen = parser_match_token(p, d, closeParenthesisToken);
 
+	in_loop = true;
 	node block = parser_parse_statement(p, d);
+	in_loop = false;
 
 	forLoopNode *forNode = arena_malloc(parser_arena, sizeof(forLoopNode));
 	*forNode = (forLoopNode){ forToken, openParen, value, comma, key, inToken, range, closeParen, block };

@@ -9,6 +9,7 @@ static const char *diagnosticText[] = {
 	"'%c' is an invalid binary number (%d,%d)\n",
 	"unexpected token of kind '%s', expected '%s' (%d,%d)\n",
 	"unexpected token of kind '%s', expected an assignment operator (=, +=, -=, *=, /=, %=, <<=, >>=, &=, ^=, |=) (%d,%d)\n",
+	"'%s' can only be used in loops. (%d,%d)\n",
 	"a value of type '%s' is not legal in a range expression. (%d,%d)\n",
 	"unexpected token '%s' while parsing primary expression. (%d,%d)\n",
 	"increment/decrement operators can only be used on variables. (%d,%d)\n",
@@ -65,6 +66,8 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		case unexpectedTokenDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], syntaxKindText[d.param2], d.span.start, d.span.length); break;
 		case notAnAssignmentOperatorDiagnostic:
+			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], d.span.start, d.span.length); break;
+		case notInLoopDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], d.span.start, d.span.length); break;
 		case illegalRangeDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param1], d.span.start, d.span.length); break;

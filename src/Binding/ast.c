@@ -19,6 +19,8 @@ enum astKind {
 	switchBranchKind,
 	whileLoopKind,
 	forLoopKind,
+	breakKind,
+	continueKind,
 	jumpKind,
 };
 
@@ -43,6 +45,8 @@ static const char *astKindText[] = {
 	"switchBranch",
 	"whileLoop",
 	"forLoop",
+	"break",
+	"continue",
 	"jump",
 };
 
@@ -533,6 +537,8 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		else printf ("%*s%s'%d'..'%d'%s", indent, "", TERMMAGENTA, rn.fromChar, rn.toChar, TERMRESET);
 		break;
 	}
+	case breakKind: break;
+	case continueKind: break;
 	case unaryExpressionKind: {
 		unaryExpressionAst un = *(unaryExpressionAst*)root->data;
 
@@ -733,6 +739,8 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		ENDLABEL
 		break;
 	}
+	case breakKind: ENDLABEL break;
+	case continueKind: ENDLABEL break;
 	case unaryExpressionKind: {
 		unaryExpressionAst *un = (unaryExpressionAst*)root->data;
 

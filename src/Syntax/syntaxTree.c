@@ -71,6 +71,8 @@ enum syntaxKind {
 	whileKeyword,
 	forKeyword,
 	inKeyword,
+	breakKeyword,
+	continueKeyword,
 
 	unaryExpression,
 	binaryExpression,
@@ -154,6 +156,8 @@ static const char *syntaxKindText[] = {
 	"while",
 	"for",
 	"in",
+	"break",
+	"continue",
 	"unaryExpression",
 	"binaryExpression",
 	"parenthesizedExpression",

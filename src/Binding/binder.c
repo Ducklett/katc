@@ -58,6 +58,9 @@ astNode bind_expression_internal(node *n, ast* tree) {
 		case whileLoop: return bind_while_loop(n, tree);
 		case forLoop: return bind_for_loop(n, tree);
 
+		case breakKeyword: return (astNode){ breakKind, voidType, .data = 0 };
+		case continueKeyword: return (astNode){ continueKind, voidType, .data = 0 };
+
 		case falseKeyword:
 		case trueKeyword: return (astNode){ literalKind, boolType, .boolValue = n->boolValue };
 

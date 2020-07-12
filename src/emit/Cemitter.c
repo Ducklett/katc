@@ -98,6 +98,9 @@ void emit_c_node(astNode *n, ast *tree) {
 	case whileLoopKind: return emit_c_whileLoop(n, tree);
 	case forLoopKind: return emit_c_forLoop(n, tree);
 
+	case breakKind: fprintf(fp, "break;\n"); break;
+	case continueKind: fprintf(fp, "continue;\n"); break;
+
 	case literalKind: return emit_c_literal(n, tree);
 	case binaryExpressionKind: return emit_c_binaryExpression(n, tree);
 	case unaryExpressionKind: return emit_c_unaryExpression(n, tree);
