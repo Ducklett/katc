@@ -18,8 +18,10 @@ astNode bind_variable_declaration(node *n, ast *tree);
 astNode bind_variable_assignment(node *n, ast *tree);
 static inline int push_scope(ast *tree);
 static inline void pop_scope(ast *tree, int parentScopeIndex);
+void declare_builtin_function(ast *tree, char* name);
 astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, astNode *body);
 astSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableType, u8 flags);
+astSymbol* find_function_in_scope(textspan nameSpan, ast *tree);
 astSymbol* find_variable_in_scope(textspan nameSpan, ast *tree);
 astNode fold_binary_expression(typedOperator *op, int left, int right);
 astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand);
@@ -447,10 +449,7 @@ astNode bind_call_expression(node *n, ast *tree) {
 		return cast_expression(&cn.arguments[0], tree, cast, true);
 	}
 
-	if (!span_compare(tree->text, cn.identifier.span, "print")) {
-		fprintf(stderr, "only print function supported currently\n");
-		exit(1);
-	}
+	astSymbol *function = find_function_in_scope(cn.identifier.span, tree);
 
 	astNode *arguments = NULL;
 
@@ -469,7 +468,7 @@ astNode bind_call_expression(node *n, ast *tree) {
 	memcpy(nodesStorage, arguments, nodesSize);
 
 	callExpressionAst *callNode = arena_malloc(binder_arena, sizeof(callExpressionAst));
-	*callNode = (callExpressionAst){ nodesStorage, nodesCount };
+	*callNode = (callExpressionAst){ function, nodesStorage, nodesCount };
 
 	sb_free(arguments);
 
@@ -598,12 +597,35 @@ static inline int push_scope(ast *tree) {
 
 	if (parentScopeIndex != tree->currentScopeIndex) {
 		newScope->parentScope = tree->scopes[parentScopeIndex];
-	} 
+	} else {
+		declare_builtin_function(tree, "print");
+	}
 	return parentScopeIndex;
 }
 
 static inline void pop_scope(ast *tree, int parentScopeIndex) {
 	tree->currentScopeIndex = parentScopeIndex;
+}
+
+void declare_builtin_function(ast *tree, char* name) {
+
+	scope *currentScope = tree->scopes[0];
+
+	u8 len = strlen(name)+1;
+	char *aName = arena_malloc(string_arena, sizeof(char)*len);
+	strcpy(aName, name);
+
+	astSymbol *function = arena_malloc(binder_arena, sizeof(astSymbol));
+	sb_push(currentScope->symbols, function);
+
+	functionSymbolData *fd = arena_malloc(binder_arena, sizeof(functionSymbolData));
+	*fd = (functionSymbolData){ {0}, 0, voidType, 0 };
+
+	function->symbolKind = SYMBOL_FUNCTION;
+	function->name = aName;
+	function->type = voidType;
+	function->flags = 0;
+	function->functionData = fd;
 }
 
 astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, astNode *body) {
@@ -662,14 +684,17 @@ astSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableT
 	return variable;
 }
 
-astSymbol* find_variable_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope);
+astSymbol* find_symbol_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope, u8 symbolKind);
 astSymbol* find_variable_in_scope(textspan nameSpan, ast *tree) {
-	return find_variable_in_scope_internal(nameSpan, tree, tree->scopes[tree->currentScopeIndex]);
+	return find_symbol_in_scope_internal(nameSpan, tree, tree->scopes[tree->currentScopeIndex], SYMBOL_VARIABLE);
 }
-astSymbol* find_variable_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope) {
+astSymbol* find_function_in_scope(textspan nameSpan, ast *tree) {
+	return find_symbol_in_scope_internal(nameSpan, tree, tree->scopes[tree->currentScopeIndex], SYMBOL_FUNCTION);
+}
+astSymbol* find_symbol_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope, u8 symbolKind) {
 
 	for (int i = 0; i < sb_count(currentScope->symbols); i++) {
-		if (span_compare(tree->text, nameSpan, currentScope->symbols[i]->name) && currentScope->symbols[i]->symbolKind == SYMBOL_VARIABLE) {
+		if (span_compare(tree->text, nameSpan, currentScope->symbols[i]->name) && currentScope->symbols[i]->symbolKind == symbolKind) {
 			return currentScope->symbols[i];
 		}
 	}
@@ -679,7 +704,7 @@ astSymbol* find_variable_in_scope_internal(textspan nameSpan, ast *tree, scope *
 		return 0;
 	}
 
-	return find_variable_in_scope_internal(nameSpan, tree, currentScope->parentScope);
+	return find_symbol_in_scope_internal(nameSpan, tree, currentScope->parentScope, symbolKind);
 }
 
 astNode fold_binary_expression(typedOperator *op, int left, int right) {

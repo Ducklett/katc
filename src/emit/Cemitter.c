@@ -18,7 +18,7 @@ static inline void emit_c_variableAssignment(astNode *n, ast *tree);
 static inline void emit_c_variableReference(astNode *n, ast *tree);
 char* escape_string_c(char *str);
 
-int c_indent=4;
+int c_indent=0;
 enum astKind kindStack[128];
 u8 kindIndex = 0;
 enum astKind parentKind;
@@ -160,6 +160,8 @@ void emit_c_file(astNode *n, ast *tree) {
 		emit_c_function(bn.statements + i, tree);
 		fprintf(fp,"\n");
 	}
+	// TODO: actually fix the issue
+	c_indent=4;
 	fprintf(fp,"void main() ");
 	emit_c_node(n,tree);
 }
@@ -338,7 +340,10 @@ static inline void emit_c_unaryExpression(astNode *n, ast *tree) {
 static inline void emit_c_callExpression(astNode *n, ast *tree) {
 	callExpressionAst cn = *(callExpressionAst*)n->data;
 
-	fprintf(fp,"printf(");
+	char* name = cn.function->name;
+	if (!strcmp(name, "print")) name = "printf";
+
+	fprintf(fp,"%s(",name);
 	for (int i= 0; i < cn.argumentCount; i++) {
 		emit_c_node(cn.arguments + i, tree);
 		if (cn.arguments[i].type == boolType) fprintf(fp, " ? \"true\" : \"false\"");

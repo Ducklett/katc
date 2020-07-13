@@ -319,6 +319,7 @@ typedef struct rangeExpressionAst {
 } rangeExpressionAst;
 
 typedef struct callExpressionAst {
+	astSymbol *function;
 	astNode *arguments;
 	u8 argumentCount;
 } callExpressionAst;
@@ -571,7 +572,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	case callExpressionKind: {
 		callExpressionAst cn = *(callExpressionAst*)root->data;
 
-		printf ("%*s%s%s%s\n", indent, "", TERMMAGENTA, "print", TERMRESET);
+		printf ("%*s%s%s%s\n", indent, "", TERMMAGENTA, cn.function->name, TERMRESET);
 		for(int i=0;i<cn.argumentCount;i++) {
 			print_ast_internal(text, &cn.arguments[i], indent, verbose, i!=cn.argumentCount-1);
 		}
