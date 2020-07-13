@@ -21,6 +21,7 @@ node parser_parse_switch_statement(parser *p, diagnosticContainer *d);
 node parser_parse_switch_branch(parser *p, diagnosticContainer *d);
 node parser_parse_while_loop(parser *p, diagnosticContainer *d);
 node parser_parse_for_loop(parser *p, diagnosticContainer *d);
+node parser_parse_function_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_variable_assignment(parser *p, diagnosticContainer *d);
 node parser_parse_function_call(parser *p, diagnosticContainer *d);
@@ -97,6 +98,7 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	case forKeyword: res = parser_parse_for_loop(p, d); break;
 	case breakKeyword: res = parser_next_token(p, d); break;
 	case continueKeyword: res = parser_next_token(p, d); break;
+	case fnKeyword: res = parser_parse_function_declaration(p, d); break;
 	case identifierToken:
 		if  (l2kind == colonToken) {
 			res = parser_parse_variable_declaration(p, d);
@@ -339,6 +341,20 @@ node parser_parse_for_loop(parser *p, diagnosticContainer *d) {
 
 	return (node) { forLoop, textspan_from_bounds(&forToken, &block), .data = forNode, };
 }
+
+node parser_parse_function_declaration(parser *p, diagnosticContainer *d) {
+	node fnToken = parser_match_token(p, d, fnKeyword);
+	node identifier = parser_match_token(p, d, identifierToken);
+	node openParen = parser_match_token(p, d, openParenthesisToken);
+	node closeParen = parser_match_token(p, d, closeParenthesisToken);
+	node block = parser_parse_block_statement(p, d);
+
+	functionDeclarationNode *fnode = arena_malloc(parser_arena, sizeof(functionDeclarationNode));
+	*fnode = (functionDeclarationNode){ fnToken, identifier, openParen, closeParen, block };
+
+	return (node) { functionDeclaration, textspan_from_bounds(&fnToken, &block), .data = fnode, };
+}
+
 
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 	node identifier = parser_match_token(p, d, identifierToken);

@@ -7,6 +7,7 @@ enum astKind {
 	rangeExpressionKind,
 	callExpressionKind,
 	castExpressionKind,
+	functionDeclarationKind,
 	variableDeclarationKind,
 	variableAssignmentKind,
 	variableReferenceKind,
@@ -33,9 +34,10 @@ static const char *astKindText[] = {
 	"rangeExpression",
 	"callExpression",
 	"castExpression",
+	"functionDeclaration",
 	"variableDeclaration",
 	"variableAssignment",
-	"variableReferenceKind",
+	"variableReference",
 	"fileStatement",
 	"blockStatement",
 	"ifStatement",
@@ -268,9 +270,20 @@ typedef struct astNode {
 #define VARIABLE_INITIALIZED 2
 #define VARIABLE_VALUE_KNOWN 4
 
-typedef struct variableSymbol {
+#define SYMBOL_VARIABLE 1
+#define SYMBOL_FUNCTION 2
+
+typedef struct functionSymbolData {
+	astNode *parameters;
+	u16 parameterCount;
+	enum astType returnType;
+	astNode body;
+} functionSymbolData;
+
+typedef struct astSymbol {
 	char* name;
 	enum astType type;
+	u8 symbolKind;
 	u8 flags;
 	union {
 		void* data; 
@@ -278,8 +291,9 @@ typedef struct variableSymbol {
 		bool boolValue; 
 		char* stringValue; 
 		char charValue; 
+		functionSymbolData *functionData;
 	};
-} variableSymbol;
+} astSymbol;
 
 typedef struct unaryExpressionAst {
 	enum astUnaryOperator operator;
@@ -310,12 +324,12 @@ typedef struct callExpressionAst {
 } callExpressionAst;
 
 typedef struct variableDeclarationAst {
-	variableSymbol* variable;
+	astSymbol* variable;
 	astNode initalizer;
 } variableDeclarationAst;
 
 typedef struct variableAssignmentAst {
-	variableSymbol* variable;
+	astSymbol* variable;
 	astNode expression;
 	enum astBinaryOperator compoundOperator;
 } variableAssignmentAst;
@@ -358,8 +372,8 @@ typedef struct whileLoopAst {
 } whileLoopAst;
 
 typedef struct forLoopAst {
-	variableSymbol* value;
-	variableSymbol* index;
+	astSymbol* value;
+	astSymbol* index;
 	astNode range;
 	astNode block;
 } forLoopAst;
@@ -370,7 +384,7 @@ typedef struct jumpAst {
 
 typedef struct scope {
 	struct scope* parentScope;
-	variableSymbol **variables;
+	astSymbol **symbols;
 } scope;
 
 typedef struct ast {
@@ -570,6 +584,13 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		print_ast_internal(text, &en, indent, verbose, false);
 		break;
 	}
+	case functionDeclarationKind: {
+		astSymbol vn = *(astSymbol*)root->data;
+
+		printf ("%*s%s%s %s%s\n", indent, "", TERMMAGENTA, vn.name, astTypeText[vn.type], TERMRESET);
+		print_ast_internal(text, &vn.functionData->body, indent, verbose, false);
+		break;
+	}
 	case variableDeclarationKind: {
 		variableDeclarationAst vn = *(variableDeclarationAst*)root->data;
 
@@ -586,7 +607,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		break;
 	}
 	case variableReferenceKind: {
-		variableSymbol vs = *(variableSymbol*)root->data;
+		astSymbol vs = *(astSymbol*)root->data;
 
 		printf ("%*s%s%s %s%s", indent, "", TERMMAGENTA, vs.name, astTypeText[vs.type], TERMRESET);
 		break;
@@ -807,7 +828,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		break;
 	}
 	case variableReferenceKind: {
-		variableSymbol vs = *(variableSymbol*)root->data;
+		astSymbol vs = *(astSymbol*)root->data;
 		fprintf (fp, "%s %s", vs.name, astTypeText[vs.type]);
 		ENDLABEL
 		break;

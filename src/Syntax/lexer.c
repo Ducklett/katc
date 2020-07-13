@@ -319,6 +319,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			else if (span_compare(l->text, t.span, "in")) t.kind = inKeyword;
 			else if (span_compare(l->text, t.span, "break")) t.kind = breakKeyword;
 			else if (span_compare(l->text, t.span, "continue")) t.kind = continueKeyword;
+			else if (span_compare(l->text, t.span, "fn")) t.kind = fnKeyword;
 			break;
 		}
 		t.kind = badToken;

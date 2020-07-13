@@ -10,6 +10,7 @@ astNode bind_switch_statement(node *n, ast *tree);
 astNode bind_range_expression(node *n, ast *tree);
 astNode bind_while_loop(node *n, ast *tree);
 astNode bind_for_loop(node *n, ast *tree);
+astNode bind_function_declaration(node *n, ast *tree);
 astNode bind_unary_expression(node *n, ast *tree);
 astNode bind_binary_expression(node *n, ast *tree);
 astNode bind_call_expression(node *n, ast *tree);
@@ -17,8 +18,9 @@ astNode bind_variable_declaration(node *n, ast *tree);
 astNode bind_variable_assignment(node *n, ast *tree);
 static inline int push_scope(ast *tree);
 static inline void pop_scope(ast *tree, int parentScopeIndex);
-variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableType, u8 flags);
-variableSymbol* find_variable_in_scope(textspan nameSpan, ast *tree);
+astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, astNode *body);
+astSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableType, u8 flags);
+astSymbol* find_variable_in_scope(textspan nameSpan, ast *tree);
 astNode fold_binary_expression(typedOperator *op, int left, int right);
 astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand);
 astNode fold_cast_expression(enum astType from, enum astType to, i64 value);
@@ -57,6 +59,7 @@ astNode bind_expression_internal(node *n, ast* tree) {
 		case rangeExpression: return bind_range_expression(n, tree);
 		case whileLoop: return bind_while_loop(n, tree);
 		case forLoop: return bind_for_loop(n, tree);
+		case functionDeclaration: return bind_function_declaration(n, tree);
 
 		case breakKeyword: return (astNode){ breakKind, voidType, .data = 0 };
 		case continueKeyword: return (astNode){ continueKind, voidType, .data = 0 };
@@ -71,7 +74,7 @@ astNode bind_expression_internal(node *n, ast* tree) {
 		case parenthesizedExpression: return bind_expression(&((parenthesizedExpressionNode*)n->data)->expression, tree);
 
 		case identifierToken: {
-			variableSymbol *variable = find_variable_in_scope(n->span, tree);
+			astSymbol *variable = find_variable_in_scope(n->span, tree);
 
 			bool hasErrors = variable == 0;
 
@@ -339,14 +342,25 @@ astNode bind_for_loop(node *n, ast *tree) {
 	astNode range = bind_range_expression(&fn.range, tree);
 
 	u8 flags = VARIABLE_MUTABLE | VARIABLE_INITIALIZED;
-	variableSymbol *valueVar = declare_variable(tree, fn.value.span, range.type, flags);
-	variableSymbol *keyVar = fn.key.kind == 0 ? 0 : declare_variable(tree, fn.key.span, intType, flags);
+	astSymbol *valueVar = declare_variable(tree, fn.value.span, range.type, flags);
+	astSymbol *keyVar = fn.key.kind == 0 ? 0 : declare_variable(tree, fn.key.span, intType, flags);
 	astNode boundBlock = bind_expression(&fn.block, tree);
 
 	forLoopAst *forNode = arena_malloc(binder_arena, sizeof(forLoopAst));
 	*forNode = (forLoopAst){ valueVar, keyVar, range, boundBlock };
 
 	return (astNode){ forLoopKind, voidType, .data = forNode };
+}
+
+astNode bind_function_declaration(node *n, ast *tree) {
+
+	functionDeclarationNode fn = *(functionDeclarationNode*)n->data;
+
+	u8 flags = 0;
+	astNode body = bind_expression(&fn.body, tree);
+	astSymbol *function = declare_function(tree, fn.identifier.span, flags, &body);
+
+	return (astNode){ functionDeclarationKind , voidType, .data = function };
 }
 
 astNode bind_unary_expression(node *n, ast *tree) {
@@ -520,7 +534,7 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 		flags |= VARIABLE_INITIALIZED;
 	} 
 
-	variableSymbol *variable = declare_variable(tree, vn.identifier.span, type, flags);
+	astSymbol *variable = declare_variable(tree, vn.identifier.span, type, flags);
 
 	if (variable != 0 && boundInitializer.kind == literalKind) {
 		variable->flags |= VARIABLE_VALUE_KNOWN;
@@ -545,7 +559,7 @@ astNode bind_variable_assignment(node *n, ast *tree) {
 
 	astNode boundExpression = bind_expression(&an.expression, tree);
 
-	variableSymbol *variable = find_variable_in_scope(an.identifier.span, tree);
+	astSymbol *variable = find_variable_in_scope(an.identifier.span, tree);
 
 	bool hasErrors = variable == 0 || boundExpression.type == errorType || boundExpression.type == unresolvedType;
 
@@ -592,8 +606,37 @@ static inline void pop_scope(ast *tree, int parentScopeIndex) {
 	tree->currentScopeIndex = parentScopeIndex;
 }
 
+astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, astNode *body) {
+	scope *currentScope = tree->scopes[tree->currentScopeIndex];
 
-variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableType, u8 flags) {
+	if (currentScope->parentScope != NULL) {
+		printf("local functions not supported for now\n");
+		exit(1);
+	}
+
+	for (int i = 0; i < sb_count(currentScope->symbols); i++) {
+		if (span_compare(tree->text, nameSpan, currentScope->symbols[i]->name)) {
+			report_diagnostic(&tree->diagnostics, redeclarationOfSymbolDiagnostic, nameSpan, (u64)currentScope->symbols[i]->name, 0, 0);
+			return 0;
+		}
+	}
+
+	astSymbol *function = arena_malloc(binder_arena, sizeof(astSymbol));
+	sb_push(currentScope->symbols, function);
+
+	functionSymbolData *fd = arena_malloc(binder_arena, sizeof(functionSymbolData));
+	*fd = (functionSymbolData){ {0}, 0, voidType, *body };
+
+	function->symbolKind = SYMBOL_FUNCTION;
+	function->name = ast_substring(tree->text, nameSpan, string_arena);
+	function->type = voidType;
+	function->flags = flags;
+	function->functionData = fd;
+
+	return function;
+}
+
+astSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableType, u8 flags) {
 	if (variableType == voidType) {
 		report_diagnostic(&tree->diagnostics, variableCannotBeVoidDiagnostic, nameSpan, 0, 0, 0);
 		return 0;
@@ -601,16 +644,17 @@ variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType vari
 
 	scope *currentScope = tree->scopes[tree->currentScopeIndex];
 
-	for (int i = 0; i < sb_count(currentScope->variables); i++) {
-		if (span_compare(tree->text, nameSpan, currentScope->variables[i]->name)) {
-			report_diagnostic(&tree->diagnostics, redeclarationOfVariableDiagnostic, nameSpan, (u64)currentScope->variables[i]->name, 0, 0);
+	for (int i = 0; i < sb_count(currentScope->symbols); i++) {
+		if (span_compare(tree->text, nameSpan, currentScope->symbols[i]->name)) {
+			report_diagnostic(&tree->diagnostics, redeclarationOfSymbolDiagnostic, nameSpan, (u64)currentScope->symbols[i]->name, 0, 0);
 			return 0;
 		}
 	}
 
-	variableSymbol *variable = arena_malloc(binder_arena, sizeof(variableSymbol));
-	sb_push(currentScope->variables, variable);
+	astSymbol *variable = arena_malloc(binder_arena, sizeof(astSymbol));
+	sb_push(currentScope->symbols, variable);
 
+	variable->symbolKind = SYMBOL_VARIABLE;
 	variable->name = ast_substring(tree->text, nameSpan, string_arena);
 	variable->type = variableType;
 	variable->flags = flags;
@@ -618,15 +662,15 @@ variableSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType vari
 	return variable;
 }
 
-variableSymbol* find_variable_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope);
-variableSymbol* find_variable_in_scope(textspan nameSpan, ast *tree) {
+astSymbol* find_variable_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope);
+astSymbol* find_variable_in_scope(textspan nameSpan, ast *tree) {
 	return find_variable_in_scope_internal(nameSpan, tree, tree->scopes[tree->currentScopeIndex]);
 }
-variableSymbol* find_variable_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope) {
+astSymbol* find_variable_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope) {
 
-	for (int i = 0; i < sb_count(currentScope->variables); i++) {
-		if (span_compare(tree->text, nameSpan, currentScope->variables[i]->name)) {
-			return currentScope->variables[i];
+	for (int i = 0; i < sb_count(currentScope->symbols); i++) {
+		if (span_compare(tree->text, nameSpan, currentScope->symbols[i]->name) && currentScope->symbols[i]->symbolKind == SYMBOL_VARIABLE) {
+			return currentScope->symbols[i];
 		}
 	}
 

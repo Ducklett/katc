@@ -18,7 +18,7 @@ static const char *diagnosticText[] = {
 	"undefined unary operator '%s' for value of type '%s' (%d,%d)\n",
 	"undefined binary operator '%s' for values of type '%s' and '%s' (%d,%d)\n",
 	"variable '%s' is not initialized. (%d,%d)\n",
-	"variable '%s' is already declared in this scope. (%d,%d)\n",
+	"symbol '%s' is already declared in this scope. (%d,%d)\n",
 	"variable '%s' is undefined. (%d,%d)\n",
 	"cannot assign expression of type '%s' to variable '%s' of type '%s'. (%d,%d)\n",
 	"'%s' is constant and cannot be assigned to. (%d,%d)\n",
@@ -85,7 +85,7 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], astTypeText[d.param2], astTypeText[d.param3], d.span.start, d.span.length); break;
 		case variableNotInitializedDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], d.param1, d.span.start, d.span.length); break;
-		case redeclarationOfVariableDiagnostic:
+		case redeclarationOfSymbolDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], d.param1, d.span.start, d.span.length); break;
 		case referenceToUndefinedVariableDiagnostic: {
 			char* identifierText = ast_substring(sourceText, d.span, NULL);

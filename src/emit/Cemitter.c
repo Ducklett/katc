@@ -1,5 +1,6 @@
 void emit_c_node(astNode *n, ast *tree);
 static inline void emit_c_file(astNode *n, ast *tree);
+static inline void emit_c_function(astNode *n, ast *tree);
 static inline void emit_c_blockStatement(astNode *n, ast *tree);
 static inline void emit_c_ifStatement(astNode *n, ast *tree);
 static inline void emit_c_caseStatement(astNode *n, ast *tree);
@@ -116,14 +117,29 @@ void emit_c_node(astNode *n, ast *tree) {
 }
 
 void emit_c_file(astNode *n, ast *tree) {
-	fprintf(fp,"#include <stdio.h>\nvoid main() ");
+	fprintf(fp,"#include <stdio.h>\n\n");
+	blockStatementAst bn = *(blockStatementAst*)n->data;
+	for (int i= 0; i < bn.statementsCount; i++) {
+		if (bn.statements[i].kind != functionDeclarationKind) continue;
+		emit_c_function(bn.statements + i, tree);
+		fprintf(fp,"\n");
+	}
+	fprintf(fp,"void main() ");
 	emit_c_blockStatement(n,tree);
+}
+
+static inline void emit_c_function(astNode *n, ast *tree) {
+
+	astSymbol vn = *(astSymbol*)n->data;
+	fprintf(fp,"%s %s() ", cTypeText[vn.type], vn.name);
+	emit_c_blockStatement(&vn.functionData->body,tree);
 }
 
 static inline void emit_c_blockStatement(astNode *n, ast *tree) {
 	fprintf(fp,"{\n");
 	blockStatementAst bn = *(blockStatementAst*)n->data;
 	for (int i= 0; i < bn.statementsCount; i++) {
+		if (bn.statements[i].kind == functionDeclarationKind) continue;
 		emit_c_node(bn.statements + i, tree);
 		fprintf(fp,";\n");
 	}
@@ -303,5 +319,5 @@ static inline void emit_c_variableAssignment(astNode *n, ast *tree) {
 }
 
 static inline void emit_c_variableReference(astNode *n, ast *tree) {
-	fprintf(fp, "%s", ((variableSymbol*) n->data)->name);
+	fprintf(fp, "%s", ((astSymbol*) n->data)->name);
 }

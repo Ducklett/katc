@@ -73,12 +73,14 @@ enum syntaxKind {
 	inKeyword,
 	breakKeyword,
 	continueKeyword,
+	fnKeyword,
 
 	unaryExpression,
 	binaryExpression,
 	parenthesizedExpression,
 	rangeExpression,
 	callExpression,
+	functionDeclaration,
 	variableDeclaration,
 	variableAssignment,
 	blockStatement,
@@ -158,11 +160,13 @@ static const char *syntaxKindText[] = {
 	"in",
 	"break",
 	"continue",
+	"fn",
 	"unaryExpression",
 	"binaryExpression",
 	"parenthesizedExpression",
 	"rangeExpression",
 	"callExpression",
+	"functionDeclaration",
 	"variableDeclaration",
 	"variableAssignment",
 	"blockStatement",
@@ -392,6 +396,14 @@ typedef struct forLoopNode {
 	node block;
 } forLoopNode;
 
+typedef struct functionDeclarationNode {
+	node fnKeyword;
+	node identifier;
+	node openParen;
+	node closeParen;
+	node body;
+} functionDeclarationNode;
+
 textspan textspan_create(u32 start, u16 length) {
 	textspan span = { start, length, };
 	return span;
@@ -607,6 +619,14 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		print_syntaxtree_internal(text, &fn.range, indent, verbose, true);
 		if (fn.closeParen.kind != emptyToken) print_syntaxtree_internal(text, &fn.closeParen, indent, verbose, true);
 		print_syntaxtree_internal(text, &fn.block, indent, verbose, false);
+		break;
+	}
+	case functionDeclaration: {
+		functionDeclarationNode fn = *(functionDeclarationNode*)root->data;
+		print_syntaxtree_internal(text, &fn.fnKeyword, indent, verbose, true);
+		print_syntaxtree_internal(text, &fn.openParen, indent, verbose, true);
+		print_syntaxtree_internal(text, &fn.closeParen, indent, verbose, true);
+		print_syntaxtree_internal(text, &fn.body, indent, verbose, false);
 		break;
 	}
 	case fileStatement:
