@@ -3,7 +3,9 @@ fn helloworld() {
 }
 
 fn greet(name:string, age:int) {
-	print("hello %s %d\n", name, age)
+	fn localfunction() { print("!!\n") }
+	print("hello %s %d", name, age)
+	localfunction()
 }
 
 helloworld()

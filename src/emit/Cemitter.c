@@ -169,11 +169,22 @@ void emit_c_file(astNode *n, ast *tree) {
 static inline void emit_c_function(astNode *n, ast *tree) {
 	astSymbol vn = *(astSymbol*)n->data;
 	functionSymbolData fd = *vn.functionData;
+	blockStatementAst bn = *(blockStatementAst*)fd.body.data;
+
+	// emit local functions
+	// TODO: add namespacing so the local function doesn't collide with others
+	for (int i= 0; i < bn.statementsCount; i++) {
+		if (bn.statements[i].kind != functionDeclarationKind) continue;
+		emit_c_function(bn.statements + i, tree);
+		fprintf(fp,"\n");
+	}
+
 	fprintf(fp,"%*s%s %s(", c_indent, "", cTypeText[vn.type], vn.name);
 	for (int i=0;i<fd.parameterCount;i++) {
 		fprintf (fp, "%s %s%s", cTypeText[fd.parameters[i]->type], fd.parameters[i]->name, i == fd.parameterCount-1?"":", ");
 	}
 	fprintf(fp, ") ");
+
 	emit_c_node(&vn.functionData->body,tree);
 }
 

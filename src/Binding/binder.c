@@ -687,11 +687,6 @@ astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, astNode *bod
 
 	scope *currentScope = tree->scopes[tree->currentScopeIndex];
 
-	if (currentScope->parentScope != NULL) {
-		printf("local functions not supported for now\n");
-		exit(1);
-	}
-
 	for (int i = 0; i < sb_count(currentScope->symbols); i++) {
 		if (span_compare(tree->text, nameSpan, currentScope->symbols[i]->name)) {
 			report_diagnostic(&tree->diagnostics, redeclarationOfSymbolDiagnostic, nameSpan, (u64)currentScope->symbols[i]->name, 0, 0);
