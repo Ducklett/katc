@@ -1,0 +1,10 @@
+fn helloworld() {
+	print("hello world!\n")
+}
+
+fn greet(name:string, age:int) {
+	print("hello %s %d\n", name, age)
+}
+
+helloworld()
+greet("bob", 20)

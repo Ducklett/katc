@@ -19,7 +19,7 @@ astNode bind_variable_assignment(node *n, ast *tree);
 static inline int push_scope(ast *tree);
 static inline void pop_scope(ast *tree, int parentScopeIndex);
 void declare_builtin_function(ast *tree, char* name);
-astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, astNode *body);
+astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, astNode *body, astSymbol **parameters, u16 parameterCount);
 astSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableType, u8 flags);
 astSymbol* find_function_in_scope(textspan nameSpan, ast *tree);
 astSymbol* find_variable_in_scope(textspan nameSpan, ast *tree);
@@ -359,8 +359,40 @@ astNode bind_function_declaration(node *n, ast *tree) {
 	functionDeclarationNode fn = *(functionDeclarationNode*)n->data;
 
 	u8 flags = 0;
-	astNode body = bind_expression(&fn.body, tree);
-	astSymbol *function = declare_function(tree, fn.identifier.span, flags, &body);
+
+	int parentScopeIndex = push_scope(tree);
+
+	astSymbol **params = NULL;
+
+	u16 nodesCount = (fn.parameterCount+1)/2;
+
+	bool hasErrors = false;
+	astSymbol** nodesStorage = NULL;
+	astNode body = {0};
+
+
+	for (int i=0;i<fn.parameterCount;i+=2) {
+		typedIdentifierNode id = *(typedIdentifierNode*)fn.parameters[i].data;
+		astSymbol *param = declare_variable(tree, id.identifier.span, resolve_type_from_span(tree, id.type.span), VARIABLE_INITIALIZED);
+		if (param == NULL) {
+			hasErrors = true;
+			goto end;
+		}
+		sb_push(params, param);
+	}
+
+
+	size_t nodesSize = nodesCount * sizeof(astSymbol*);
+	nodesStorage = arena_malloc(binder_arena, nodesSize);
+	memcpy(nodesStorage, params, nodesSize);
+
+
+	body = bind_expression(&fn.body, tree);
+	end:;
+	sb_free(params);
+	pop_scope(tree, parentScopeIndex);
+
+	astSymbol *function = declare_function(tree, fn.identifier.span, flags, hasErrors?NULL:&body, nodesStorage, nodesCount);
 
 	return (astNode){ functionDeclarationKind , voidType, .data = function };
 }
@@ -450,27 +482,50 @@ astNode bind_call_expression(node *n, ast *tree) {
 	}
 
 	astSymbol *function = find_function_in_scope(cn.identifier.span, tree);
+	callExpressionAst *callNode = NULL;
+
+	bool hasErrors = function == NULL || function->type == errorType;
+
+	if (hasErrors) goto end;
 
 	astNode *arguments = NULL;
 
+	u16 nodesCount = (cn.argumentCount+1)/2;
+
+	bool isPrint = !strcmp(function->name, "print");
+
+	functionSymbolData *fd = function->functionData;
+
+	if (fd->parameterCount != nodesCount && !isPrint) {
+		report_diagnostic(&tree->diagnostics, argCountDoensntMatchDiagnostic, cn.identifier.span, (u64)function->name, 0, 0);
+		hasErrors = true;
+		goto end;
+	}
+
 	// skip the comma tokens
 	for (int i=0;i<cn.argumentCount;i+=2) {
-		if (i == 0) {
-			sb_push(arguments, bind_expression_of_type(&cn.arguments[i], tree, stringType, cn.arguments[i].span));
+		if (isPrint) {
+			if (i==0) {
+				sb_push(arguments, bind_expression_of_type(&cn.arguments[i], tree, stringType, cn.arguments[i].span));
+			} else {
+				sb_push(arguments, bind_expression(&cn.arguments[i], tree));
+			}
 		} else {
-			sb_push(arguments, bind_expression(&cn.arguments[i],tree));
+			sb_push(arguments, bind_expression_of_type(&cn.arguments[i], tree, fd->parameters[i/2]->type, cn.arguments[i].span));
 		}
 	}
 
-	u16 nodesCount = sb_count(arguments);
+
 	size_t nodesSize = nodesCount * sizeof(astNode);
 	astNode* nodesStorage = arena_malloc(binder_arena, nodesSize);
 	memcpy(nodesStorage, arguments, nodesSize);
 
-	callExpressionAst *callNode = arena_malloc(binder_arena, sizeof(callExpressionAst));
+	callNode = arena_malloc(binder_arena, sizeof(callExpressionAst));
 	*callNode = (callExpressionAst){ function, nodesStorage, nodesCount };
 
 	sb_free(arguments);
+
+	end:;
 
 	return (astNode){ callExpressionKind , voidType, .data = callNode };
 }
@@ -619,7 +674,7 @@ void declare_builtin_function(ast *tree, char* name) {
 	sb_push(currentScope->symbols, function);
 
 	functionSymbolData *fd = arena_malloc(binder_arena, sizeof(functionSymbolData));
-	*fd = (functionSymbolData){ {0}, 0, voidType, 0 };
+	*fd = (functionSymbolData){ 0, 0, voidType, 0 };
 
 	function->symbolKind = SYMBOL_FUNCTION;
 	function->name = aName;
@@ -628,7 +683,8 @@ void declare_builtin_function(ast *tree, char* name) {
 	function->functionData = fd;
 }
 
-astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, astNode *body) {
+astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, astNode *body, astSymbol **parameters, u16 parameterCount) {
+
 	scope *currentScope = tree->scopes[tree->currentScopeIndex];
 
 	if (currentScope->parentScope != NULL) {
@@ -643,15 +699,18 @@ astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, astNode *bod
 		}
 	}
 
+
 	astSymbol *function = arena_malloc(binder_arena, sizeof(astSymbol));
 	sb_push(currentScope->symbols, function);
 
 	functionSymbolData *fd = arena_malloc(binder_arena, sizeof(functionSymbolData));
-	*fd = (functionSymbolData){ {0}, 0, voidType, *body };
+
+	*fd = (functionSymbolData){ parameters, parameterCount, voidType, body==0 ? (astNode){0} : *body };
+
 
 	function->symbolKind = SYMBOL_FUNCTION;
 	function->name = ast_substring(tree->text, nameSpan, string_arena);
-	function->type = voidType;
+	function->type = body == NULL ? errorType : voidType;
 	function->flags = flags;
 	function->functionData = fd;
 

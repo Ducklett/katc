@@ -80,6 +80,7 @@ enum syntaxKind {
 	parenthesizedExpression,
 	rangeExpression,
 	callExpression,
+	typedIdentifier,
 	functionDeclaration,
 	variableDeclaration,
 	variableAssignment,
@@ -166,6 +167,7 @@ static const char *syntaxKindText[] = {
 	"parenthesizedExpression",
 	"rangeExpression",
 	"callExpression",
+	"typedIdentifier",
 	"functionDeclaration",
 	"variableDeclaration",
 	"variableAssignment",
@@ -396,10 +398,20 @@ typedef struct forLoopNode {
 	node block;
 } forLoopNode;
 
+// used in function and struct declarations
+// x: int
+typedef struct typedIdentifierNode {
+	node identifier;
+	node colon;
+	node type;
+} typedIdentifierNode;
+
 typedef struct functionDeclarationNode {
 	node fnKeyword;
 	node identifier;
 	node openParen;
+	node* parameters;
+	u16 parameterCount;
 	node closeParen;
 	node body;
 } functionDeclarationNode;
@@ -621,10 +633,20 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		print_syntaxtree_internal(text, &fn.block, indent, verbose, false);
 		break;
 	}
+	case typedIdentifier: {
+		typedIdentifierNode dn = *(typedIdentifierNode*)root->data;
+		print_syntaxtree_internal(text, &dn.identifier, indent, verbose, true);
+		print_syntaxtree_internal(text, &dn.colon, indent, verbose, true);
+		print_syntaxtree_internal(text, &dn.type, indent, verbose, true);
+		break;
+	}
 	case functionDeclaration: {
 		functionDeclarationNode fn = *(functionDeclarationNode*)root->data;
 		print_syntaxtree_internal(text, &fn.fnKeyword, indent, verbose, true);
 		print_syntaxtree_internal(text, &fn.openParen, indent, verbose, true);
+		for (int i = 0; i< fn.parameterCount; i++) {
+			print_syntaxtree_internal(text, &fn.parameters[i], indent, verbose, true);
+		}
 		print_syntaxtree_internal(text, &fn.closeParen, indent, verbose, true);
 		print_syntaxtree_internal(text, &fn.body, indent, verbose, false);
 		break;

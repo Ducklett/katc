@@ -273,8 +273,10 @@ typedef struct astNode {
 #define SYMBOL_VARIABLE 1
 #define SYMBOL_FUNCTION 2
 
+struct astSymbol;
+
 typedef struct functionSymbolData {
-	astNode *parameters;
+	struct astSymbol **parameters;
 	u16 parameterCount;
 	enum astType returnType;
 	astNode body;
@@ -587,8 +589,14 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	}
 	case functionDeclarationKind: {
 		astSymbol vn = *(astSymbol*)root->data;
+		functionSymbolData fd = *vn.functionData;
 
-		printf ("%*s%s%s %s%s\n", indent, "", TERMMAGENTA, vn.name, astTypeText[vn.type], TERMRESET);
+		printf("%s", TERMMAGENTA);
+		printf ("%*s%s %s(", indent, "", vn.name, astTypeText[vn.type]);
+		for (int i=0;i<fd.parameterCount;i++) {
+			printf (" %s: %s", fd.parameters[i]->name, astTypeText[fd.parameters[i]->type]);
+		}
+		printf(")%s\n", TERMRESET);
 		print_ast_internal(text, &vn.functionData->body, indent, verbose, false);
 		break;
 	}
@@ -636,16 +644,16 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 
 	if (root->kind == literalKind) {
 		switch (root->type) {
-			case voidType: fprintf(fp, "Label%d[label=\"%s\"]\n", root, "void"); break;
+			case voidType: fprintf(fp, "Label%p[label=\"%s\"]\n", root, "void"); break;
 			case u8Type: case u16Type: case u32Type: case u64Type: case i8Type: case i16Type: case i32Type: case i64Type:
-			case intType: fprintf (fp, "Label%d[label=\"%d\"]\n", root, root->numValue); break;
-			case boolType: fprintf (fp, "Label%d[label=\"%s\"]\n", root, root->boolValue ? "true" : "false"); break;
+			case intType: fprintf (fp, "Label%p[label=\"%d\"]\n", root, root->numValue); break;
+			case boolType: fprintf (fp, "Label%p[label=\"%s\"]\n", root, root->boolValue ? "true" : "false"); break;
 			case stringType: {
 				char* stringText = escape_string_c(root->stringValue);
-				fprintf (fp, "Label%d[label=\"\\\"%s\\\"\"]\n", root, stringText); break;
+				fprintf (fp, "Label%p[label=\"\\\"%s\\\"\"]\n", root, stringText); break;
 				free(stringText);
 			}
-			case charType: fprintf (fp, "Label%d[label=\"'%c'\"]\n", root, root->charValue); break;
+			case charType: fprintf (fp, "Label%p[label=\"'%c'\"]\n", root, root->charValue); break;
 			default:
 				fprintf(stderr, "%sUnhandled type '%s' in print_ast_graph%s", TERMRED, astTypeText[root->type], TERMRESET);
 				exit(1);
@@ -653,7 +661,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		return;
 	}
 
-	fprintf (fp, "Label%d[shape=diamond label=\"%s\\n", root, astKindText[root->kind]);
+	fprintf (fp, "Label%p[shape=diamond label=\"%s\\n", root, astKindText[root->kind]);
 	#define ENDLABEL fprintf (fp, "\"]\n");
 
 	switch(root->kind) {
@@ -662,7 +670,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		blockStatementAst *bn = (blockStatementAst*)root->data;
 		ENDLABEL
 		for(int i=0;i<bn->statementsCount;i++) {
-			fprintf (fp, "Label%d -> Label%d\n", root, &bn->statements[i]);
+			fprintf (fp, "Label%p -> Label%p\n", root, &bn->statements[i]);
 			print_ast_graph_internal(text, &bn->statements[i], fp, false);
 		}
 		break;
@@ -671,13 +679,13 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		ifStatementAst *in = (ifStatementAst*)root->data;
 		ENDLABEL
 		print_ast_graph_internal(text, &in->condition, fp,  false);
-		fprintf (fp, "Label%d -> Label%d\n", root, &in->condition);
+		fprintf (fp, "Label%p -> Label%p\n", root, &in->condition);
 		bool hasElse = in->elseStatement.kind != 0;
 		print_ast_graph_internal(text, &in->thenStatement, fp, false);
-		fprintf (fp, "Label%d -> Label%d\n", root, &in->thenStatement);
+		fprintf (fp, "Label%p -> Label%p\n", root, &in->thenStatement);
 		if (hasElse) {
 			print_ast_graph_internal(text, &in->elseStatement, fp, false);
-			fprintf (fp, "Label%d -> Label%d\n", root, &in->elseStatement);
+			fprintf (fp, "Label%p -> Label%p\n", root, &in->elseStatement);
 		}
 		break;
 	}
@@ -689,10 +697,10 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		} else {
 			ENDLABEL
 			print_ast_graph_internal(text, &cn->condition, fp, false);
-			fprintf (fp, "Label%d -> Label%d\n", root, &cn->condition);
+			fprintf (fp, "Label%p -> Label%p\n", root, &cn->condition);
 		}
 		print_ast_graph_internal(text, &cn->thenStatement, fp, false);
-		fprintf (fp, "Label%d -> Label%d\n", root, &cn->thenStatement);
+		fprintf (fp, "Label%p -> Label%p\n", root, &cn->thenStatement);
 		break;
 	}
 	case caseStatementKind: {
@@ -700,33 +708,33 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		ENDLABEL
 		for(int i=0;i<cn->branchCount;i++) {
 			print_ast_graph_internal(text, &cn->branches[i], fp, false);
-			fprintf (fp, "Label%d -> Label%d\n", root, &cn->branches[i]);
+			fprintf (fp, "Label%p -> Label%p\n", root, &cn->branches[i]);
 		}
 		break;
 	}
 	case switchBranchKind: {
 		switchBranchAst *cn = (switchBranchAst*)root->data;
 		if (cn->condition.kind==0) {
-			fprintf (fp, "%d", "default");
+			fprintf (fp, "%s", "default");
 			ENDLABEL
 		} else {
 			ENDLABEL
 			print_ast_graph_internal(text, &cn->condition, fp, false);
-			fprintf (fp, "Label%d -> Label%d\n", root, &cn->condition);
+			fprintf (fp, "Label%p -> Label%p\n", root, &cn->condition);
 		}
 		print_ast_graph_internal(text, &cn->thenStatement, fp, false);
-			fprintf (fp, "Label%d -> Label%d\n", root, &cn->thenStatement);
+			fprintf (fp, "Label%p -> Label%p\n", root, &cn->thenStatement);
 		break;
 	}
 	case switchStatementKind: {
 		switchStatementAst *cn = (switchStatementAst*)root->data;
 
 		print_ast_graph_internal(text, &cn->target, fp, false);
-			fprintf (fp, "Label%d -> Label%d\n", root, &cn->target);
+			fprintf (fp, "Label%p -> Label%p\n", root, &cn->target);
 
 		for(int i=0;i<cn->branchCount;i++) {
 			print_ast_graph_internal(text, &cn->branches[i], fp, false);
-			fprintf (fp, "Label%d -> Label%d\n", root, &cn->branches[i]);
+			fprintf (fp, "Label%p -> Label%p\n", root, &cn->branches[i]);
 		}
 		break;
 	}
@@ -734,9 +742,9 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		whileLoopAst *wn = (whileLoopAst*)root->data;
 		ENDLABEL
 		print_ast_graph_internal(text, &wn->condition, fp, false);
-		fprintf (fp, "Label%d -> Label%d\n", root, &wn->condition);
+		fprintf (fp, "Label%p -> Label%p\n", root, &wn->condition);
 		print_ast_graph_internal(text, &wn->block, fp, false);
-		fprintf (fp, "Label%d -> Label%d\n", root, &wn->block);
+		fprintf (fp, "Label%p -> Label%p\n", root, &wn->block);
 		break;
 	}
 	case forLoopKind: {
@@ -750,8 +758,8 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		ENDLABEL
 		print_ast_graph_internal(text, &fn->range, fp, false);
 		print_ast_graph_internal(text, &fn->block, fp, false);
-		fprintf (fp, "Label%d -> Label%d\n", root, &fn->range);
-		fprintf (fp, "Label%d -> Label%d\n", root, &fn->block);
+		fprintf (fp, "Label%p -> Label%p\n", root, &fn->range);
+		fprintf (fp, "Label%p -> Label%p\n", root, &fn->block);
 		break;
 	}
 	case rangeExpressionKind: {
@@ -768,7 +776,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 
 		printf ("%s", astUnaryText[un->operator]);
 		ENDLABEL
-		fprintf (fp, "Label%d -> Label%d\n", root, &un->operand);
+		fprintf (fp, "Label%p -> Label%p\n", root, &un->operand);
 		print_ast_graph_internal(text, &un->operand, fp, false);
 		break;
 	}
@@ -777,8 +785,8 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 
 		printf ("%s", astBinaryText[un->operator]);
 		ENDLABEL
-		fprintf (fp, "Label%d -> Label%d\n", root, &un->left);
-		fprintf (fp, "Label%d -> Label%d\n", root, &un->right);
+		fprintf (fp, "Label%p -> Label%p\n", root, &un->left);
+		fprintf (fp, "Label%p -> Label%p\n", root, &un->right);
 		print_ast_graph_internal(text, &un->left, fp, false);
 		print_ast_graph_internal(text, &un->right, fp, false);
 		break;
@@ -789,7 +797,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		fprintf (fp, "%s", "print");
 		ENDLABEL
 		for(int i=0;i<cn->argumentCount;i++) {
-			fprintf (fp, "Label%d -> Label%d\n", root, &cn->arguments[i]);
+			fprintf (fp, "Label%p -> Label%p\n", root, &cn->arguments[i]);
 			print_ast_graph_internal(text, &cn->arguments[i], fp, false);
 		}
 		break;
@@ -800,8 +808,22 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 
 		fprintf(fp, "cast<%s>", astTypeText[root->type]);
 		ENDLABEL
-		fprintf (fp, "Label%d -> Label%d\n", root, en);
+		fprintf (fp, "Label%p -> Label%p\n", root, en);
 		print_ast_graph_internal(text, en, fp, false);
+		break;
+	}
+	case functionDeclarationKind: {
+		astSymbol *vn = (astSymbol*)root->data;
+		functionSymbolData *fd = vn->functionData;
+
+		fprintf (fp, "%s %s(", vn->name, astTypeText[vn->type]);
+		for (int i=0;i<fd->parameterCount;i++) {
+			printf (" %s: %s", fd->parameters[i]->name, astTypeText[fd->parameters[i]->type]);
+		}
+		fprintf(fp, ")");
+		ENDLABEL
+		print_ast_graph_internal(text, &fd->body, fp, false);
+		fprintf (fp, "Label%p -> Label%p\n", root, &fd->body);
 		break;
 	}
 	case variableDeclarationKind: {
@@ -811,7 +833,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		if (vn->initalizer.kind != 0) {
 			ENDLABEL
 			print_ast_graph_internal(text, &vn->initalizer, fp, false);
-			fprintf (fp, "Label%d -> Label%d\n", root, &vn->initalizer);
+			fprintf (fp, "Label%p -> Label%p\n", root, &vn->initalizer);
 		}
 		else {
 			fprintf(fp, "%s", "<uninitialized>");
@@ -825,7 +847,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		fprintf (fp, "%s %s (%s)", va->variable->name, astTypeText[va->variable->type], va->compoundOperator?astBinaryText[va->compoundOperator]:"equals");
 		ENDLABEL
 		print_ast_graph_internal(text, &va->expression, fp, false);
-		fprintf (fp, "Label%d -> Label%d\n", root, &va->expression);
+		fprintf (fp, "Label%p -> Label%p\n", root, &va->expression);
 		break;
 	}
 	case variableReferenceKind: {

@@ -342,20 +342,6 @@ node parser_parse_for_loop(parser *p, diagnosticContainer *d) {
 	return (node) { forLoop, textspan_from_bounds(&forToken, &block), .data = forNode, };
 }
 
-node parser_parse_function_declaration(parser *p, diagnosticContainer *d) {
-	node fnToken = parser_match_token(p, d, fnKeyword);
-	node identifier = parser_match_token(p, d, identifierToken);
-	node openParen = parser_match_token(p, d, openParenthesisToken);
-	node closeParen = parser_match_token(p, d, closeParenthesisToken);
-	node block = parser_parse_block_statement(p, d);
-
-	functionDeclarationNode *fnode = arena_malloc(parser_arena, sizeof(functionDeclarationNode));
-	*fnode = (functionDeclarationNode){ fnToken, identifier, openParen, closeParen, block };
-
-	return (node) { functionDeclaration, textspan_from_bounds(&fnToken, &block), .data = fnode, };
-}
-
-
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 	node identifier = parser_match_token(p, d, identifierToken);
 	node colon = parser_match_token(p, d, colonToken);
@@ -399,11 +385,59 @@ node parser_parse_variable_assignment(parser *p, diagnosticContainer *d) {
 	return (node) { variableAssignment, textspan_from_bounds(&identifier, &expression), .data = assignment };
 }
 
-node parser_parse_function_call(parser *p, diagnosticContainer *d) {
-	node *arguments = NULL;
+node parse_typed_identifier(parser *p, diagnosticContainer *d) {
+	node identifier = parser_match_token(p, d, identifierToken);
+	node colon = parser_match_token(p, d, colonToken);
+	node type = parser_match_token(p, d, identifierToken);
 
+	typedIdentifierNode *id = arena_malloc(parser_arena, sizeof(typedIdentifierNode));
+	*id = (typedIdentifierNode){ identifier, colon, type };
+
+	return (node) { typedIdentifier, textspan_from_bounds(&identifier, &type), .data = id, };
+}
+
+node* parse_function_parameters(parser *p, diagnosticContainer *d, u16 *paramCount) {
+	node *parameters = NULL;
+
+	if (parser_current(p,d).kind == closeParenthesisToken) goto end;
+	while (true) {
+
+		sb_push(parameters, parse_typed_identifier(p, d));
+
+		node cur = parser_current(p,d);
+		if (cur.kind == closeParenthesisToken || cur.kind == endOfFileToken) break;
+
+		sb_push(parameters, parser_match_token(p, d, commaToken));
+	}
+	end: ;
+
+	*paramCount = sb_count(parameters);
+	size_t paramSize = sizeof(node) * *paramCount;
+	node* paramStorage = arena_malloc(parser_arena, paramSize);
+	memcpy(paramStorage, parameters, paramSize);
+
+	sb_free(parameters);
+
+	return paramStorage;
+}
+
+node parser_parse_function_declaration(parser *p, diagnosticContainer *d) {
+	node fnToken = parser_match_token(p, d, fnKeyword);
 	node identifier = parser_match_token(p, d, identifierToken);
 	node openParen = parser_match_token(p, d, openParenthesisToken);
+	u16 paramCount;
+	node* parameters = parse_function_parameters(p, d, &paramCount);
+	node closeParen = parser_match_token(p, d, closeParenthesisToken);
+	node block = parser_parse_block_statement(p, d);
+
+	functionDeclarationNode *fnode = arena_malloc(parser_arena, sizeof(functionDeclarationNode));
+	*fnode = (functionDeclarationNode){ fnToken, identifier, openParen, parameters, paramCount, closeParen, block };
+
+	return (node) { functionDeclaration, textspan_from_bounds(&fnToken, &block), .data = fnode, };
+}
+
+node* parse_function_arguments(parser *p, diagnosticContainer *d, u16 *argCount) {
+	node *arguments = NULL;
 
 	if (parser_current(p,d).kind == closeParenthesisToken) goto end;
 	while (true) {
@@ -416,17 +450,28 @@ node parser_parse_function_call(parser *p, diagnosticContainer *d) {
 		sb_push(arguments, parser_match_token(p, d, commaToken));
 	}
 	end: ;
-	node closeParen = parser_match_token(p, d, closeParenthesisToken);
 
-	u16 argCount = sb_count(arguments);
-	size_t argSize = sizeof(node) * argCount;
+	*argCount = sb_count(arguments);
+	size_t argSize = sizeof(node) * *argCount;
 	node* argStorage = arena_malloc(parser_arena, argSize);
 	memcpy(argStorage, arguments, argSize);
+
+	sb_free(arguments);
+
+	return argStorage;
+}
+
+node parser_parse_function_call(parser *p, diagnosticContainer *d) {
+
+	node identifier = parser_match_token(p, d, identifierToken);
+	node openParen = parser_match_token(p, d, openParenthesisToken);
+	u16 argCount;
+	node *argStorage = parse_function_arguments(p, d, &argCount);
+	node closeParen = parser_match_token(p, d, closeParenthesisToken);
 
 	functionCallNode *call = arena_malloc(parser_arena, sizeof(functionCallNode));
 	*call = (functionCallNode){ identifier,  openParen, argStorage, argCount, closeParen };
 
-	sb_free(arguments);
 
 	return (node) { callExpression, textspan_from_bounds(&identifier, &closeParen), .data = call };
 }

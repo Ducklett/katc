@@ -19,7 +19,7 @@ static const char *diagnosticText[] = {
 	"undefined binary operator '%s' for values of type '%s' and '%s' (%d,%d)\n",
 	"variable '%s' is not initialized. (%d,%d)\n",
 	"symbol '%s' is already declared in this scope. (%d,%d)\n",
-	"variable '%s' is undefined. (%d,%d)\n",
+	"symbol '%s' is undefined. (%d,%d)\n",
 	"cannot assign expression of type '%s' to variable '%s' of type '%s'. (%d,%d)\n",
 	"'%s' is constant and cannot be assigned to. (%d,%d)\n",
 	"variable '%s' cannot be void. (%d,%d)\n",
@@ -30,6 +30,7 @@ static const char *diagnosticText[] = {
 	"cannot implicitly convert from '%s' to '%s', an explicit conversion exists. (are you missing a cast?) (%d,%d)\n",
 	"a value of type '%s' cannot be used in switch statements. (%d,%d)\n",
 	"duplicate value in switch case. (%d,%d)\n",
+	"argument count does not match in call to '%s'. (%d,%d)\n",
 };
 
 void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u64 param1, u64 param2, u64 param3) {
@@ -118,6 +119,7 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		case illegalImplicitCastDiagnostic: fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
 		case invalidSwitchTypeDiagnostic: fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param1], d.span.start, d.span.length); break;
 		case duplicateSwitchValueDiagnostic: fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
+		case argCountDoensntMatchDiagnostic: fprintf(stderr, diagnosticText[d.kind], d.param1, d.span.start, d.span.length); break;
 		default: {
 			fprintf(stderr, "Unhandled case %s in print_diagnostics%s\n", diagnosticMetaText[d.kind], TERMRESET);
 			exit(1);

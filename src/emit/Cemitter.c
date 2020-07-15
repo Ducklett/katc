@@ -168,7 +168,12 @@ void emit_c_file(astNode *n, ast *tree) {
 
 static inline void emit_c_function(astNode *n, ast *tree) {
 	astSymbol vn = *(astSymbol*)n->data;
-	fprintf(fp,"%*s%s %s() ", c_indent, "", cTypeText[vn.type], vn.name);
+	functionSymbolData fd = *vn.functionData;
+	fprintf(fp,"%*s%s %s(", c_indent, "", cTypeText[vn.type], vn.name);
+	for (int i=0;i<fd.parameterCount;i++) {
+		fprintf (fp, "%s %s%s", cTypeText[fd.parameters[i]->type], fd.parameters[i]->name, i == fd.parameterCount-1?"":", ");
+	}
+	fprintf(fp, ") ");
 	emit_c_node(&vn.functionData->body,tree);
 }
 
@@ -197,7 +202,7 @@ static inline void emit_c_ifStatement(astNode *n, ast *tree) {
 		fprintf(fp,"%*s", c_indent, "");
 		fprintf(fp,"else \n");
 		fprintf(fp,"%*s", c_indent, "");
-		emit_c_node(&in.elseStatement.kind, tree);
+		emit_c_node(&in.elseStatement, tree);
 		if (needs_semicolon(in.elseStatement.kind)) fprintf(fp,";\n");
 	}
 }

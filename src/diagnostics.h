@@ -43,6 +43,7 @@ enum diagnosticKind {
 	illegalImplicitCastDiagnostic,
 	invalidSwitchTypeDiagnostic,
 	duplicateSwitchValueDiagnostic,
+	argCountDoensntMatchDiagnostic,
 };
 
 static const char *diagnosticMetaText[] = {
@@ -77,6 +78,7 @@ static const char *diagnosticMetaText[] = {
 	"illegalImplicitCastDiagnostic",
 	"invalidSwitchTypeDiagnostic",
 	"duplicateSwitchValueDiagnostic",
+	"argCountDoensntMatchDiagnostic",
 };
 
 void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u64 param1, u64 param2, u64 param3);
