@@ -165,6 +165,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 	case ';': return lex_basic_token(l, semicolonToken, 1);
 	case ',': return lex_basic_token(l, commaToken, 1);
 	case '.': if (lexer_peek(l,1) == '.') return lex_basic_token(l, dotDotToken, 2);
+			  else return lex_basic_token(l, dotToken, 1);
 
 	case '(': return lex_basic_token(l, openParenthesisToken, 1);
 	case ')': return lex_basic_token(l, closeParenthesisToken, 1);
@@ -320,6 +321,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			else if (span_compare(l->text, t.span, "break")) t.kind = breakKeyword;
 			else if (span_compare(l->text, t.span, "continue")) t.kind = continueKeyword;
 			else if (span_compare(l->text, t.span, "fn")) t.kind = fnKeyword;
+			else if (span_compare(l->text, t.span, "namespace")) t.kind = namespaceKeyword;
 			break;
 		}
 		t.kind = badToken;

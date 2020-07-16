@@ -43,6 +43,7 @@ enum syntaxKind {
 	equalsToken,
 	colonToken,
 	commaToken,
+	dotToken,
 	dotDotToken,
 
 	plusEqualsToken,
@@ -74,15 +75,18 @@ enum syntaxKind {
 	breakKeyword,
 	continueKeyword,
 	fnKeyword,
+	namespaceKeyword,
 
 	unaryExpression,
 	binaryExpression,
 	parenthesizedExpression,
 	rangeExpression,
+	symbolReferenceExpression,
 	callExpression,
 	typedIdentifier,
 	functionDeclaration,
 	variableDeclaration,
+	namespaceDeclaration,
 	variableAssignment,
 	blockStatement,
 	ifStatement,
@@ -134,6 +138,7 @@ static const char *syntaxKindText[] = {
 	"=",
 	":",
 	",",
+	".",
 	"..",
 	"+=",
 	"-=",
@@ -162,14 +167,17 @@ static const char *syntaxKindText[] = {
 	"break",
 	"continue",
 	"fn",
+	"namespace",
 	"unaryExpression",
 	"binaryExpression",
 	"parenthesizedExpression",
 	"rangeExpression",
+	"symbolReferenceExpression",
 	"callExpression",
 	"typedIdentifier",
 	"functionDeclaration",
 	"variableDeclaration",
+	"namespaceDeclaration",
 	"variableAssignment",
 	"blockStatement",
 	"ifStatement",
@@ -416,6 +424,12 @@ typedef struct functionDeclarationNode {
 	node body;
 } functionDeclarationNode;
 
+typedef struct namespaceDeclarationNode {
+	node namespaceKeyword;
+	node identifier;
+	node body;
+} namespaceDeclarationNode;
+
 textspan textspan_create(u32 start, u16 length) {
 	textspan span = { start, length, };
 	return span;
@@ -637,7 +651,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		typedIdentifierNode dn = *(typedIdentifierNode*)root->data;
 		print_syntaxtree_internal(text, &dn.identifier, indent, verbose, true);
 		print_syntaxtree_internal(text, &dn.colon, indent, verbose, true);
-		print_syntaxtree_internal(text, &dn.type, indent, verbose, true);
+		print_syntaxtree_internal(text, &dn.type, indent, verbose, false);
 		break;
 	}
 	case functionDeclaration: {
@@ -649,6 +663,13 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		}
 		print_syntaxtree_internal(text, &fn.closeParen, indent, verbose, true);
 		print_syntaxtree_internal(text, &fn.body, indent, verbose, false);
+		break;
+	}
+	case namespaceDeclaration: {
+		namespaceDeclarationNode nn = *(namespaceDeclarationNode*)root->data;
+		print_syntaxtree_internal(text, &nn.namespaceKeyword, indent, verbose, true);
+		print_syntaxtree_internal(text, &nn.identifier, indent, verbose, true);
+		print_syntaxtree_internal(text, &nn.body, indent, verbose, false);
 		break;
 	}
 	case fileStatement:
@@ -668,6 +689,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		if (!un.left) print_syntaxtree_internal(text, &un.operator, indent, verbose, false);
 		break;
 	}
+	case symbolReferenceExpression:
 	case binaryExpression: {
 		binaryExpressionNode bn = *(binaryExpressionNode*)root->data;
 		print_syntaxtree_internal(text, &bn.left, indent, verbose, true);

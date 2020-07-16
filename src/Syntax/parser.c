@@ -21,10 +21,12 @@ node parser_parse_switch_statement(parser *p, diagnosticContainer *d);
 node parser_parse_switch_branch(parser *p, diagnosticContainer *d);
 node parser_parse_while_loop(parser *p, diagnosticContainer *d);
 node parser_parse_for_loop(parser *p, diagnosticContainer *d);
+node parser_parse_symbol_reference(parser *p, diagnosticContainer *d, bool isNamespaceDeclaration);
 node parser_parse_function_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_variable_assignment(parser *p, diagnosticContainer *d);
 node parser_parse_function_call(parser *p, diagnosticContainer *d);
+node parser_parse_namespace_declaration(parser *p, diagnosticContainer *d);
 
 node parser_parse_expression(parser *p, diagnosticContainer *d);
 node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parentPrecedence);
@@ -99,6 +101,7 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	case breakKeyword: res = parser_next_token(p, d); break;
 	case continueKeyword: res = parser_next_token(p, d); break;
 	case fnKeyword: res = parser_parse_function_declaration(p, d); break;
+	case namespaceKeyword: res = parser_parse_namespace_declaration(p, d); break;
 	case identifierToken:
 		if  (l2kind == colonToken) {
 			res = parser_parse_variable_declaration(p, d);
@@ -472,9 +475,20 @@ node parser_parse_function_call(parser *p, diagnosticContainer *d) {
 	functionCallNode *call = arena_malloc(parser_arena, sizeof(functionCallNode));
 	*call = (functionCallNode){ identifier,  openParen, argStorage, argCount, closeParen };
 
-
 	return (node) { callExpression, textspan_from_bounds(&identifier, &closeParen), .data = call };
 }
+
+node parser_parse_namespace_declaration(parser *p, diagnosticContainer *d) {
+	node namespaceToken = parser_match_token(p, d, namespaceKeyword);
+	node identifier = parser_parse_symbol_reference(p, d, true);
+	node block = parser_parse_block_statement(p, d);
+
+	namespaceDeclarationNode *nnode = arena_malloc(parser_arena, sizeof(namespaceDeclarationNode));
+	*nnode = (namespaceDeclarationNode){ namespaceToken, identifier, block };
+
+	return (node) { namespaceDeclaration, textspan_from_bounds(&namespaceToken, &block), .data = nnode, };
+}
+
 
 node parser_parse_expression(parser *p, diagnosticContainer *d) { return parser_parse_binary_expression(p, d,-2); }
 
@@ -547,14 +561,36 @@ node parser_parse_range_expression(parser *p, diagnosticContainer *d, bool allow
 	return (node) { rangeExpression, textspan_from_bounds(&from, &to), .data = rangeNode, };
 }
 
+node parser_parse_symbol_reference(parser *p, diagnosticContainer *d, bool isNamespaceDeclaration) {
+
+	node left;
+
+	if (!isNamespaceDeclaration && parser_peek(p,d,1).kind == openParenthesisToken) left = parser_parse_function_call(p, d);
+	else left = parser_match_token(p, d, identifierToken);
+
+	while (parser_current(p, d).kind == dotToken) {
+		node dotNode = parser_match_token(p, d, dotToken);
+
+		node right;
+		if (!isNamespaceDeclaration && parser_peek(p,d,1).kind == openParenthesisToken) right = parser_parse_function_call(p, d);
+		else right = parser_match_token(p, d, identifierToken);
+
+		binaryExpressionNode *binaryNode = arena_malloc(parser_arena, sizeof(binaryExpressionNode));
+		*binaryNode = (binaryExpressionNode){ left, dotNode, right, };
+
+		left = (node) { symbolReferenceExpression, textspan_from_bounds(&left, &right), .data = binaryNode, };
+	}
+
+	return left;
+}
+
 node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 	node current = parser_current(p, d);
 	node lookahead = parser_peek(p, d, 1);
 
 	switch (current.kind) {
 	case identifierToken:
-		if (lookahead.kind == openParenthesisToken) return parser_parse_function_call(p, d);
-		else return parser_next_token(p, d);
+		return parser_parse_symbol_reference(p,d,false);
 
 	case numberLiteral:
 	case stringLiteral:
