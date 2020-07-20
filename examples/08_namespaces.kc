@@ -1,0 +1,12 @@
+namespace Kat.Foo.Bar {
+	fn foo() { print("this is foo\n") }
+
+	fn greet(name:string, age:int) {
+		fn internalProc() { print("this is inner function!\n") }
+		print("hello %s %d\n", name, age)
+		foo()
+		internalProc()
+	}
+}
+
+Kat.Foo.Bar.greet("bob",20)

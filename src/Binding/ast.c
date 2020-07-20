@@ -7,6 +7,7 @@ enum astKind {
 	rangeExpressionKind,
 	callExpressionKind,
 	castExpressionKind,
+	namespaceDeclarationKind,
 	functionDeclarationKind,
 	variableDeclarationKind,
 	variableAssignmentKind,
@@ -34,6 +35,7 @@ static const char *astKindText[] = {
 	"rangeExpression",
 	"callExpression",
 	"castExpression",
+	"namespaceDeclaration",
 	"functionDeclaration",
 	"variableDeclaration",
 	"variableAssignment",
@@ -272,8 +274,10 @@ typedef struct astNode {
 
 #define SYMBOL_VARIABLE 1
 #define SYMBOL_FUNCTION 2
+#define SYMBOL_NAMESPACE 3
 
 struct astSymbol;
+struct scope;
 
 typedef struct functionSymbolData {
 	struct astSymbol **parameters;
@@ -284,6 +288,7 @@ typedef struct functionSymbolData {
 
 typedef struct astSymbol {
 	char* name;
+	struct astSymbol *parentNamespace;
 	enum astType type;
 	u8 symbolKind;
 	u8 flags;
@@ -294,6 +299,7 @@ typedef struct astSymbol {
 		char* stringValue; 
 		char charValue; 
 		functionSymbolData *functionData;
+		struct scope *namespaceScope;
 	};
 } astSymbol;
 
@@ -381,6 +387,11 @@ typedef struct forLoopAst {
 	astNode block;
 } forLoopAst;
 
+typedef struct namespaceAst {
+	astSymbol* namespace;
+	astNode block;
+} namespaceAst;
+
 typedef struct jumpAst {
 
 } jumpAst;
@@ -396,7 +407,8 @@ typedef struct ast {
 	diagnosticContainer diagnostics;
 	astNode root;
 	scope **scopes;
-	int currentScopeIndex;
+	scope *currentScope;
+	astSymbol *currentNamespace;
 } ast;
 
 enum astType resolve_type_from_span(ast *tree, textspan span) {
@@ -431,6 +443,16 @@ int create_ast(const char* filename, ast *tree, parser *p, bool parseOnly) {
 	return bind_tree(tree, &p->root);
 }
 
+// print the full path of a symbol reference
+// foo.bar.baz()
+void printfSymbolReference_internal(FILE *f, astSymbol *s, char* separator, bool entry);
+void printfSymbolReference(FILE *f, astSymbol *s, char* separator) { return printfSymbolReference_internal(f, s, separator, true); }
+void printfSymbolReference_internal(FILE *f, astSymbol *s, char* separator, bool entry) {
+	if (s->parentNamespace != NULL) {
+		printfSymbolReference_internal(f, s->parentNamespace, separator, false);
+	}
+	fprintf(f, "%s%s", s->name, entry ? "" : separator);
+}
 void print_ast_internal(char *text, astNode *root, int indent, bool verbose, bool newline);
 void print_ast(char *text, astNode *root, int indent, bool verbose) { print_ast_internal(text, root, indent, verbose, true); }
 void print_ast_internal(char *text, astNode *root, int indent, bool verbose, bool newline) {
@@ -574,7 +596,9 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	case callExpressionKind: {
 		callExpressionAst cn = *(callExpressionAst*)root->data;
 
-		printf ("%*s%s%s%s\n", indent, "", TERMMAGENTA, cn.function->name, TERMRESET);
+		printf ("%*s%s", indent, "", TERMMAGENTA);
+		printfSymbolReference(stdout, cn.function, ".");
+		printf ("%s\n", TERMRESET);
 		for(int i=0;i<cn.argumentCount;i++) {
 			print_ast_internal(text, &cn.arguments[i], indent, verbose, i!=cn.argumentCount-1);
 		}
@@ -587,12 +611,21 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		print_ast_internal(text, &en, indent, verbose, false);
 		break;
 	}
+	case namespaceDeclarationKind: {
+		namespaceAst ns = *(namespaceAst*)root->data;
+
+		printf ("%*s%s%s%s\n", indent, "", TERMMAGENTA, ns.namespace->name, TERMRESET);
+		print_ast_internal(text, &ns.block, indent, verbose, false);
+		break;
+	}
 	case functionDeclarationKind: {
 		astSymbol vn = *(astSymbol*)root->data;
 		functionSymbolData fd = *vn.functionData;
 
 		printf("%s", TERMMAGENTA);
-		printf ("%*s%s %s(", indent, "", vn.name, astTypeText[vn.type]);
+		printf ("%*s%s ", indent, "", astTypeText[vn.type]);
+		printfSymbolReference(stdout, &vn, ".");
+		printf ("(");
 		for (int i=0;i<fd.parameterCount;i++) {
 			printf (" %s: %s", fd.parameters[i]->name, astTypeText[fd.parameters[i]->type]);
 		}
@@ -616,9 +649,11 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		break;
 	}
 	case variableReferenceKind: {
-		astSymbol vs = *(astSymbol*)root->data;
+		astSymbol *vs = (astSymbol*)root->data;
 
-		printf ("%*s%s%s %s%s", indent, "", TERMMAGENTA, vs.name, astTypeText[vs.type], TERMRESET);
+		printf ("%*s%s%s ", indent, "", TERMMAGENTA);
+		printfSymbolReference(stdout, vs, ".");
+		printf ("%s%s", astTypeText[vs->type], TERMRESET);
 		break;
 	}
 	default: {
@@ -794,7 +829,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 	case callExpressionKind: {
 		callExpressionAst *cn = (callExpressionAst*)root->data;
 
-		fprintf (fp, "%s", "print");
+		printfSymbolReference(fp, cn->function, ".");
 		ENDLABEL
 		for(int i=0;i<cn->argumentCount;i++) {
 			fprintf (fp, "Label%p -> Label%p\n", root, &cn->arguments[i]);
@@ -812,11 +847,23 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		print_ast_graph_internal(text, en, fp, false);
 		break;
 	}
+	case namespaceDeclarationKind: {
+		namespaceAst *ns = (namespaceAst*)root->data;
+
+		fprintf (fp, "%s", ns->namespace->name);
+		ENDLABEL
+		fprintf (fp, "Label%p -> Label%p\n", root, &ns->block);
+		print_ast_graph_internal(text, &ns->block, fp, false);
+		break;
+	}
 	case functionDeclarationKind: {
 		astSymbol *vn = (astSymbol*)root->data;
 		functionSymbolData *fd = vn->functionData;
 
-		fprintf (fp, "%s %s(", vn->name, astTypeText[vn->type]);
+		fprintf (fp, "%s ", astTypeText[vn->type]);
+
+		printfSymbolReference(fp, vn, ".");
+		fprintf (fp, "(");
 		for (int i=0;i<fd->parameterCount;i++) {
 			printf (" %s: %s", fd->parameters[i]->name, astTypeText[fd->parameters[i]->type]);
 		}
@@ -851,8 +898,9 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		break;
 	}
 	case variableReferenceKind: {
-		astSymbol vs = *(astSymbol*)root->data;
-		fprintf (fp, "%s %s", vs.name, astTypeText[vs.type]);
+		astSymbol *vs = (astSymbol*)root->data;
+		printfSymbolReference(fp, vs, ".");
+		fprintf(fp, "%s", astTypeText[vs->type]);
 		ENDLABEL
 		break;
 	}

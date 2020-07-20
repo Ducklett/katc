@@ -13,6 +13,7 @@ static const char *diagnosticText[] = {
 	"a value of type '%s' is not legal in a range expression. (%d,%d)\n",
 	"unexpected token '%s' while parsing primary expression. (%d,%d)\n",
 	"increment/decrement operators can only be used on variables. (%d,%d)\n",
+	"statements of this kind are not allowed here. (%d,%d)\n",
 	"only constant expressions are allowed here. (did you reference a variable?) (%d,%d)\n",
 	"value is too %s for %s and will %s, use an explicit cast if this is intentional. (%d,%d)\n",
 	"undefined unary operator '%s' for value of type '%s' (%d,%d)\n",
@@ -75,6 +76,8 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		case illegalPrimaryExpressionDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], d.span.start, d.span.length); break;
 		case illegalIncrementOrDecrementDiagnostic:
+			fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
+		case statementNotAllowedHereDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
 		case nonConstantDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;

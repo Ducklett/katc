@@ -1,5 +1,6 @@
 void emit_c_node(astNode *n, ast *tree);
 static inline void emit_c_file(astNode *n, ast *tree);
+static inline void emit_c_functions_in_block(astNode *n, ast *tree);
 static inline void emit_c_function(astNode *n, ast *tree);
 static inline void emit_c_blockStatement(astNode *n, ast *tree);
 static inline void emit_c_ifStatement(astNode *n, ast *tree);
@@ -123,11 +124,11 @@ void emit_c_from_ast(ast *tree, const char* outputName, bool run, bool emitSourc
 }
 
 void emit_c_node(astNode *n, ast *tree) {
-
 	kindStack_push(n->kind);
 	switch(n->kind) {
 	case fileStatementKind:
 	case blockStatementKind: emit_c_blockStatement(n, tree); break;
+	case namespaceDeclarationKind: emit_c_blockStatement(&((namespaceAst*)n->data)->block, tree); break;
 	case ifStatementKind: emit_c_ifStatement(n, tree); break;
 	case caseStatementKind: emit_c_caseStatement(n, tree); break;
 	case switchStatementKind: emit_c_switchStatement(n, tree); break;
@@ -154,38 +155,48 @@ void emit_c_node(astNode *n, ast *tree) {
 
 void emit_c_file(astNode *n, ast *tree) {
 	fprintf(fp,"#include <stdio.h>\n\n");
-	blockStatementAst bn = *(blockStatementAst*)n->data;
-	for (int i= 0; i < bn.statementsCount; i++) {
-		if (bn.statements[i].kind != functionDeclarationKind) continue;
-		emit_c_function(bn.statements + i, tree);
-		fprintf(fp,"\n");
-	}
+	emit_c_functions_in_block(n, tree);
 	// TODO: actually fix the issue
 	c_indent=4;
 	fprintf(fp,"void main() ");
 	emit_c_node(n,tree);
 }
 
-static inline void emit_c_function(astNode *n, ast *tree) {
-	astSymbol vn = *(astSymbol*)n->data;
-	functionSymbolData fd = *vn.functionData;
-	blockStatementAst bn = *(blockStatementAst*)fd.body.data;
-
-	// emit local functions
-	// TODO: add namespacing so the local function doesn't collide with others
+static inline void emit_c_functions_in_block(astNode *n, ast *tree) {
+	blockStatementAst bn = *(blockStatementAst*)n->data;
 	for (int i= 0; i < bn.statementsCount; i++) {
+		if (bn.statements[i].kind == namespaceDeclarationKind) {
+			astNode *b = &((namespaceAst*)bn.statements[i].data)->block;
+			emit_c_functions_in_block(b, tree);
+			continue;
+		}
 		if (bn.statements[i].kind != functionDeclarationKind) continue;
 		emit_c_function(bn.statements + i, tree);
 		fprintf(fp,"\n");
 	}
+}
 
-	fprintf(fp,"%*s%s %s(", c_indent, "", cTypeText[vn.type], vn.name);
-	for (int i=0;i<fd.parameterCount;i++) {
-		fprintf (fp, "%s %s%s", cTypeText[fd.parameters[i]->type], fd.parameters[i]->name, i == fd.parameterCount-1?"":", ");
+static inline void emit_c_function(astNode *n, ast *tree) {
+	astSymbol *vn = (astSymbol*)n->data;
+	functionSymbolData *fd = vn->functionData;
+	blockStatementAst *bn = (blockStatementAst*)fd->body.data;
+
+	// emit local functions
+	for (int i= 0; i < bn->statementsCount; i++) {
+		if (bn->statements[i].kind != functionDeclarationKind) continue;
+		emit_c_function(bn->statements + i, tree);
+		fprintf(fp,"\n");
+	}
+
+	fprintf(fp,"%*s%s ", c_indent, "", cTypeText[vn->type]);
+	printfSymbolReference(fp, vn, "_");
+	fprintf(fp,"(");
+	for (int i=0;i<fd->parameterCount;i++) {
+		fprintf (fp, "%s %s%s", cTypeText[fd->parameters[i]->type], fd->parameters[i]->name, i == fd->parameterCount-1?"":", ");
 	}
 	fprintf(fp, ") ");
 
-	emit_c_node(&vn.functionData->body,tree);
+	emit_c_node(&fd->body,tree);
 }
 
 static inline void emit_c_blockStatement(astNode *n, ast *tree) {
@@ -354,16 +365,18 @@ static inline void emit_c_unaryExpression(astNode *n, ast *tree) {
 }
 
 static inline void emit_c_callExpression(astNode *n, ast *tree) {
-	callExpressionAst cn = *(callExpressionAst*)n->data;
+	callExpressionAst *cn = (callExpressionAst*)n->data;
 
-	char* name = cn.function->name;
-	if (!strcmp(name, "print")) name = "printf";
+	char* name = cn->function->name;
 
-	fprintf(fp,"%s(",name);
-	for (int i= 0; i < cn.argumentCount; i++) {
-		emit_c_node(cn.arguments + i, tree);
-		if (cn.arguments[i].type == boolType) fprintf(fp, " ? \"true\" : \"false\"");
-		if (i != cn.argumentCount-1) fprintf(fp,", ");
+	if (!strcmp(name, "print")) fprintf(fp, "printf");
+	else printfSymbolReference(fp, cn->function, "_");
+	fprintf(fp,"(");
+
+	for (int i= 0; i < cn->argumentCount; i++) {
+		emit_c_node(cn->arguments + i, tree);
+		if (cn->arguments[i].type == boolType) fprintf(fp, " ? \"true\" : \"false\"");
+		if (i != cn->argumentCount-1) fprintf(fp,", ");
 	}
 	fprintf(fp,")");
 }

@@ -170,6 +170,12 @@ node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
 		}
 
 		node exprNode = parser_parse_statement(p, d);
+
+		// namespaces should only be declared at the top leverl (parser_parse_file_statement)
+		if (exprNode.kind == namespaceDeclaration) {
+			report_diagnostic(d, statementNotAllowedHereDiagnostic, ((namespaceDeclarationNode*)exprNode.data)->namespaceKeyword.span, 0, 0, 0);
+			exprNode.kind = errorToken;
+		}
 		sb_push(nodes, exprNode);
 	}
 
@@ -568,20 +574,16 @@ node parser_parse_symbol_reference(parser *p, diagnosticContainer *d, bool isNam
 	if (!isNamespaceDeclaration && parser_peek(p,d,1).kind == openParenthesisToken) left = parser_parse_function_call(p, d);
 	else left = parser_match_token(p, d, identifierToken);
 
-	while (parser_current(p, d).kind == dotToken) {
-		node dotNode = parser_match_token(p, d, dotToken);
+	if (parser_current(p, d).kind != dotToken) return left;
 
-		node right;
-		if (!isNamespaceDeclaration && parser_peek(p,d,1).kind == openParenthesisToken) right = parser_parse_function_call(p, d);
-		else right = parser_match_token(p, d, identifierToken);
+	node dotNode = parser_match_token(p, d, dotToken);
 
-		binaryExpressionNode *binaryNode = arena_malloc(parser_arena, sizeof(binaryExpressionNode));
-		*binaryNode = (binaryExpressionNode){ left, dotNode, right, };
+	node right = parser_parse_symbol_reference(p, d, isNamespaceDeclaration);
 
-		left = (node) { symbolReferenceExpression, textspan_from_bounds(&left, &right), .data = binaryNode, };
-	}
+	binaryExpressionNode *binaryNode = arena_malloc(parser_arena, sizeof(binaryExpressionNode));
+	*binaryNode = (binaryExpressionNode){ left, dotNode, right, };
 
-	return left;
+	return (node) { symbolReferenceExpression, textspan_from_bounds(&left, &right), .data = binaryNode, };
 }
 
 node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
