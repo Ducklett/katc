@@ -128,7 +128,6 @@ void emit_c_node(astNode *n, ast *tree) {
 	switch(n->kind) {
 	case fileStatementKind:
 	case blockStatementKind: emit_c_blockStatement(n, tree); break;
-	case namespaceDeclarationKind: emit_c_blockStatement(&((namespaceAst*)n->data)->block, tree); break;
 	case ifStatementKind: emit_c_ifStatement(n, tree); break;
 	case caseStatementKind: emit_c_caseStatement(n, tree); break;
 	case switchStatementKind: emit_c_switchStatement(n, tree); break;
@@ -203,7 +202,8 @@ static inline void emit_c_blockStatement(astNode *n, ast *tree) {
 	fprintf(fp,"%*s{\n", c_indent-4, "");
 	blockStatementAst bn = *(blockStatementAst*)n->data;
 	for (int i= 0; i < bn.statementsCount; i++) {
-		if (bn.statements[i].kind == functionDeclarationKind) continue;
+		enum astKind kind = bn.statements[i].kind;
+		if (kind == functionDeclarationKind || kind == namespaceDeclarationKind) continue;
 		fprintf(fp,"%*s", c_indent, "");
 		emit_c_node(bn.statements + i, tree);
 		if(needs_semicolon(bn.statements[i].kind)) fprintf(fp,";\n");
