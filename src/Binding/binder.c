@@ -610,6 +610,9 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 		? VARIABLE_MUTABLE
 		: 0;
 
+	if (tree->currentNamespace == NULL || tree->currentNamespace->symbolKind == SYMBOL_NAMESPACE)
+		flags |= VARIABLE_GLOBAL;
+
 	enum astType type =  0;
 	if (vn.type.kind != 0) type = resolve_type_from_span(tree, vn.type.span);
 

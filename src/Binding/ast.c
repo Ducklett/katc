@@ -271,6 +271,7 @@ typedef struct astNode {
 #define VARIABLE_MUTABLE 1
 #define VARIABLE_INITIALIZED 2
 #define VARIABLE_VALUE_KNOWN 4
+#define VARIABLE_GLOBAL 8
 
 #define SYMBOL_VARIABLE 1
 #define SYMBOL_FUNCTION 2
@@ -448,7 +449,8 @@ int create_ast(const char* filename, ast *tree, parser *p, bool parseOnly) {
 void printfSymbolReference_internal(FILE *f, astSymbol *s, char* separator, bool entry);
 void printfSymbolReference(FILE *f, astSymbol *s, char* separator) { return printfSymbolReference_internal(f, s, separator, true); }
 void printfSymbolReference_internal(FILE *f, astSymbol *s, char* separator, bool entry) {
-	if (s->parentNamespace != NULL) {
+
+	if (s->parentNamespace != NULL && (s->symbolKind != SYMBOL_VARIABLE || s->flags & VARIABLE_GLOBAL)) {
 		printfSymbolReference_internal(f, s->parentNamespace, separator, false);
 	}
 	fprintf(f, "%s%s", s->name, entry ? "" : separator);

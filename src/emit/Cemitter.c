@@ -1,6 +1,6 @@
 void emit_c_node(astNode *n, ast *tree);
 static inline void emit_c_file(astNode *n, ast *tree);
-static inline void emit_c_functions_in_block(astNode *n, ast *tree);
+static inline void emit_c_functions_in_block(astNode *n, ast *tree, bool isNamespace);
 static inline void emit_c_function(astNode *n, ast *tree);
 static inline void emit_c_blockStatement(astNode *n, ast *tree);
 static inline void emit_c_ifStatement(astNode *n, ast *tree);
@@ -154,24 +154,27 @@ void emit_c_node(astNode *n, ast *tree) {
 
 void emit_c_file(astNode *n, ast *tree) {
 	fprintf(fp,"#include <stdio.h>\n\n");
-	emit_c_functions_in_block(n, tree);
+	emit_c_functions_in_block(n, tree, false);
 	// TODO: actually fix the issue
 	c_indent=4;
 	fprintf(fp,"void main() ");
 	emit_c_node(n,tree);
 }
 
-static inline void emit_c_functions_in_block(astNode *n, ast *tree) {
+static inline void emit_c_functions_in_block(astNode *n, ast *tree, bool isNamespace) {
 	blockStatementAst bn = *(blockStatementAst*)n->data;
 	for (int i= 0; i < bn.statementsCount; i++) {
-		if (bn.statements[i].kind == namespaceDeclarationKind) {
+		enum astKind kind = bn.statements[i].kind;
+		if (kind == namespaceDeclarationKind) {
 			astNode *b = &((namespaceAst*)bn.statements[i].data)->block;
-			emit_c_functions_in_block(b, tree);
-			continue;
+			emit_c_functions_in_block(b, tree, true);
+		} else if (kind == variableDeclarationKind && isNamespace) {
+			emit_c_variableDeclaration(bn.statements + i, tree);
+			fprintf(fp, ";\n");
+		} else if (kind == functionDeclarationKind) {
+			emit_c_function(bn.statements + i, tree);
+			fprintf(fp,"\n");
 		}
-		if (bn.statements[i].kind != functionDeclarationKind) continue;
-		emit_c_function(bn.statements + i, tree);
-		fprintf(fp,"\n");
 	}
 }
 
@@ -390,20 +393,23 @@ static inline void emit_c_castExpression(astNode *n, ast *tree) {
 
 static inline void emit_c_variableDeclaration(astNode *n, ast *tree) {
 
-	variableDeclarationAst dn = *(variableDeclarationAst*)n->data;
+	variableDeclarationAst *dn = (variableDeclarationAst*)n->data;
 
-	fprintf(fp,"%s %s = ", cTypeText[dn.variable->type], dn.variable->name);
-	emit_c_node(&dn.initalizer, tree);
+	fprintf(fp,"%s ", cTypeText[dn->variable->type]);
+	printfSymbolReference(fp, dn->variable, "_");
+	fprintf(fp," = ");
+	emit_c_node(&dn->initalizer, tree);
 }
 
 static inline void emit_c_variableAssignment(astNode *n, ast *tree) {
 
-	variableAssignmentAst an = *(variableAssignmentAst*)n->data;
+	variableAssignmentAst *an = (variableAssignmentAst*)n->data;
 
-	fprintf(fp,"%s %s= ", an.variable->name, an.compoundOperator == 0 ? "" : cBinaryText[an.compoundOperator]);
-	emit_c_node(&an.expression, tree);
+	printfSymbolReference(fp, an->variable, "_");
+	fprintf(fp," %s= ", an->compoundOperator == 0 ? "" : cBinaryText[an->compoundOperator]);
+	emit_c_node(&an->expression, tree);
 }
 
 static inline void emit_c_variableReference(astNode *n, ast *tree) {
-	fprintf(fp, "%s", ((astSymbol*) n->data)->name);
+	printfSymbolReference(fp, (astSymbol*)n->data, "_");
 }

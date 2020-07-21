@@ -1,4 +1,11 @@
+g := 1
+
 namespace Kat.Foo.Bar {
+
+	x := 2
+	y := 3
+	z := 4
+
 	fn foo() { print("this is foo\n") }
 
 	fn greet(name:string, age:int) {
@@ -9,4 +16,5 @@ namespace Kat.Foo.Bar {
 	}
 }
 
+print("g: %d x: %d\n", g, Kat.Foo.Bar.x);
 Kat.Foo.Bar.greet("bob",20)
