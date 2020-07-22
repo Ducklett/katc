@@ -614,10 +614,13 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		break;
 	}
 	case namespaceDeclarationKind: {
-		namespaceAst ns = *(namespaceAst*)root->data;
+		namespaceAst *ns = (namespaceAst*)root->data;
 
-		printf ("%*s%s%s%s\n", indent, "", TERMMAGENTA, ns.namespace->name, TERMRESET);
-		print_ast_internal(text, &ns.block, indent, verbose, false);
+		printf ("%*s%s", indent, "", TERMMAGENTA);
+		printfSymbolReference(stdout, ns->namespace, ".");
+		printf ("%s\n", TERMRESET);
+
+		print_ast_internal(text, &ns->block, indent, verbose, false);
 		break;
 	}
 	case functionDeclarationKind: {
@@ -852,7 +855,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 	case namespaceDeclarationKind: {
 		namespaceAst *ns = (namespaceAst*)root->data;
 
-		fprintf (fp, "%s", ns->namespace->name);
+		printfSymbolReference(fp, ns->namespace, ".");
 		ENDLABEL
 		fprintf (fp, "Label%p -> Label%p\n", root, &ns->block);
 		print_ast_graph_internal(text, &ns->block, fp, false);
