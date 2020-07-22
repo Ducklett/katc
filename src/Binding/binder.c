@@ -806,27 +806,69 @@ astSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableT
 	return variable;
 }
 
+// bypass pseudo namespaces like functions and returns the underlying "real" namespace
+astSymbol* find_real_namespace_of_symbol(astSymbol *s);
+astSymbol* find_real_namespace_of_symbol(astSymbol *s) {
+	if (s == NULL || s->symbolKind == SYMBOL_NAMESPACE) return s;
+	return find_real_namespace_of_symbol(s->parentNamespace);
+}
+
 astNode resolve_symbol_reference(node *n, ast *tree) {
 
-	scope *currentScope = tree->scopes[0];
+	scope **scopesToSearch = NULL;
+	astSymbol *currentNamespace = find_real_namespace_of_symbol(tree->currentNamespace);
 
-	while (n->kind == symbolReferenceExpression) {
-		binaryExpressionNode bn = *(binaryExpressionNode*)n->data;
-		node namespace = bn.left;
-		textspan namespan = namespace.span;
+	if (currentNamespace != NULL) sb_push(scopesToSearch, currentNamespace->namespaceScope);
 
-		astSymbol *symbol  = find_symbol_in_scope_internal(namespan, tree, currentScope, SYMBOL_NAMESPACE, FLAG_THROW);
-		if (symbol == NULL) {
-			return (astNode){ missingKind, errorType, .data = NULL };
-		} else {
-			n = &bn.right;
-			currentScope = symbol->namespaceScope;
+	sb_push(scopesToSearch, tree->scopes[0]);
+
+	scope *outScope = NULL;
+
+	textspan deepestNamespan = n->span;
+	i8 depth=-1;
+
+	for (int i=0;i<sb_count(scopesToSearch);i++) {
+		bool foundInScope = true;
+		node *nSearch = n;
+		outScope = scopesToSearch[i];
+		u8 currentDepth=0;
+		while (nSearch->kind == symbolReferenceExpression) {
+			binaryExpressionNode bn = *(binaryExpressionNode*)nSearch->data;
+			node namespace = bn.left;
+			textspan namespan = namespace.span;
+
+			astSymbol *symbol  = find_symbol_in_scope_internal(namespan, tree, outScope, SYMBOL_NAMESPACE, FLAG_NONE);
+			if (symbol == NULL) {
+				foundInScope = false;
+				if (currentDepth > depth) {
+					depth = currentDepth;
+					deepestNamespan = namespan;
+				}
+				break;
+			} else {
+				nSearch = &bn.right;
+				outScope = symbol->namespaceScope;
+				currentDepth++;
+			}
 		}
+
+		if (foundInScope) {
+			n = nSearch;
+			break;
+		} else outScope = NULL;
 	}
 
+	sb_free(scopesToSearch);
+
+	if (outScope == NULL) {
+		report_diagnostic(&tree->diagnostics, referenceToUndefinedVariableDiagnostic, deepestNamespan, 0, 0, 0);
+		return (astNode){ missingKind, errorType, .data = NULL };
+	}
+
+
 	switch(n->kind) {
-		case callExpression: return bind_call_expression(n, tree, currentScope);
-		case identifierToken: return bind_variable_reference(n, tree, currentScope);
+		case callExpression: return bind_call_expression(n, tree, outScope);
+		case identifierToken: return bind_variable_reference(n, tree, outScope);
 		default: {
 			fprintf(stderr, "%sUnhandled node of type %s in binder symbol resolver%s", TERMRED, syntaxKindText[n->kind], TERMRESET);
 			exit(1);

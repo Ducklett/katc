@@ -1,20 +1,25 @@
 g := 1
 
 namespace Kat.Foo.Bar {
+	fn foo() { print("this is foo\n") }
+}
+
+namespace Kat {
 
 	x:int
 	y:int
 	z:int
 
-	fn foo() { print("this is foo\n") }
-
 	fn greet(name:string, age:int) {
 		fn internalProc() { print("this is inner function!\n") }
 		print("hello %s %d\n", name, age)
-		foo()
+		// Can call wihtout kat prefix since you are already in the Kat namespace
+		Foo.Bar.foo()
+		// Can also call it with the full path
+		Kat.Foo.Bar.foo()
 		internalProc()
 	}
 }
 
-print("g: %d x: %d\n", g, Kat.Foo.Bar.x);
-Kat.Foo.Bar.greet("bob",20)
+print("g: %d x: %d\n", g, Kat.x);
+Kat.greet("bob",20)
