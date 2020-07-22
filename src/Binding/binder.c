@@ -624,7 +624,10 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 		if (type == 0) type = boundInitializer.type;
 
 		flags |= VARIABLE_INITIALIZED;
-	} 
+	} else if (flags & VARIABLE_GLOBAL) {
+		flags |= VARIABLE_INITIALIZED;
+		boundInitializer = (astNode){literalKind , type, .data = 0 };
+	}
 
 	astSymbol *variable = declare_variable(tree, vn.identifier.span, type, flags);
 

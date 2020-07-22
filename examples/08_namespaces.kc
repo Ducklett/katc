@@ -2,9 +2,9 @@ g := 1
 
 namespace Kat.Foo.Bar {
 
-	x := 2
-	y := 3
-	z := 4
+	x:int
+	y:int
+	z:int
 
 	fn foo() { print("this is foo\n") }
 

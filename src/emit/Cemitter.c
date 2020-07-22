@@ -397,8 +397,11 @@ static inline void emit_c_variableDeclaration(astNode *n, ast *tree) {
 
 	fprintf(fp,"%s ", cTypeText[dn->variable->type]);
 	printfSymbolReference(fp, dn->variable, "_");
-	fprintf(fp," = ");
-	emit_c_node(&dn->initalizer, tree);
+
+	if (dn->initalizer.kind != missingKind) {
+		fprintf(fp," = ");
+		emit_c_node(&dn->initalizer, tree);
+	}
 }
 
 static inline void emit_c_variableAssignment(astNode *n, ast *tree) {
