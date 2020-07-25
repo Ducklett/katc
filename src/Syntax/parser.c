@@ -115,10 +115,19 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	while (parser_current(p, d).kind == semicolonToken) parser_next_token(p, d);
 
 
-	if (!(p->parentKind == forLoop || p->parentKind == whileLoop) && (res.kind == breakKeyword || res.kind == continueKeyword)) {
-		report_diagnostic(d, notAllowedInContextDiagnostic, res.span, res.kind, p->parentKind, 0);
+	switch(p->parentKind) {
+		case functionDeclaration:
+			if (
+				res.kind == namespaceDeclaration ||
+				(res.kind == breakKeyword || res.kind == continueKeyword))
+					report_diagnostic(d, notAllowedInContextDiagnostic, res.span, res.kind, p->parentKind, 0); break;
+		case namespaceDeclaration:
+			if (res.kind != functionDeclaration && res.kind != variableDeclaration)
+				report_diagnostic(d, notAllowedInContextDiagnostic, res.span, res.kind, p->parentKind, 0); break;
+		case fileStatement:
+			if (res.kind == breakKeyword || res.kind == continueKeyword)
+					report_diagnostic(d, notAllowedInContextDiagnostic, res.span, res.kind, p->parentKind, 0); break;
 	}
-
 	return res;
 }
 
@@ -355,7 +364,7 @@ node parser_parse_for_loop(parser *p, diagnosticContainer *d) {
 
 	if (hasParens) closeParen = parser_match_token(p, d, closeParenthesisToken);
 
-	enum syntaxKind prevKind = parser_push_context(p, whileLoop);
+	enum syntaxKind prevKind = parser_push_context(p, forLoop);
 	node block = parser_parse_statement(p, d);
 	parser_pop_context(p,prevKind);
 
@@ -383,7 +392,7 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 
 	if (hasInitializer) {
 		equals = parser_next_token(p, d);
-		expression = parser_parse_statement(p, d);
+		expression = parser_parse_expression(p, d);
 	}
 
 	variableDeclarationNode *var = arena_malloc(parser_arena, sizeof(variableDeclarationNode));
@@ -505,7 +514,7 @@ node parser_parse_namespace_declaration(parser *p, diagnosticContainer *d) {
 	node namespaceToken = parser_match_token(p, d, namespaceKeyword);
 	node identifier = parser_parse_symbol_reference(p, d, true);
 
-	enum syntaxKind prevKind = parser_push_context(p, functionDeclaration);
+	enum syntaxKind prevKind = parser_push_context(p, namespaceDeclaration);
 	node block = parser_parse_block_statement(p, d);
 	parser_pop_context(p,prevKind);
 
