@@ -5,9 +5,8 @@ typedef struct parser {
 	node token_buffer[MAX_LOOKAHEAD];	// ring buffer that caches token lookaheads
 	node root;
 	u8 tokenBufferIndex;
+	enum syntaxKind parentKind;
 } parser;
-
-bool in_loop = false;
 
 node parser_next_token(parser *p, diagnosticContainer *d);
 
@@ -115,15 +114,28 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 
 	while (parser_current(p, d).kind == semicolonToken) parser_next_token(p, d);
 
-	if (!in_loop && (res.kind == breakKeyword || res.kind == continueKeyword)) {
-		report_diagnostic(d, notInLoopDiagnostic, res.span, res.kind, 0, 0);
+
+	if (!(p->parentKind == forLoop || p->parentKind == whileLoop) && (res.kind == breakKeyword || res.kind == continueKeyword)) {
+		report_diagnostic(d, notAllowedInContextDiagnostic, res.span, res.kind, p->parentKind, 0);
 	}
 
 	return res;
 }
 
+enum syntaxKind parser_push_context(parser *p, enum syntaxKind kind) {
+	enum syntaxKind parent = p->parentKind;
+	p->parentKind = kind;
+	return parent;
+}
+
+void parser_pop_context(parser *p, enum syntaxKind parent) {
+	p->parentKind = parent;
+}
+
 node parser_parse_file_statement(parser *p, diagnosticContainer *d) {
 	node *nodes = NULL;
+
+	enum syntaxKind prevKind = parser_push_context(p, fileStatement);
 
 	while (true) {
 		node token = parser_current(p, d);
@@ -133,6 +145,8 @@ node parser_parse_file_statement(parser *p, diagnosticContainer *d) {
 		node exprNode = parser_parse_statement(p, d);
 		sb_push(nodes, exprNode);
 	}
+
+	parser_pop_context(p, prevKind);
 
 	u16 statementCount = sb_count(nodes);
 	size_t statementsSize = sizeof(node) * statementCount;
@@ -304,9 +318,9 @@ node parser_parse_while_loop(parser *p, diagnosticContainer *d) {
 	node whileToken = parser_match_token(p, d, whileKeyword);
 	node condition = parser_parse_expression(p, d);
 
-	in_loop = true;
+	enum syntaxKind prevKind = parser_push_context(p, whileLoop);
 	node block = parser_parse_statement(p, d);
-	in_loop = false;
+	parser_pop_context(p,prevKind);
 
 	whileLoopNode *wnode = arena_malloc(parser_arena, sizeof(whileLoopNode));
 	*wnode = (whileLoopNode){ whileToken, condition, block };
@@ -341,9 +355,9 @@ node parser_parse_for_loop(parser *p, diagnosticContainer *d) {
 
 	if (hasParens) closeParen = parser_match_token(p, d, closeParenthesisToken);
 
-	in_loop = true;
+	enum syntaxKind prevKind = parser_push_context(p, whileLoop);
 	node block = parser_parse_statement(p, d);
-	in_loop = false;
+	parser_pop_context(p,prevKind);
 
 	forLoopNode *forNode = arena_malloc(parser_arena, sizeof(forLoopNode));
 	*forNode = (forLoopNode){ forToken, openParen, value, comma, key, inToken, range, closeParen, block };
@@ -437,7 +451,10 @@ node parser_parse_function_declaration(parser *p, diagnosticContainer *d) {
 	u16 paramCount;
 	node* parameters = parse_function_parameters(p, d, &paramCount);
 	node closeParen = parser_match_token(p, d, closeParenthesisToken);
+
+	enum syntaxKind prevKind = parser_push_context(p, functionDeclaration);
 	node block = parser_parse_block_statement(p, d);
+	parser_pop_context(p,prevKind);
 
 	functionDeclarationNode *fnode = arena_malloc(parser_arena, sizeof(functionDeclarationNode));
 	*fnode = (functionDeclarationNode){ fnToken, identifier, openParen, parameters, paramCount, closeParen, block };
@@ -487,7 +504,10 @@ node parser_parse_function_call(parser *p, diagnosticContainer *d) {
 node parser_parse_namespace_declaration(parser *p, diagnosticContainer *d) {
 	node namespaceToken = parser_match_token(p, d, namespaceKeyword);
 	node identifier = parser_parse_symbol_reference(p, d, true);
+
+	enum syntaxKind prevKind = parser_push_context(p, functionDeclaration);
 	node block = parser_parse_block_statement(p, d);
+	parser_pop_context(p,prevKind);
 
 	namespaceDeclarationNode *nnode = arena_malloc(parser_arena, sizeof(namespaceDeclarationNode));
 	*nnode = (namespaceDeclarationNode){ namespaceToken, identifier, block };
