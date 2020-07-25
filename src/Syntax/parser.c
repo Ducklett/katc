@@ -11,8 +11,7 @@ typedef struct parser {
 node parser_next_token(parser *p, diagnosticContainer *d);
 
 node parser_parse_statement(parser *p, diagnosticContainer *d);
-node parser_parse_file_statement(parser *p, diagnosticContainer *d);
-node parser_parse_block_statement(parser *p, diagnosticContainer *d);
+node parser_parse_block_statement(parser *p, diagnosticContainer *d, bool isFileStatement);
 node parser_parse_if_statement(parser *p, diagnosticContainer *d);
 node parser_parse_case_statement(parser *p, diagnosticContainer *d);
 node parser_parse_case_branch(parser *p, diagnosticContainer *d);
@@ -54,6 +53,18 @@ node parser_peek(parser *p, diagnosticContainer *d, u8 n) {
 	return p->token_buffer[index];
 }
 
+bool parser_next_token_is_on_new_line(parser *p, diagnosticContainer *d) {
+	node cur = parser_peek(p, d, 0);
+	for (int i=cur.span.start-1;i>=0;i--) {
+		if (i==0) return true;
+		char c = p->lexer.text[i];
+		if (isNewline(c)) return true;
+		if (isWhitespace(c)) continue;
+		return false;
+	}
+
+}
+
 static inline node parser_current(parser *p, diagnosticContainer *d) { return parser_peek(p, d, 0); }
 
 node parser_next_token(parser *p, diagnosticContainer *d) {
@@ -77,7 +88,7 @@ node parser_match_token(parser *p, diagnosticContainer *d, enum syntaxKind expec
 }
 
 void parser_parse(parser *p, diagnosticContainer *d) {
-	p->root = parser_parse_file_statement(p, d);
+	p->root = parser_parse_block_statement(p, d, true);
 	parser_match_token(p, d, endOfFileToken);
 }
 
@@ -91,7 +102,7 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	node res;
 
 	switch(l1kind) {
-	case openCurlyToken: res = parser_parse_block_statement(p, d); break;
+	case openCurlyToken: res = parser_parse_block_statement(p, d, false); break;
 	case ifKeyword: res = parser_parse_if_statement(p, d); break;
 	case caseKeyword: res = parser_parse_case_statement(p, d); break;
 	case switchKeyword: res = parser_parse_switch_statement(p, d); break;
@@ -111,8 +122,6 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 		} break;
 	default: res = parser_parse_expression(p, d); break;
 	}
-
-	while (parser_current(p, d).kind == semicolonToken) parser_next_token(p, d);
 
 	switch(p->parentKind) {
 		case functionDeclaration:
@@ -140,64 +149,43 @@ void parser_pop_context(parser *p, enum syntaxKind parent) {
 	p->parentKind = parent;
 }
 
-node parser_parse_file_statement(parser *p, diagnosticContainer *d) {
-	node *nodes = NULL;
-
-	enum syntaxKind prevKind = parser_push_context(p, fileStatement);
-
-	while (true) {
-		node token = parser_current(p, d);
-
-		if (token.kind == endOfFileToken) break;
-
-		node exprNode = parser_parse_statement(p, d);
-		sb_push(nodes, exprNode);
-	}
-
-	parser_pop_context(p, prevKind);
-
-	u16 statementCount = sb_count(nodes);
-	size_t statementsSize = sizeof(node) * statementCount;
-	node* nodeStorage = arena_malloc(parser_arena, statementsSize);
-	memcpy(nodeStorage, nodes, statementsSize);
-
-	sb_free(nodes);
-
-	node voidNode = {0};
-
-	blockStatementNode *block = arena_malloc(parser_arena, sizeof(blockStatementNode));
-	*block = (blockStatementNode){ voidNode, nodeStorage, statementCount, voidNode, };
-
-	return (node) { fileStatement, textspan_from_bounds(&voidNode, &voidNode), .data = block, };
-}
-
-node parser_parse_block_statement(parser *p, diagnosticContainer *d) {
-	node openCurly = parser_match_token(p, d, openCurlyToken);
+node parser_parse_block_statement(parser *p, diagnosticContainer *d, bool isFileStatement) {
+	node openCurly = isFileStatement?(node){0}:parser_match_token(p, d, openCurlyToken);
 	node closeCurly;
 
+	enum syntaxKind statementKind = isFileStatement ? fileStatement : blockStatement;
+
 	node *nodes = NULL;
 
+	bool isFirst = true;
 	while (true) {
 		node token = parser_current(p, d);
 
-		if (token.kind == closeCurlyToken) {
-			closeCurly = parser_next_token(p, d);
+		if (token.kind == (isFileStatement?endOfFileToken:closeCurlyToken)) {
+			closeCurly = isFileStatement?(node){0}:parser_next_token(p, d);
 			break;
 		}
 
-		if (token.kind == endOfFileToken) {
+		if (!isFileStatement && token.kind == endOfFileToken) {
 			report_diagnostic(d, unexpectedTokenDiagnostic, token.span, token.kind, closeCurlyToken, 0);
-			closeCurly = parser_next_token(p, d);
+			closeCurly = isFileStatement?(node){0}:parser_next_token(p, d);
 			break;
 		}
+
+		if (!isFirst) {
+			node c = parser_current(p,d);
+			if (!parser_next_token_is_on_new_line(p,d) && c.kind != semicolonToken) {
+				if (c.kind != badToken) report_diagnostic(d, unexpectedTokenDiagnostic, c.span, c.kind, semicolonToken, 0);
+			}
+			while (parser_current(p, d).kind == semicolonToken) parser_next_token(p, d);
+		}
+
+		if (isFileStatement && parser_current(p, d).kind == endOfFileToken) break;
 
 		node exprNode = parser_parse_statement(p, d);
 
-		// namespaces should only be declared at the top leverl (parser_parse_file_statement)
-		if (exprNode.kind == namespaceDeclaration) {
-			report_diagnostic(d, statementNotAllowedHereDiagnostic, ((namespaceDeclarationNode*)exprNode.data)->namespaceKeyword.span, 0, 0, 0);
-			exprNode.kind = errorToken;
-		}
+		isFirst = false;
+
 		sb_push(nodes, exprNode);
 	}
 
@@ -465,7 +453,7 @@ node parser_parse_function_declaration(parser *p, diagnosticContainer *d) {
 	node closeParen = parser_match_token(p, d, closeParenthesisToken);
 
 	enum syntaxKind prevKind = parser_push_context(p, functionDeclaration);
-	node block = parser_parse_block_statement(p, d);
+	node block = parser_parse_block_statement(p, d, false);
 	parser_pop_context(p,prevKind);
 
 	functionDeclarationNode *fnode = arena_malloc(parser_arena, sizeof(functionDeclarationNode));
@@ -518,7 +506,7 @@ node parser_parse_namespace_declaration(parser *p, diagnosticContainer *d) {
 	node identifier = parser_parse_symbol_reference(p, d, true);
 
 	enum syntaxKind prevKind = parser_push_context(p, namespaceDeclaration);
-	node block = parser_parse_block_statement(p, d);
+	node block = parser_parse_block_statement(p, d, false);
 	parser_pop_context(p,prevKind);
 
 	namespaceDeclarationNode *nnode = arena_malloc(parser_arena, sizeof(namespaceDeclarationNode));
