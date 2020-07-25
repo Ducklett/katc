@@ -114,7 +114,6 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 
 	while (parser_current(p, d).kind == semicolonToken) parser_next_token(p, d);
 
-
 	switch(p->parentKind) {
 		case functionDeclaration:
 			if (
@@ -385,6 +384,10 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 	node type = {0};
 	if (parser_current(p, d).kind == identifierToken || !hasInitializer) {
 		type = parser_match_token(p, d, identifierToken);
+	}
+
+	if (type.kind == NULL && p->parentKind == namespaceDeclaration) {
+		report_diagnostic(d, variableMustHaveTypeInCurrentContextDiagnostic, identifier.span, 0,0, 0);
 	}
 
 	node equals = {0}; 

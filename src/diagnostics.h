@@ -29,6 +29,7 @@ enum diagnosticKind {
 	statementNotAllowedHereDiagnostic,
 	nonConstantDiagnostic,
 	valueOutOfBoundsDiagnostic,
+	variableMustHaveTypeInCurrentContextDiagnostic,
 	undefinedUnaryOperatorDiagnostic,
 	undefinedBinaryOperatorDiagnostic,
 	variableNotInitializedDiagnostic,
@@ -65,6 +66,7 @@ static const char *diagnosticMetaText[] = {
 	"statementNotAllowedHereDiagnostic",
 	"nonConstantDiagnostic"
 	"valueOutOfBoundsDiagnostic"
+	"variableMustHaveTypeInCurrentContextDiagnostic",
 	"undefinedUnaryOperatorDiagnostic",
 	"undefinedBinaryOperatorDiagnostic",
 	"variableNotInitializedDiagnostic",

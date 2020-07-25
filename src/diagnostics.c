@@ -16,6 +16,7 @@ static const char *diagnosticText[] = {
 	"statements of this kind are not allowed here. (%d,%d)\n",
 	"only constant expressions are allowed here. (did you reference a variable?) (%d,%d)\n",
 	"value is too %s for %s and will %s, use an explicit cast if this is intentional. (%d,%d)\n",
+	"variables must be declared with an explicit type in this context. (%d,%d)\n",
 	"undefined unary operator '%s' for value of type '%s' (%d,%d)\n",
 	"undefined binary operator '%s' for values of type '%s' and '%s' (%d,%d)\n",
 	"variable '%s' is not initialized. (%d,%d)\n",
@@ -71,6 +72,8 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], d.span.start, d.span.length); break;
 		case notAllowedInContextDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], syntaxKindText[d.param2], d.span.start, d.span.length); break;
+		case variableMustHaveTypeInCurrentContextDiagnostic:
+			fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
 		case illegalRangeDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param1], d.span.start, d.span.length); break;
 		case illegalPrimaryExpressionDiagnostic:
