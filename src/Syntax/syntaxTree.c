@@ -76,6 +76,7 @@ enum syntaxKind {
 	continueKeyword,
 	fnKeyword,
 	namespaceKeyword,
+	enumKeyword,
 
 	unaryExpression,
 	binaryExpression,
@@ -87,6 +88,7 @@ enum syntaxKind {
 	functionDeclaration,
 	variableDeclaration,
 	namespaceDeclaration,
+	enumDeclaration,
 	variableAssignment,
 	blockStatement,
 	ifStatement,
@@ -168,6 +170,7 @@ static const char *syntaxKindText[] = {
 	"continue",
 	"fn",
 	"namespace",
+	"enum",
 	"unaryExpression",
 	"binaryExpression",
 	"parenthesizedExpression",
@@ -178,6 +181,7 @@ static const char *syntaxKindText[] = {
 	"functionDeclaration",
 	"variableDeclaration",
 	"namespaceDeclaration",
+	"enumDeclaration",
 	"variableAssignment",
 	"blockStatement",
 	"ifStatement",
@@ -307,6 +311,16 @@ typedef struct blockStatementNode {
 	u16 statementsCount;
 	node closeCurly;
 } blockStatementNode;
+
+
+// enum Color { Red, Green, Blue, White, Black }
+typedef struct enumDeclarationNode {
+	node enumKeyword;
+	node openCurly;
+	node* enums;
+	u16 enumCount;
+	node closeCurly;
+} enumDeclarationNode;
 
 // the else clause of if statements is optional
 // then `thenExpression` and `elseExpression` can be any statment
@@ -645,6 +659,16 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		print_syntaxtree_internal(text, &fn.range, indent, verbose, true);
 		if (fn.closeParen.kind != emptyToken) print_syntaxtree_internal(text, &fn.closeParen, indent, verbose, true);
 		print_syntaxtree_internal(text, &fn.block, indent, verbose, false);
+		break;
+	}
+	case enumDeclaration: {
+		enumDeclarationNode en = *(enumDeclarationNode*)root->data;
+		print_syntaxtree_internal(text, &en.enumKeyword, indent, verbose, true);
+		print_syntaxtree_internal(text, &en.openCurly, indent, verbose, true);
+		for (int i = 0; i< en.enumCount; i++) {
+			print_syntaxtree_internal(text, &en.enums[i], indent, verbose, true);
+		}
+		print_syntaxtree_internal(text, &en.closeCurly, indent, verbose, false);
 		break;
 	}
 	case typedIdentifier: {

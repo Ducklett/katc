@@ -25,6 +25,7 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_variable_assignment(parser *p, diagnosticContainer *d);
 node parser_parse_function_call(parser *p, diagnosticContainer *d);
 node parser_parse_namespace_declaration(parser *p, diagnosticContainer *d);
+node parser_parse_enum_declaration(parser *p, diagnosticContainer *d);
 
 node parser_parse_expression(parser *p, diagnosticContainer *d);
 node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parentPrecedence);
@@ -112,6 +113,7 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	case continueKeyword: res = parser_next_token(p, d); break;
 	case fnKeyword: res = parser_parse_function_declaration(p, d); break;
 	case namespaceKeyword: res = parser_parse_namespace_declaration(p, d); break;
+	case enumKeyword: res = parser_parse_enum_declaration(p, d); break;
 	case identifierToken:
 		if  (l2kind == colonToken) {
 			res = parser_parse_variable_declaration(p, d);
@@ -515,6 +517,43 @@ node parser_parse_namespace_declaration(parser *p, diagnosticContainer *d) {
 	return (node) { namespaceDeclaration, textspan_from_bounds(&namespaceToken, &block), .data = nnode, };
 }
 
+node parser_parse_enum_declaration(parser *p, diagnosticContainer *d) {
+	node enumToken = parser_match_token(p, d, enumKeyword);
+	node identifier = parser_match_token(p,d,identifierToken);
+	node openCurly = parser_match_token(p,d,openCurlyToken);
+
+	enum syntaxKind prevKind = parser_push_context(p, enumDeclaration);
+
+	node *enums = NULL;
+
+	if (parser_current(p,d).kind == closeCurlyToken) goto end;
+	while (true) {
+
+		sb_push(enums, parser_match_token(p, d, identifierToken));
+
+		node cur = parser_current(p,d);
+		if (cur.kind == closeCurlyToken || cur.kind == endOfFileToken) break;
+
+		sb_push(enums, parser_match_token(p, d, commaToken));
+	}
+	end: ;
+
+	u8 enumCount = sb_count(enums);
+	size_t enumSize = sizeof(node) * enumCount;
+	node* enumStorage = arena_malloc(parser_arena, enumSize);
+	memcpy(enumStorage, enums, enumSize);
+
+	sb_free(enums);
+
+	parser_pop_context(p,prevKind);
+
+	node closeCurly = parser_match_token(p,d,closeCurlyToken);
+
+	enumDeclarationNode *enode = arena_malloc(parser_arena, sizeof(enumDeclarationNode));
+	*enode = (enumDeclarationNode){ enumToken, openCurly,  enumStorage, enumCount, closeCurly };
+
+	return (node) { enumDeclaration, textspan_from_bounds(&enumToken, &closeCurly), .data = enode, };
+}
 
 node parser_parse_expression(parser *p, diagnosticContainer *d) { return parser_parse_binary_expression(p, d,-2); }
 
