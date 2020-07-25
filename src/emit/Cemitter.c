@@ -285,8 +285,9 @@ static inline void emit_c_whileLoop(astNode *n, ast *tree) {
 	whileLoopAst wn = *(whileLoopAst*)n->data;
 	fprintf(fp,"while (");
 	emit_c_node(&wn.condition, tree);
-	fprintf(fp,")\n");
+	fprintf(fp,")%c", wn.block.kind == blockStatementKind ? '\n' : ' ');
 	emit_c_node(&wn.block, tree);
+	if (needs_semicolon(wn.block.kind)) fprintf(fp, ";\n");
 }
 
 static inline void emit_c_forLoop(astNode *n, ast *tree) {
