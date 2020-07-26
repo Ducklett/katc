@@ -550,7 +550,7 @@ node parser_parse_enum_declaration(parser *p, diagnosticContainer *d) {
 	node closeCurly = parser_match_token(p,d,closeCurlyToken);
 
 	enumDeclarationNode *enode = arena_malloc(parser_arena, sizeof(enumDeclarationNode));
-	*enode = (enumDeclarationNode){ enumToken, openCurly,  enumStorage, enumCount, closeCurly };
+	*enode = (enumDeclarationNode){ enumToken, identifier, openCurly,  enumStorage, enumCount, closeCurly };
 
 	return (node) { enumDeclaration, textspan_from_bounds(&enumToken, &closeCurly), .data = enode, };
 }

@@ -316,6 +316,7 @@ typedef struct blockStatementNode {
 // enum Color { Red, Green, Blue, White, Black }
 typedef struct enumDeclarationNode {
 	node enumKeyword;
+	node identifier;
 	node openCurly;
 	node* enums;
 	u16 enumCount;
@@ -664,6 +665,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 	case enumDeclaration: {
 		enumDeclarationNode en = *(enumDeclarationNode*)root->data;
 		print_syntaxtree_internal(text, &en.enumKeyword, indent, verbose, true);
+		print_syntaxtree_internal(text, &en.identifier, indent, verbose, true);
 		print_syntaxtree_internal(text, &en.openCurly, indent, verbose, true);
 		for (int i = 0; i< en.enumCount; i++) {
 			print_syntaxtree_internal(text, &en.enums[i], indent, verbose, true);

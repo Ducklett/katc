@@ -11,6 +11,7 @@ enum astSyntaxKind {
 	callExpressionKind,
 	castExpressionKind,
 	namespaceDeclarationKind,
+	enumDeclarationKind,
 	functionDeclarationKind,
 	variableDeclarationKind,
 	variableAssignmentKind,
@@ -39,6 +40,7 @@ static const char *astSyntaxKindText[] = {
 	"callExpression",
 	"castExpression",
 	"namespaceDeclaration",
+	"enumDeclarationKind",
 	"functionDeclaration",
 	"variableDeclaration",
 	"variableAssignment",
@@ -293,6 +295,8 @@ typedef struct astNode {
 #define SYMBOL_VARIABLE 1
 #define SYMBOL_FUNCTION 2
 #define SYMBOL_NAMESPACE 3
+#define SYMBOL_ENUM 3
+#define SYMBOL_ENUM_MEMBER 4
 
 typedef struct functionSymbolData {
 	struct astSymbol **parameters;
@@ -650,6 +654,19 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		}
 		printf(")%s\n", TERMRESET);
 		print_ast_internal(text, &vn.functionData->body, indent, verbose, false);
+		break;
+	}
+	case enumDeclarationKind: {
+		astSymbol vn = *(astSymbol*)root->data;
+
+		printf("%*s%s", indent, "", TERMMAGENTA);
+		printf ("enum ");
+		printfSymbolReference(stdout, &vn, ".");
+		printf (" {");
+		for (int i=0;i<sb_count(vn.namespaceScope->symbols);i++) {
+			printf (" %s,", vn.namespaceScope->symbols[i]->name);
+		}
+		printf("}%s", TERMRESET);
 		break;
 	}
 	case variableDeclarationKind: {

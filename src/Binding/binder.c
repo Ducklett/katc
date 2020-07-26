@@ -18,6 +18,7 @@ astNode bind_while_loop(node *n, ast *tree);
 astNode bind_for_loop(node *n, ast *tree);
 astNode bind_function_declaration(node *n, ast *tree);
 astNode bind_namespace_declaration(node *n, ast *tree);
+astNode bind_enum_declaration(node *n, ast *tree);
 astNode bind_unary_expression(node *n, ast *tree);
 astNode bind_binary_expression(node *n, ast *tree);
 astNode bind_call_expression(node *n, ast *tree, scope *functionScope);
@@ -34,6 +35,8 @@ astNode resolve_symbol_reference(node *n, ast *tree);
 astSymbol* declare_namespace(ast *tree, node *n, u8 flags);
 astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, node *body, astSymbol **parameters, u16 parameterCount, scope *functionScope);
 astSymbol* declare_variable(ast *tree, textspan nameSpan, astType variableType, u8 flags);
+astSymbol* declare_enum(ast *tree, textspan nameSpan, node *enums, int enumCount, u8 flags);
+astSymbol* declare_enum_member(ast *tree, textspan nameSpan, astSymbol *enumSymbol, u8 value);
 astSymbol* find_function_in_scope(textspan nameSpan, ast *tree, scope *currentScope, bool recurse);
 astSymbol* find_variable_in_scope(textspan nameSpan, ast *tree, scope *currentScope);
 astNode fold_binary_expression(typedOperator *op, int left, int right);
@@ -76,6 +79,7 @@ astNode bind_expression_internal(node *n, ast* tree) {
 		case forLoop: return bind_for_loop(n, tree);
 		case functionDeclaration: return bind_function_declaration(n, tree);
 		case namespaceDeclaration: return bind_namespace_declaration(n, tree);
+		case enumDeclaration: return bind_enum_declaration(n, tree);
 
 		case breakKeyword: return (astNode){ breakKind, primitive_type_from_kind(voidType), .data = 0 };
 		case continueKeyword: return (astNode){ continueKind, primitive_type_from_kind(voidType), .data = 0 };
@@ -428,6 +432,16 @@ astNode bind_namespace_declaration(node *n, ast *tree) {
 	tree->currentNamespace = parentNamespace;
 
 	return (astNode){ namespaceDeclarationKind , primitive_type_from_kind(voidType), .data = ns };
+}
+
+astNode bind_enum_declaration(node *n, ast *tree) {
+
+	enumDeclarationNode en = *(enumDeclarationNode*)n->data;
+
+	u8 flags = 0;
+	astSymbol *enumSymbol = declare_enum(tree, en.identifier.span, en.enums, en.enumCount, flags);
+
+	return (astNode){ enumDeclarationKind , primitive_type_from_kind(voidType), .data = enumSymbol };
 }
 
 astNode bind_unary_expression(node *n, ast *tree) {
@@ -915,6 +929,56 @@ astSymbol* declare_namespace(ast *tree, node *n, u8 flags) {
 
 		if (n == NULL) return symbol;
 	}
+}
+
+astSymbol* declare_enum(ast *tree, textspan nameSpan, node *enums, int enumCount, u8 flags) {
+	scope *currentScope = tree->currentScope;
+
+	for (int i = 0; i < sb_count(currentScope->symbols); i++) {
+		if (span_compare(tree->text, nameSpan, currentScope->symbols[i]->name)) {
+			report_diagnostic(&tree->diagnostics, redeclarationOfSymbolDiagnostic, nameSpan, (u64)currentScope->symbols[i]->name, 0, 0);
+			return 0;
+		}
+	}
+
+	astSymbol *enumSymbol = arena_malloc(binder_arena, sizeof(astSymbol));
+	sb_push(currentScope->symbols, enumSymbol);
+
+	enumSymbol->symbolKind = SYMBOL_ENUM;
+	enumSymbol->name = ast_substring(tree->text, nameSpan, string_arena);
+	enumSymbol->parentNamespace = tree->currentNamespace;
+	enumSymbol->type = primitive_type_from_kind(voidType);
+	enumSymbol->flags = flags;
+	enumSymbol->namespaceScope = create_scope(tree);
+
+	for (int i=0;i<enumCount;i+=2) {
+		declare_enum_member(tree, enums[i].span, enumSymbol, i/2);
+	}
+
+	return enumSymbol;
+}
+
+astSymbol* declare_enum_member(ast *tree, textspan nameSpan, astSymbol *enumSymbol, u8 value) {
+	scope *currentScope = enumSymbol->namespaceScope;
+
+	for (int i = 0; i < sb_count(currentScope->symbols); i++) {
+		if (span_compare(tree->text, nameSpan, currentScope->symbols[i]->name)) {
+			report_diagnostic(&tree->diagnostics, redeclarationOfSymbolDiagnostic, nameSpan, (u64)currentScope->symbols[i]->name, 0, 0);
+			return 0;
+		}
+	}
+
+	astSymbol *member = arena_malloc(binder_arena, sizeof(astSymbol));
+	sb_push(currentScope->symbols, member);
+
+	member->symbolKind = SYMBOL_ENUM_MEMBER;
+	member->name = ast_substring(tree->text, nameSpan, string_arena);
+	member->parentNamespace = enumSymbol;
+	member->type = (astType){ enumType, enumSymbol };
+	member->flags = 0;
+	member->numValue = value;
+
+	return member;
 }
 
 astSymbol* find_variable_in_scope(textspan nameSpan, ast *tree, scope *currentScope) {
