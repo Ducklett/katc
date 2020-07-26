@@ -1,4 +1,7 @@
-enum astKind {
+struct astSymbol;
+struct scope;
+
+enum astSyntaxKind {
 	missingKind,
 	errorKind,
 	literalKind,
@@ -26,7 +29,7 @@ enum astKind {
 	jumpKind,
 };
 
-static const char *astKindText[] = {
+static const char *astSyntaxKindText[] = {
 	"missing",
 	"error",
 	"literal",
@@ -54,7 +57,7 @@ static const char *astKindText[] = {
 	"jump",
 };
 
-enum astType {
+enum astKind {
 	errorType,
 	unresolvedType,
 	voidType,
@@ -70,9 +73,10 @@ enum astType {
 	boolType,
 	stringType,
 	charType,
+	enumType,
 };
 
-static const char *astTypeText[] = {
+static const char *astKindText[] = {
 	"errorType",
 	"unresolved",
 	"void",
@@ -88,9 +92,10 @@ static const char *astTypeText[] = {
 	"bool",
 	"string",
 	"char",
+	"enum",
 };
 
-bool isNumberType(enum astType t) {
+bool isNumberType(enum astKind t) {
 	return (
 		t == intType ||
 		t == u8Type  ||
@@ -103,16 +108,24 @@ bool isNumberType(enum astType t) {
 		t == i64Type );
 }
 
+typedef struct astType {
+	enum astKind kind;
+	struct astSymbol *declaration;
+} astType;
+
 #define CAST_IDENTITY 0
 #define CAST_IMPLICIT 1
 #define CAST_EXPLICIT 2
 #define CAST_ILLEGAL  3
-u8 getCastInformation(enum astType from, enum astType to) {
-	if (from == to) return CAST_IDENTITY;
+u8 getCastInformation(astType from, astType to) {
+	if (from.kind == to.kind) {
+		if (from.declaration != to.declaration) return CAST_EXPLICIT;
+		return CAST_IDENTITY;
+	}
 
-	if (to == stringType || (from == stringType && to != boolType)) return CAST_ILLEGAL;
+	if (to.kind == stringType || (from.kind == stringType && to.kind != boolType)) return CAST_ILLEGAL;
 
-	if (from == intType && isNumberType(to)) return CAST_IMPLICIT;
+	if (from.kind == intType && isNumberType(to.kind)) return CAST_IMPLICIT;
 
 	return CAST_EXPLICIT;
 }
@@ -166,49 +179,53 @@ static const char *astBinaryText[] = {
 
 typedef struct typedOperator {
 	enum astBinaryOperator operator;
-	enum astType type;
+	astType type;
 } typedOperator;
 
-typedOperator get_binary_operator(enum syntaxKind operatorToken, enum astType left, enum astType right) {
-	if (operatorToken == plusOperator          && left == charType && isNumberType(right)) return (typedOperator){ addOp, charType };
-	if (operatorToken == minusOperator         && left == charType && isNumberType(right)) return (typedOperator){ subtractOp, charType };
-	if (operatorToken == euqualsEqualsOperator && left == charType && right == charType) return (typedOperator) { equalOp, boolType };
-	if (operatorToken == bangEqualsOperator    && left == charType && right == charType) return (typedOperator){ inEqualOp, boolType };
-	if (operatorToken == lessOperator          && left == charType && right == charType) return (typedOperator){ lessOp, boolType };
-	if (operatorToken == greaterOperator       && left == charType && right == charType) return (typedOperator){ greaterOp, boolType };
-	if (operatorToken == lessEqualsOperator    && left == charType && right == charType) return (typedOperator){ lessOrEqualOp, boolType };
-	if (operatorToken == greaterEqualsOperator && left == charType && right == charType) return (typedOperator){ greaterOrEqualOp, boolType };
+static inline astType primitive_type_from_kind(enum astKind kind) {
+	return (astType){ kind, 0 };
+}
 
-	if (operatorToken == plusOperator          && isNumberType(left) && isNumberType(right)) return (typedOperator){ addOp, left };
-	if (operatorToken == minusOperator         && isNumberType(left) && isNumberType(right)) return (typedOperator){ subtractOp, left };
-	if (operatorToken == multipliationOperator && isNumberType(left) && isNumberType(right)) return (typedOperator){ multiplyOp, left };
-	if (operatorToken == divisionOperator      && isNumberType(left) && isNumberType(right)) return (typedOperator){ divideOp, left };
-	if (operatorToken == modulusOperator       && isNumberType(left) && isNumberType(right)) return (typedOperator){ moduloOp, left };
+typedOperator get_binary_operator(enum syntaxKind operatorToken, astType left, astType right) {
+	if (operatorToken == plusOperator          && left.kind == charType && isNumberType(right.kind)) return (typedOperator){ addOp, primitive_type_from_kind(charType) };
+	if (operatorToken == minusOperator         && left.kind == charType && isNumberType(right.kind)) return (typedOperator){ subtractOp, primitive_type_from_kind(charType) };
+	if (operatorToken == euqualsEqualsOperator && left.kind == charType && right.kind == charType) return (typedOperator) { equalOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == bangEqualsOperator    && left.kind == charType && right.kind == charType) return (typedOperator){ inEqualOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == lessOperator          && left.kind == charType && right.kind == charType) return (typedOperator){ lessOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == greaterOperator       && left.kind == charType && right.kind == charType) return (typedOperator){ greaterOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == lessEqualsOperator    && left.kind == charType && right.kind == charType) return (typedOperator){ lessOrEqualOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == greaterEqualsOperator && left.kind == charType && right.kind == charType) return (typedOperator){ greaterOrEqualOp, primitive_type_from_kind(boolType) };
 
-	if (operatorToken == euqualsEqualsOperator && isNumberType(left) && right == left) return (typedOperator) { equalOp, boolType };
-	if (operatorToken == bangEqualsOperator    && isNumberType(left) && right == left) return (typedOperator){ inEqualOp, boolType };
+	if (operatorToken == plusOperator          && isNumberType(left.kind) && isNumberType(right.kind)) return (typedOperator){ addOp, left };
+	if (operatorToken == minusOperator         && isNumberType(left.kind) && isNumberType(right.kind)) return (typedOperator){ subtractOp, left };
+	if (operatorToken == multipliationOperator && isNumberType(left.kind) && isNumberType(right.kind)) return (typedOperator){ multiplyOp, left };
+	if (operatorToken == divisionOperator      && isNumberType(left.kind) && isNumberType(right.kind)) return (typedOperator){ divideOp, left };
+	if (operatorToken == modulusOperator       && isNumberType(left.kind) && isNumberType(right.kind)) return (typedOperator){ moduloOp, left };
 
-	if (operatorToken == euqualsEqualsOperator && left == boolType && right == boolType) return (typedOperator) { equalOp, boolType };
-	if (operatorToken == bangEqualsOperator    && left == boolType && right == boolType) return (typedOperator){ inEqualOp, boolType };
+	if (operatorToken == euqualsEqualsOperator && isNumberType(left.kind) && right.kind == left.kind) return (typedOperator) { equalOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == bangEqualsOperator    && isNumberType(left.kind) && right.kind == left.kind) return (typedOperator){ inEqualOp, primitive_type_from_kind(boolType) };
 
-	if (operatorToken == lessOperator          && isNumberType(left) && right == left) return (typedOperator){ lessOp, boolType };
-	if (operatorToken == greaterOperator       && isNumberType(left) && right == left) return (typedOperator){ greaterOp, boolType };
-	if (operatorToken == lessEqualsOperator    && isNumberType(left) && right == left) return (typedOperator){ lessOrEqualOp, boolType };
-	if (operatorToken == greaterEqualsOperator && isNumberType(left) && right == left) return (typedOperator){ greaterOrEqualOp, boolType };
+	if (operatorToken == euqualsEqualsOperator && left.kind == boolType && right.kind == boolType) return (typedOperator) { equalOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == bangEqualsOperator    && left.kind == boolType && right.kind == boolType) return (typedOperator){ inEqualOp, primitive_type_from_kind(boolType) };
 
-	if (operatorToken == lessLessOperator       && isNumberType(left) && isNumberType(right)) return (typedOperator){ shiftLeftOp, left };
-	if (operatorToken == greaterGreaterOperator && isNumberType(left) && isNumberType(right)) return (typedOperator){ shiftRightOp, left };
+	if (operatorToken == lessOperator          && isNumberType(left.kind) && right.kind == left.kind) return (typedOperator){ lessOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == greaterOperator       && isNumberType(left.kind) && right.kind == left.kind) return (typedOperator){ greaterOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == lessEqualsOperator    && isNumberType(left.kind) && right.kind == left.kind) return (typedOperator){ lessOrEqualOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == greaterEqualsOperator && isNumberType(left.kind) && right.kind == left.kind) return (typedOperator){ greaterOrEqualOp, primitive_type_from_kind(boolType) };
 
-	if (operatorToken == ampersandOperator && isNumberType(left) && right == left) return (typedOperator){ bitwiseAndOp, left };
-	if (operatorToken == caretOperator     && isNumberType(left) && right == left) return (typedOperator){ bitwiseXorOp, left };
-	if (operatorToken == pipeOperator      && isNumberType(left) && right == left) return (typedOperator){ bitwiseOrOp, left };
+	if (operatorToken == lessLessOperator       && isNumberType(left.kind) && isNumberType(right.kind)) return (typedOperator){ shiftLeftOp, left };
+	if (operatorToken == greaterGreaterOperator && isNumberType(left.kind) && isNumberType(right.kind)) return (typedOperator){ shiftRightOp, left };
 
-	if (operatorToken == ampersandOperator && left == boolType && right == boolType) return (typedOperator){ bitwiseAndOp, boolType };
-	if (operatorToken == caretOperator && left == boolType && right == boolType) return (typedOperator){ bitwiseXorOp, boolType };
-	if (operatorToken == pipeOperator && left == boolType && right == boolType) return (typedOperator){ bitwiseOrOp, boolType };
+	if (operatorToken == ampersandOperator && isNumberType(left.kind) && right.kind == left.kind) return (typedOperator){ bitwiseAndOp, left };
+	if (operatorToken == caretOperator     && isNumberType(left.kind) && right.kind == left.kind) return (typedOperator){ bitwiseXorOp, left };
+	if (operatorToken == pipeOperator      && isNumberType(left.kind) && right.kind == left.kind) return (typedOperator){ bitwiseOrOp, left };
 
-	if (operatorToken == ampersandAmpersandOperator && left == boolType && right == boolType) return (typedOperator){ logicalAndOp, boolType };
-	if (operatorToken == pipePipeOperator && left == boolType && right == boolType) return (typedOperator) { logicalOrOp, boolType };
+	if (operatorToken == ampersandOperator && left.kind == boolType && right.kind == boolType) return (typedOperator){ bitwiseAndOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == caretOperator && left.kind == boolType && right.kind == boolType) return (typedOperator){ bitwiseXorOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == pipeOperator && left.kind == boolType && right.kind == boolType) return (typedOperator){ bitwiseOrOp, primitive_type_from_kind(boolType) };
+
+	if (operatorToken == ampersandAmpersandOperator && left.kind == boolType && right.kind == boolType) return (typedOperator){ logicalAndOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == pipePipeOperator && left.kind == boolType && right.kind == boolType) return (typedOperator) { logicalOrOp, primitive_type_from_kind(boolType) };
 
 	return (typedOperator){0};
 }
@@ -237,7 +254,7 @@ static const char *astUnaryText[] = {
 	"postDecrement",
 };
 
-enum astUnaryOperator get_unary_operator(enum syntaxKind operatorToken, enum astType type, bool left) {
+enum astUnaryOperator get_unary_operator(enum syntaxKind operatorToken, enum astKind type, bool left) {
 	if (type == charType && operatorToken == plusPlusOperator && left) return preIncrementOp;
 	if (type == charType && operatorToken == plusPlusOperator && !left) return postIncrementOp;
 	if (type == charType && operatorToken == minusMinusOperator && left) return preDecrementOp;
@@ -257,8 +274,8 @@ enum astUnaryOperator get_unary_operator(enum syntaxKind operatorToken, enum ast
 }
 
 typedef struct astNode {
-	enum astKind kind;
-	enum astType type;
+	enum astSyntaxKind kind;
+	astType type;
 	union {
 		void* data; 
 		int numValue; 
@@ -277,20 +294,17 @@ typedef struct astNode {
 #define SYMBOL_FUNCTION 2
 #define SYMBOL_NAMESPACE 3
 
-struct astSymbol;
-struct scope;
-
 typedef struct functionSymbolData {
 	struct astSymbol **parameters;
 	u16 parameterCount;
-	enum astType returnType;
+	astType returnType;
 	astNode body;
 } functionSymbolData;
 
 typedef struct astSymbol {
 	char* name;
 	struct astSymbol *parentNamespace;
-	enum astType type;
+	astType type;
 	u8 symbolKind;
 	u8 flags;
 	union {
@@ -412,10 +426,10 @@ typedef struct ast {
 	astSymbol *currentNamespace;
 } ast;
 
-enum astType resolve_type_from_span(ast *tree, textspan span) {
+enum astKind resolve_primitive_type_from_span(ast *tree, textspan span) {
 	char *text = tree->text;
 	for (int i = intType; i<= charType; i++)
-		if (span_compare(text, span, astTypeText[i])) return i;
+		if (span_compare(text, span, astKindText[i])) return i;
 	
 	report_diagnostic(&tree->diagnostics, unresolvedTypeDiagnostic, span, 0, 0, 0);
 	return 0;
@@ -460,31 +474,31 @@ void print_ast(char *text, astNode *root, int indent, bool verbose) { print_ast_
 void print_ast_internal(char *text, astNode *root, int indent, bool verbose, bool newline) {
 
 	if (root->kind == literalKind) {
-		if (root->type == voidType) return;
+		if (root->type.kind == voidType) return;
 		if (verbose) {
 			printf ("%*s(", indent, "");
 			printf(TERMBLUE);
-			switch (root->type) {
+			switch (root->type.kind) {
 				case u8Type: case u16Type: case u32Type: case u64Type: case i8Type: case i16Type: case i32Type: case i64Type:
 				case intType: printf ("%d", root->numValue); break;
 				case boolType: printf ("%s", root->boolValue ? "true" : "false"); break;
 				case stringType: printf ("\"%s\"", root->stringValue); break;
 				case charType: printf ("'%c'", root->charValue); break;
 				default:
-					fprintf(stderr, "%sUnhandled type '%s' in print_ast%s", TERMRED, astTypeText[root->type], TERMRESET);
+					fprintf(stderr, "%sUnhandled type '%s' in print_ast%s", TERMRED, astKindText[root->type.kind], TERMRESET);
 					exit(1);
 			}
-			printf ("%s :: %s%s%s)%s", TERMRESET, TERMYELLOW, astTypeText[root->type], TERMRESET, newline?"\n":"");
+			printf ("%s :: %s%s%s)%s", TERMRESET, TERMYELLOW, astKindText[root->type.kind], TERMRESET, newline?"\n":"");
 		} else {
 			printf(TERMCYAN);
-			switch (root->type) {
+			switch (root->type.kind) {
 				case u8Type: case u16Type: case u32Type: case u64Type: case i8Type: case i16Type: case i32Type: case i64Type:
 				case intType: printf ("%*s%d%s", indent, "", root->numValue, newline?"\n":""); break;
 				case boolType: printf ("%*s%s%s", indent, "", root->boolValue?"true":"false", newline?"\n":""); break;
 				case stringType: printf ("%*s\"%s\"%s", indent, "", root->stringValue, newline?"\n":""); break;
 				case charType: printf ("%*s%c%s", indent, "", root->charValue, newline?"\n":""); break;
 				default:
-					fprintf(stderr, "%sUnhandled type '%s' in print_ast%s", TERMRED, astTypeText[root->type], TERMRESET);
+					fprintf(stderr, "%sUnhandled type '%s' in print_ast%s", TERMRED, astKindText[root->type.kind], TERMRESET);
 					exit(1);
 			}
 			printf(TERMRESET);
@@ -492,7 +506,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		return;
 	}
 
-	printf ("%*s(%s\n", indent, "", astKindText[root->kind]);
+	printf ("%*s(%s\n", indent, "", astSyntaxKindText[root->kind]);
 
 	indent += 4;
 
@@ -561,10 +575,10 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	case forLoopKind: {
 		forLoopAst fn = *(forLoopAst*)root->data;
 
-		printf ("%*s%s%s %s%s\n", indent, "", TERMMAGENTA, fn.value->name, astTypeText[fn.value->type], TERMRESET);
+		printf ("%*s%s%s %s%s\n", indent, "", TERMMAGENTA, fn.value->name, astKindText[fn.value->type.kind], TERMRESET);
 
 		if (fn.index != 0) {
-			printf ("%*s%s%s %s%s\n", indent, "", TERMMAGENTA, fn.index->name, astTypeText[fn.index->type], TERMRESET);
+			printf ("%*s%s%s %s%s\n", indent, "", TERMMAGENTA, fn.index->name, astKindText[fn.index->type.kind], TERMRESET);
 		}
 
 		print_ast_internal(text, &fn.range, indent, verbose, true);
@@ -574,7 +588,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	case rangeExpressionKind: {
 
 		rangeExpressionAst rn = *(rangeExpressionAst*)root->data;
-		if (root->type == intType) printf ("%*s%s%d..%d%s", indent, "", TERMMAGENTA, rn.fromInt, rn.toInt, TERMRESET);
+		if (root->type.kind == intType) printf ("%*s%s%d..%d%s", indent, "", TERMMAGENTA, rn.fromInt, rn.toInt, TERMRESET);
 		else printf ("%*s%s'%d'..'%d'%s", indent, "", TERMMAGENTA, rn.fromChar, rn.toChar, TERMRESET);
 		break;
 	}
@@ -609,7 +623,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	case castExpressionKind: {
 		astNode en = *(astNode*)root->data;
 
-		printf ("%*s%scast<%s>%s\n", indent, "", TERMMAGENTA, astTypeText[root->type], TERMRESET);
+		printf ("%*s%scast<%s>%s\n", indent, "", TERMMAGENTA, astKindText[root->type.kind], TERMRESET);
 		print_ast_internal(text, &en, indent, verbose, false);
 		break;
 	}
@@ -628,11 +642,11 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		functionSymbolData fd = *vn.functionData;
 
 		printf("%s", TERMMAGENTA);
-		printf ("%*s%s ", indent, "", astTypeText[vn.type]);
+		printf ("%*s%s ", indent, "", astKindText[vn.type.kind]);
 		printfSymbolReference(stdout, &vn, ".");
 		printf ("(");
 		for (int i=0;i<fd.parameterCount;i++) {
-			printf (" %s: %s", fd.parameters[i]->name, astTypeText[fd.parameters[i]->type]);
+			printf (" %s: %s", fd.parameters[i]->name, astKindText[fd.parameters[i]->type.kind]);
 		}
 		printf(")%s\n", TERMRESET);
 		print_ast_internal(text, &vn.functionData->body, indent, verbose, false);
@@ -641,7 +655,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	case variableDeclarationKind: {
 		variableDeclarationAst vn = *(variableDeclarationAst*)root->data;
 
-		printf ("%*s%s%s %s (%s)%s\n", indent, "", TERMMAGENTA, vn.variable->name, astTypeText[vn.variable->type], (vn.variable->flags & VARIABLE_MUTABLE) ? "mutable" : "constant", TERMRESET);
+		printf ("%*s%s%s %s (%s)%s\n", indent, "", TERMMAGENTA, vn.variable->name, astKindText[vn.variable->type.kind], (vn.variable->flags & VARIABLE_MUTABLE) ? "mutable" : "constant", TERMRESET);
 		if (vn.initalizer.kind != 0) print_ast_internal(text, &vn.initalizer, indent, verbose, false);
 		else printf ("%*s%s%s%s", indent, "", TERMMAGENTA, "<uninitialized>", TERMRESET);
 		break;
@@ -649,7 +663,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	case variableAssignmentKind: {
 		variableAssignmentAst va = *(variableAssignmentAst*)root->data;
 
-		printf ("%*s%s%s %s %s%s\n", indent, "", TERMMAGENTA,va.variable->name, astTypeText[va.variable->type], va.compoundOperator?astBinaryText[va.compoundOperator]:"equals",  TERMRESET);
+		printf ("%*s%s%s %s %s%s\n", indent, "", TERMMAGENTA,va.variable->name, astKindText[va.variable->type.kind], va.compoundOperator?astBinaryText[va.compoundOperator]:"equals",  TERMRESET);
 		print_ast_internal(text, &va.expression, indent, verbose, false);
 		break;
 	}
@@ -658,11 +672,11 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 
 		printf ("%*s%s%s ", indent, "", TERMMAGENTA);
 		printfSymbolReference(stdout, vs, ".");
-		printf ("%s%s", astTypeText[vs->type], TERMRESET);
+		printf ("%s%s", astKindText[vs->type.kind], TERMRESET);
 		break;
 	}
 	default: {
-		fprintf(stderr, "%sERROR: Unhandled case in print_ast for kind %s%s", TERMRED, astKindText[root->kind], TERMRESET);
+		fprintf(stderr, "%sERROR: Unhandled case in print_ast for kind %s%s", TERMRED, astSyntaxKindText[root->kind], TERMRESET);
 		exit(1);
 		break;
 	}
@@ -683,7 +697,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 	}
 
 	if (root->kind == literalKind) {
-		switch (root->type) {
+		switch (root->type.kind) {
 			case voidType: fprintf(fp, "Label%p[label=\"%s\"]\n", root, "void"); break;
 			case u8Type: case u16Type: case u32Type: case u64Type: case i8Type: case i16Type: case i32Type: case i64Type:
 			case intType: fprintf (fp, "Label%p[label=\"%d\"]\n", root, root->numValue); break;
@@ -695,13 +709,13 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 			}
 			case charType: fprintf (fp, "Label%p[label=\"'%c'\"]\n", root, root->charValue); break;
 			default:
-				fprintf(stderr, "%sUnhandled type '%s' in print_ast_graph%s", TERMRED, astTypeText[root->type], TERMRESET);
+				fprintf(stderr, "%sUnhandled type '%s' in print_ast_graph%s", TERMRED, astKindText[root->type.kind], TERMRESET);
 				exit(1);
 		}
 		return;
 	}
 
-	fprintf (fp, "Label%p[shape=diamond label=\"%s\\n", root, astKindText[root->kind]);
+	fprintf (fp, "Label%p[shape=diamond label=\"%s\\n", root, astSyntaxKindText[root->kind]);
 	#define ENDLABEL fprintf (fp, "\"]\n");
 
 	switch(root->kind) {
@@ -790,10 +804,10 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 	case forLoopKind: {
 		forLoopAst *fn = (forLoopAst*)root->data;
 
-		fprintf (fp, "%s %s", fn->value->name, astTypeText[fn->value->type]);
+		fprintf (fp, "%s %s", fn->value->name, astKindText[fn->value->type.kind]);
 
 		if (fn->index != 0) {
-			fprintf (fp, "\\n%s %s", fn->index->name, astTypeText[fn->index->type]);
+			fprintf (fp, "\\n%s %s", fn->index->name, astKindText[fn->index->type.kind]);
 		}
 		ENDLABEL
 		print_ast_graph_internal(text, &fn->range, fp, false);
@@ -804,7 +818,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 	}
 	case rangeExpressionKind: {
 		rangeExpressionAst rn = *(rangeExpressionAst*)root->data;
-		if (root->type == intType) printf ("%d..%d", rn.fromInt, rn.toInt);
+		if (root->type.kind == intType) printf ("%d..%d", rn.fromInt, rn.toInt);
 		else printf ("'%c'..'%c'", rn.fromChar, rn.toChar);
 		ENDLABEL
 		break;
@@ -846,7 +860,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		astNode *en = (astNode*)root->data;
 
 
-		fprintf(fp, "cast<%s>", astTypeText[root->type]);
+		fprintf(fp, "cast<%s>", astKindText[root->type.kind]);
 		ENDLABEL
 		fprintf (fp, "Label%p -> Label%p\n", root, en);
 		print_ast_graph_internal(text, en, fp, false);
@@ -865,12 +879,12 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		astSymbol *vn = (astSymbol*)root->data;
 		functionSymbolData *fd = vn->functionData;
 
-		fprintf (fp, "%s ", astTypeText[vn->type]);
+		fprintf (fp, "%s ", astKindText[vn->type.kind]);
 
 		printfSymbolReference(fp, vn, ".");
 		fprintf (fp, "(");
 		for (int i=0;i<fd->parameterCount;i++) {
-			printf (" %s: %s", fd->parameters[i]->name, astTypeText[fd->parameters[i]->type]);
+			printf (" %s: %s", fd->parameters[i]->name, astKindText[fd->parameters[i]->type.kind]);
 		}
 		fprintf(fp, ")");
 		ENDLABEL
@@ -881,7 +895,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 	case variableDeclarationKind: {
 		variableDeclarationAst *vn = (variableDeclarationAst*)root->data;
 
-		printf ("%s %s (%s)", vn->variable->name, astTypeText[vn->variable->type], (vn->variable->flags & VARIABLE_MUTABLE) ? "mutable" : "constant");
+		printf ("%s %s (%s)", vn->variable->name, astKindText[vn->variable->type.kind], (vn->variable->flags & VARIABLE_MUTABLE) ? "mutable" : "constant");
 		if (vn->initalizer.kind != 0) {
 			ENDLABEL
 			print_ast_graph_internal(text, &vn->initalizer, fp, false);
@@ -896,7 +910,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 	case variableAssignmentKind: {
 		variableAssignmentAst *va = (variableAssignmentAst*)root->data;
 
-		fprintf (fp, "%s %s (%s)", va->variable->name, astTypeText[va->variable->type], va->compoundOperator?astBinaryText[va->compoundOperator]:"equals");
+		fprintf (fp, "%s %s (%s)", va->variable->name, astKindText[va->variable->type.kind], va->compoundOperator?astBinaryText[va->compoundOperator]:"equals");
 		ENDLABEL
 		print_ast_graph_internal(text, &va->expression, fp, false);
 		fprintf (fp, "Label%p -> Label%p\n", root, &va->expression);
@@ -905,12 +919,12 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 	case variableReferenceKind: {
 		astSymbol *vs = (astSymbol*)root->data;
 		printfSymbolReference(fp, vs, ".");
-		fprintf(fp, "%s", astTypeText[vs->type]);
+		fprintf(fp, "%s", astKindText[vs->type.kind]);
 		ENDLABEL
 		break;
 	}
 	default: {
-		fprintf(stderr, "%sERROR: Unhandled case in print_ast for kind %s%s", TERMRED, astKindText[root->kind], TERMRESET);
+		fprintf(stderr, "%sERROR: Unhandled case in print_ast for kind %s%s", TERMRED, astSyntaxKindText[root->kind], TERMRESET);
 		exit(1);
 		break;
 	}

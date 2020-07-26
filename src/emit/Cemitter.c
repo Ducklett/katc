@@ -20,17 +20,17 @@ static inline void emit_c_variableReference(astNode *n, ast *tree);
 char* escape_string_c(char *str);
 
 int c_indent=0;
-enum astKind kindStack[128];
+enum astSyntaxKind kindStack[128];
 u8 kindIndex = 0;
-enum astKind parentKind;
+enum astSyntaxKind parentKind;
 
-enum astKind needs_indent(enum astKind k) {
+enum astSyntaxKind needs_indent(enum astSyntaxKind k) {
 	return (
 		k == blockStatementKind ||
 		k == caseStatementKind  );
 }
 
-enum astKind needs_semicolon(enum astKind k) {
+enum astSyntaxKind needs_semicolon(enum astSyntaxKind k) {
 	return !(
 		k == blockStatementKind ||
 		k == forLoopKind        ||
@@ -38,7 +38,7 @@ enum astKind needs_semicolon(enum astKind k) {
 		k == ifStatementKind    ||
 		k == caseStatementKind  );
 }
-inline static void kindStack_push(enum astKind k) {
+inline static void kindStack_push(enum astSyntaxKind k) {
 	kindStack[++kindIndex] = k;
 	parentKind = kindStack[kindIndex-1];
 
@@ -146,7 +146,7 @@ void emit_c_node(astNode *n, ast *tree) {
 	case variableAssignmentKind: emit_c_variableAssignment(n, tree); break;
 	case variableReferenceKind: emit_c_variableReference(n, tree); break;
 	default:
-		fprintf(stderr, "%sUnhandled node of type %s in c emitter%s", TERMRED, astKindText[n->kind], TERMRESET);
+		fprintf(stderr, "%sUnhandled node of type %s in c emitter%s", TERMRED, astSyntaxKindText[n->kind], TERMRESET);
 		exit(1);
 	}
 	kindStack_pop();
@@ -164,7 +164,7 @@ void emit_c_file(astNode *n, ast *tree) {
 static inline void emit_c_functions_in_block(astNode *n, ast *tree, bool isNamespace) {
 	blockStatementAst bn = *(blockStatementAst*)n->data;
 	for (int i= 0; i < bn.statementsCount; i++) {
-		enum astKind kind = bn.statements[i].kind;
+		enum astSyntaxKind kind = bn.statements[i].kind;
 		if (kind == namespaceDeclarationKind) {
 			astNode *b = &((namespaceAst*)bn.statements[i].data)->block;
 			emit_c_functions_in_block(b, tree, true);
@@ -190,11 +190,11 @@ static inline void emit_c_function(astNode *n, ast *tree) {
 		fprintf(fp,"\n");
 	}
 
-	fprintf(fp,"%*s%s ", c_indent, "", cTypeText[vn->type]);
+	fprintf(fp,"%*s%s ", c_indent, "", cTypeText[vn->type.kind]);
 	printfSymbolReference(fp, vn, "_");
 	fprintf(fp,"(");
 	for (int i=0;i<fd->parameterCount;i++) {
-		fprintf (fp, "%s %s%s", cTypeText[fd->parameters[i]->type], fd->parameters[i]->name, i == fd->parameterCount-1?"":", ");
+		fprintf (fp, "%s %s%s", cTypeText[fd->parameters[i]->type.kind], fd->parameters[i]->name, i == fd->parameterCount-1?"":", ");
 	}
 	fprintf(fp, ") ");
 
@@ -205,7 +205,7 @@ static inline void emit_c_blockStatement(astNode *n, ast *tree) {
 	fprintf(fp,"%*s{\n", c_indent-4, "");
 	blockStatementAst bn = *(blockStatementAst*)n->data;
 	for (int i= 0; i < bn.statementsCount; i++) {
-		enum astKind kind = bn.statements[i].kind;
+		enum astSyntaxKind kind = bn.statements[i].kind;
 		if (kind == functionDeclarationKind || kind == namespaceDeclarationKind) continue;
 		fprintf(fp,"%*s", c_indent, "");
 		emit_c_node(bn.statements + i, tree);
@@ -265,7 +265,7 @@ static inline void emit_c_switchStatement(astNode *n, ast *tree) {
 			if (cb.condition.kind == rangeExpressionKind) {
 				rangeExpressionAst rn = *(rangeExpressionAst*)cb.condition.data;
 				for (int i=rn.fromInt; i <= rn.toInt; i++) {
-					if (cb.condition.type == charType) fprintf(fp,"%*scase '%c': ",c_indent,"", i);
+					if (cb.condition.type.kind == charType) fprintf(fp,"%*scase '%c': ",c_indent,"", i);
 					else fprintf(fp,"%*scase %d: ", c_indent, "", i);
 				}
 				fprintf(fp,"\n");
@@ -300,7 +300,7 @@ static inline void emit_c_forLoop(astNode *n, ast *tree) {
 
 		fprintf(fp,"for (");
 		// int x = 1; 
-		fprintf(fp,"%s %s = %d; ", cTypeText[fn.value->type], fn.value->name, rn.fromInt);
+		fprintf(fp,"%s %s = %d; ", cTypeText[fn.value->type.kind], fn.value->name, rn.fromInt);
 		// x <= 100
 		fprintf(fp,"%s %s %d; ", fn.value->name, compOp, rn.toInt);
 		// x++
@@ -315,8 +315,8 @@ static inline void emit_c_forLoop(astNode *n, ast *tree) {
 		kindStack_push(blockStatementKind);
 
 		fprintf(fp,"%*s", c_indent, "");
-		if (rn.toInt > rn.fromInt) fprintf(fp,"%s %s = i + %d;\n", cTypeText[fn.value->type], fn.value->name, rn.fromInt);
-		else fprintf(fp,"%s %s = %d - i;\n",cTypeText[fn.value->type], fn.value->name, rn.fromInt);
+		if (rn.toInt > rn.fromInt) fprintf(fp,"%s %s = i + %d;\n", cTypeText[fn.value->type.kind], fn.value->name, rn.fromInt);
+		else fprintf(fp,"%s %s = %d - i;\n",cTypeText[fn.value->type.kind], fn.value->name, rn.fromInt);
 
 		if (fn.block.kind != blockStatementKind) fprintf(fp,"%*s", c_indent, "");
 		emit_c_node(&fn.block, tree);
@@ -328,7 +328,7 @@ static inline void emit_c_forLoop(astNode *n, ast *tree) {
 }
 
 static inline void emit_c_literal(astNode *n, ast *tree) {
-	switch (n->type) {
+	switch (n->type.kind) {
 	case u8Type: case u16Type: case u32Type: case u64Type: case i8Type: case i16Type: case i32Type: case i64Type:
 	case intType: fprintf(fp,"%d", n->numValue); break;
 	case boolType: fprintf(fp,"%s", n->boolValue ? "1" : "0"); break;
@@ -339,7 +339,7 @@ static inline void emit_c_literal(astNode *n, ast *tree) {
 	}
 	case charType: fprintf(fp,"'%c'", n->charValue); break;
 	default:
-		fprintf(stderr,"%sUnhandled type %s in c emitter%s", TERMRED, astTypeText[n->type], TERMRESET);
+		fprintf(stderr,"%sUnhandled type %s in c emitter%s", TERMRED, astKindText[n->type.kind], TERMRESET);
 		exit(1);
 	}
 }
@@ -379,7 +379,7 @@ static inline void emit_c_callExpression(astNode *n, ast *tree) {
 
 	for (int i= 0; i < cn->argumentCount; i++) {
 		emit_c_node(cn->arguments + i, tree);
-		if (cn->arguments[i].type == boolType) fprintf(fp, " ? \"true\" : \"false\"");
+		if (cn->arguments[i].type.kind == boolType) fprintf(fp, " ? \"true\" : \"false\"");
 		if (i != cn->argumentCount-1) fprintf(fp,", ");
 	}
 	fprintf(fp,")");
@@ -387,7 +387,7 @@ static inline void emit_c_callExpression(astNode *n, ast *tree) {
 
 static inline void emit_c_castExpression(astNode *n, ast *tree) {
 	astNode cn = *(astNode*)n->data;
-	fprintf(fp,"((%s)", cTypeText[n->type]);
+	fprintf(fp,"((%s)", cTypeText[n->type.kind]);
 	emit_c_node(&cn, tree);
 	fprintf(fp,")");
 }
@@ -396,7 +396,7 @@ static inline void emit_c_variableDeclaration(astNode *n, ast *tree) {
 
 	variableDeclarationAst *dn = (variableDeclarationAst*)n->data;
 
-	fprintf(fp,"%s ", cTypeText[dn->variable->type]);
+	fprintf(fp,"%s ", cTypeText[dn->variable->type.kind]);
 	printfSymbolReference(fp, dn->variable, "_");
 
 	if (dn->initalizer.kind != missingKind) {

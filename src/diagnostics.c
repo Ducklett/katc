@@ -75,7 +75,7 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		case variableMustHaveTypeInCurrentContextDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
 		case illegalRangeDiagnostic:
-			fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param1], d.span.start, d.span.length); break;
+			fprintf(stderr, diagnosticText[d.kind], astKindText[d.param1], d.span.start, d.span.length); break;
 		case illegalPrimaryExpressionDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], d.span.start, d.span.length); break;
 		case illegalIncrementOrDecrementDiagnostic:
@@ -85,11 +85,11 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		case nonConstantDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
 		case valueOutOfBoundsDiagnostic:
-			fprintf(stderr, diagnosticText[d.kind], d.param2 ? "big" : "small", astTypeText[d.param1], d.param2 ? "overflow" : "underflow", d.span.start, d.span.length); break;
+			fprintf(stderr, diagnosticText[d.kind], d.param2 ? "big" : "small", astKindText[d.param1], d.param2 ? "overflow" : "underflow", d.span.start, d.span.length); break;
 		case undefinedUnaryOperatorDiagnostic:
-			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
+			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], astKindText[d.param2], d.span.start, d.span.length); break;
 		case undefinedBinaryOperatorDiagnostic:
-			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], astTypeText[d.param2], astTypeText[d.param3], d.span.start, d.span.length); break;
+			fprintf(stderr, diagnosticText[d.kind], syntaxKindText[d.param1], astKindText[d.param2], astKindText[d.param3], d.span.start, d.span.length); break;
 		case variableNotInitializedDiagnostic:
 			fprintf(stderr, diagnosticText[d.kind], d.param1, d.span.start, d.span.length); break;
 		case redeclarationOfSymbolDiagnostic:
@@ -101,7 +101,7 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		} break;
 		case cannotAssignDiagnostic: {
 			char* identifierText = ast_substring(sourceText, d.span, NULL);
-			fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param2], identifierText, astTypeText[d.param1], d.span.start, d.span.length);
+			fprintf(stderr, diagnosticText[d.kind], astKindText[d.param2], identifierText, astKindText[d.param1], d.span.start, d.span.length);
 			free(identifierText);
 		} break;
 		case cannotAssignConstantDiagnostic: {
@@ -121,9 +121,9 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		} break;
 		case emptyCaseStatementDiagnostic: fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
 		case oneArgumentCastDiagnostic: fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
-		case illegalCastDiagnostic: fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
-		case illegalImplicitCastDiagnostic: fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param1], astTypeText[d.param2], d.span.start, d.span.length); break;
-		case invalidSwitchTypeDiagnostic: fprintf(stderr, diagnosticText[d.kind], astTypeText[d.param1], d.span.start, d.span.length); break;
+		case illegalCastDiagnostic: fprintf(stderr, diagnosticText[d.kind], astKindText[d.param1], astKindText[d.param2], d.span.start, d.span.length); break;
+		case illegalImplicitCastDiagnostic: fprintf(stderr, diagnosticText[d.kind], astKindText[d.param1], astKindText[d.param2], d.span.start, d.span.length); break;
+		case invalidSwitchTypeDiagnostic: fprintf(stderr, diagnosticText[d.kind], astKindText[d.param1], d.span.start, d.span.length); break;
 		case duplicateSwitchValueDiagnostic: fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
 		case argCountDoensntMatchDiagnostic: fprintf(stderr, diagnosticText[d.kind], d.param1, d.span.start, d.span.length); break;
 		default: {

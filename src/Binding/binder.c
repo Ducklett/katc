@@ -5,13 +5,13 @@
 
 astNode bind_expression(node *n, ast *tree);
 astNode bind_expression_internal(node *n, ast* tree);
-astNode bind_expression_of_type(node *n, ast *tree, enum astType expectedType, textspan errorSpan);
+astNode bind_expression_of_type(node *n, ast *tree, astType expectedType, textspan errorSpan);
 astNode bind_variable_reference(node *n, ast *tree, scope *variableScope);
 astNode bind_block_statement(node *n, ast *tree, scope *withScope);
 astNode bind_if_statement(node *n, ast *tree);
 astNode bind_case_branch(node *n, ast *tree);
 astNode bind_case_statement(node *n, ast *tree);
-astNode bind_switch_branch(node *n, ast *tree, enum astType caseType);
+astNode bind_switch_branch(node *n, ast *tree, astType caseType);
 astNode bind_switch_statement(node *n, ast *tree);
 astNode bind_range_expression(node *n, ast *tree);
 astNode bind_while_loop(node *n, ast *tree);
@@ -33,14 +33,14 @@ astSymbol* find_symbol_in_scope_internal(textspan nameSpan, ast *tree, scope *cu
 astNode resolve_symbol_reference(node *n, ast *tree);
 astSymbol* declare_namespace(ast *tree, node *n, u8 flags);
 astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, node *body, astSymbol **parameters, u16 parameterCount, scope *functionScope);
-astSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableType, u8 flags);
+astSymbol* declare_variable(ast *tree, textspan nameSpan, astType variableType, u8 flags);
 astSymbol* find_function_in_scope(textspan nameSpan, ast *tree, scope *currentScope, bool recurse);
 astSymbol* find_variable_in_scope(textspan nameSpan, ast *tree, scope *currentScope);
 astNode fold_binary_expression(typedOperator *op, int left, int right);
 astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand);
-astNode fold_cast_expression(enum astType from, enum astType to, i64 value);
+astNode fold_cast_expression(astType from, astType to, i64 value);
 bool check_bounds(astNode n, diagnosticContainer *d, textspan span);
-astNode cast_expression(node *n, ast *tree, enum astType toType, bool isExplicit);
+astNode cast_expression(node *n, ast *tree, astType toType, bool isExplicit);
 
 int bind_tree(ast* tree, node *root) {
 
@@ -50,20 +50,20 @@ int bind_tree(ast* tree, node *root) {
 	return tree->diagnostics.index == 0;
 }
 
-astNode bind_expression_of_type(node *n, ast* tree, enum astType expectedType, textspan errorSpan) {
+astNode bind_expression_of_type(node *n, ast* tree, astType expectedType, textspan errorSpan) {
 
 	astNode outNode = cast_expression(n, tree, expectedType, /*isExplicit:*/ false);
 
-	if (outNode.type != errorType && outNode.kind == literalKind) {
+	if (outNode.type.kind != errorType && outNode.kind == literalKind) {
 		if (!check_bounds(outNode, &tree->diagnostics, n->span)) {
-			outNode.type = errorType;
+			outNode.type = primitive_type_from_kind(errorType);
 		}
 	}
 
 	return outNode;
 }
 
-astNode bind_expression(node *n, ast* tree) { return bind_expression_of_type(n, tree, 0, n->span); }
+astNode bind_expression(node *n, ast* tree) { return bind_expression_of_type(n, tree, (astType){0}, n->span); }
 astNode bind_expression_internal(node *n, ast* tree) {
 	switch(n->kind) {
 		case fileStatement:
@@ -77,15 +77,15 @@ astNode bind_expression_internal(node *n, ast* tree) {
 		case functionDeclaration: return bind_function_declaration(n, tree);
 		case namespaceDeclaration: return bind_namespace_declaration(n, tree);
 
-		case breakKeyword: return (astNode){ breakKind, voidType, .data = 0 };
-		case continueKeyword: return (astNode){ continueKind, voidType, .data = 0 };
+		case breakKeyword: return (astNode){ breakKind, primitive_type_from_kind(voidType), .data = 0 };
+		case continueKeyword: return (astNode){ continueKind, primitive_type_from_kind(voidType), .data = 0 };
 
 		case falseKeyword:
-		case trueKeyword: return (astNode){ literalKind, boolType, .boolValue = n->boolValue };
+		case trueKeyword: return (astNode){ literalKind, primitive_type_from_kind(boolType), .boolValue = n->boolValue };
 
-		case numberLiteral: return (astNode){ literalKind, intType, .numValue = n->numValue };
-		case stringLiteral: return (astNode){ literalKind, stringType, .stringValue = n->stringValue };
-		case charLiteral: return (astNode){ literalKind, charType, .charValue = n->charValue };
+		case numberLiteral: return (astNode){ literalKind, primitive_type_from_kind(intType), .numValue = n->numValue };
+		case stringLiteral: return (astNode){ literalKind, primitive_type_from_kind(stringType), .stringValue = n->stringValue };
+		case charLiteral: return (astNode){ literalKind, primitive_type_from_kind(charType), .charValue = n->charValue };
 		
 		case parenthesizedExpression: return bind_expression(&((parenthesizedExpressionNode*)n->data)->expression, tree);
 
@@ -115,7 +115,7 @@ astNode bind_variable_reference(node *n, ast *tree, scope *variableScope) {
 		!hasErrors &&
 		!(variable->flags & VARIABLE_MUTABLE) &&
 		(variable->flags & VARIABLE_VALUE_KNOWN)) {
-		if (variable->type == stringType)
+		if (variable->type.kind == stringType)
 			return (astNode){ literalKind, variable->type, .stringValue = variable->stringValue };
 		else return (astNode){ literalKind, variable->type, .numValue = variable->numValue };
 	}
@@ -151,14 +151,14 @@ astNode bind_block_statement(node *n, ast *tree, scope *withScope) {
 
 	sb_free(boundStatements);
 
-	return (astNode){ n->kind == blockStatement ? blockStatementKind : fileStatementKind, voidType, .data = blockNode };
+	return (astNode){ n->kind == blockStatement ? blockStatementKind : fileStatementKind, primitive_type_from_kind(voidType), .data = blockNode };
 }
 
 astNode bind_if_statement(node *n, ast *tree) {
 
 	ifStatementNode in = *(ifStatementNode*)n->data;
 
-	astNode boundCondition = bind_expression_of_type(&in.condition, tree, boolType, in.condition.span);
+	astNode boundCondition = bind_expression_of_type(&in.condition, tree, primitive_type_from_kind(boolType), in.condition.span);
 	astNode boundthen = bind_expression(&in.thenExpression, tree);
 	astNode boundElse = in.elseExpression.kind == 0
 		? (astNode){0}
@@ -168,7 +168,8 @@ astNode bind_if_statement(node *n, ast *tree) {
 	ifStatementAst *ifNode = arena_malloc(binder_arena, sizeof(ifStatementAst));
 	*ifNode = (ifStatementAst){ boundCondition, boundthen, boundElse }; 
 
-	enum astType ifType = boundthen.type == boundElse.type ? boundthen.type : voidType;
+	// TODO: better equality check to also accounts for enums
+	astType ifType = boundthen.type.kind == boundElse.type.kind ? boundthen.type : primitive_type_from_kind(voidType);
 
 	return (astNode){ ifStatementKind, ifType, .data = ifNode };
 }
@@ -178,7 +179,7 @@ astNode bind_case_branch(node *n, ast *tree) {
 
 	astNode boundCondition = cn.condition.kind == defaultKeyword
 		? (astNode){0}
-		: bind_expression_of_type(&cn.condition, tree, boolType, cn.condition.span);
+		: bind_expression_of_type(&cn.condition, tree, primitive_type_from_kind(boolType), cn.condition.span);
 
 	astNode boundthen = bind_expression(&cn.thenExpression, tree);
 
@@ -196,12 +197,12 @@ astNode bind_case_statement(node *n, ast *tree) {
 
 	scope *parentScope = push_scope(tree);
 
-	enum astType caseType;
+	astType caseType;
 
 	for (int i = 0; i < cn.branchCount; i++) {
 		sb_push(boundBranches, bind_case_branch(&cn.branches[i], tree));
 		if (i == 0) caseType = boundBranches[i].type;
-		else if (caseType != boundBranches[i].type) caseType = voidType;
+		else if (caseType.kind != boundBranches[i].type.kind) caseType = primitive_type_from_kind(voidType);
 	}
 	
 	pop_scope(tree, parentScope);
@@ -223,16 +224,16 @@ astNode bind_case_statement(node *n, ast *tree) {
 	return (astNode){ caseStatementKind, caseType, .data = caseNode, };
 }
 
-astNode bind_switch_branch(node *n, ast *tree, enum astType caseType) {
+astNode bind_switch_branch(node *n, ast *tree, astType caseType) {
 	switchBranchNode cn = *(switchBranchNode*)n->data;
 
 	astNode boundCondition = cn.condition.kind == 0
 		? (astNode){0}
 		: bind_expression_of_type(&cn.condition, tree, caseType, cn.condition.span);
 
-	if (boundCondition.kind != rangeExpressionKind && boundCondition.kind != literalKind && boundCondition.type > 2) {
+	if (boundCondition.kind != rangeExpressionKind && boundCondition.kind != literalKind && boundCondition.type.kind > 2) {
 		report_diagnostic(&tree->diagnostics, nonConstantDiagnostic, cn.condition.span, 0, 0, 0);
-		boundCondition.type = errorType;
+		boundCondition.type = primitive_type_from_kind(errorType);
 	} 
 
 	astNode boundthen = bind_expression(&cn.thenExpression, tree);
@@ -252,13 +253,13 @@ astNode bind_switch_statement(node *n, ast *tree) {
 
 	astNode boundTarget = bind_expression(&cn.targetExpression, tree);
 
-	if (boundTarget.type == stringType || boundTarget.type == boolType) {
-		report_diagnostic(&tree->diagnostics, invalidSwitchTypeDiagnostic, cn.targetExpression.span, boundTarget.type, 0, 0);
+	if (boundTarget.type.kind == stringType || boundTarget.type.kind == boolType) {
+		report_diagnostic(&tree->diagnostics, invalidSwitchTypeDiagnostic, cn.targetExpression.span, boundTarget.type.kind, 0, 0);
 	}
 
 	scope *parentScope = push_scope(tree);
 
-	enum astType caseType = boundTarget.type;
+	astType caseType = boundTarget.type;
 
 	for (int i = 0; i < cn.branchCount; i++) {
 		astNode bn = bind_switch_branch(&cn.branches[i], tree, caseType);
@@ -313,13 +314,13 @@ astNode bind_while_loop(node *n, ast *tree) {
 
 	whileLoopNode wn = *(whileLoopNode*)n->data;
 
-	astNode boundCondition = bind_expression_of_type(&wn.condition, tree, boolType, wn.condition.span);
+	astNode boundCondition = bind_expression_of_type(&wn.condition, tree, primitive_type_from_kind(boolType), wn.condition.span);
 	astNode boundBlock = bind_expression(&wn.block, tree);
 
 	whileLoopAst *whileNode = arena_malloc(binder_arena, sizeof(whileLoopAst));
 	*whileNode = (whileLoopAst){ boundCondition, boundBlock };
 
-	return (astNode){ whileLoopKind, voidType, .data = whileNode };
+	return (astNode){ whileLoopKind, primitive_type_from_kind(voidType), .data = whileNode };
 }
 
 astNode bind_range_expression(node *n, ast *tree) {
@@ -327,15 +328,15 @@ astNode bind_range_expression(node *n, ast *tree) {
 
 	astNode from = bind_expression(&rn.start, tree);
 
-	enum astType type = from.type;
+	astType type = from.type;
 
 	if (from.kind != literalKind) {
 		report_diagnostic(&tree->diagnostics, nonConstantDiagnostic, rn.start.span, 0, 0, 0);
 	}
 
 
-	if (!isNumberType(type) && type != charType ) {
-		report_diagnostic(&tree->diagnostics, illegalRangeDiagnostic, rn.start.span, type, 0, 0);
+	if (!isNumberType(type.kind) && type.kind != charType ) {
+		report_diagnostic(&tree->diagnostics, illegalRangeDiagnostic, rn.start.span, type.kind, 0, 0);
 	}
 
 	astNode to = bind_expression_of_type(&rn.end, tree, type, rn.end.span);
@@ -346,7 +347,7 @@ astNode bind_range_expression(node *n, ast *tree) {
 
 	rangeExpressionAst *rangeNode = arena_malloc(binder_arena, sizeof(rangeExpressionAst));
 
-	if (type == intType) {
+	if (type.kind == intType) {
 		*rangeNode = (rangeExpressionAst){ .fromInt = from.numValue, .toInt = to.numValue };
 	} else {
 		*rangeNode = (rangeExpressionAst){ .fromChar = from.charValue, .toChar = to.charValue };
@@ -363,13 +364,13 @@ astNode bind_for_loop(node *n, ast *tree) {
 
 	u8 flags = VARIABLE_MUTABLE | VARIABLE_INITIALIZED;
 	astSymbol *valueVar = declare_variable(tree, fn.value.span, range.type, flags);
-	astSymbol *keyVar = fn.key.kind == 0 ? 0 : declare_variable(tree, fn.key.span, intType, flags);
+	astSymbol *keyVar = fn.key.kind == 0 ? 0 : declare_variable(tree, fn.key.span, primitive_type_from_kind(intType), flags);
 	astNode boundBlock = bind_expression(&fn.block, tree);
 
 	forLoopAst *forNode = arena_malloc(binder_arena, sizeof(forLoopAst));
 	*forNode = (forLoopAst){ valueVar, keyVar, range, boundBlock };
 
-	return (astNode){ forLoopKind, voidType, .data = forNode };
+	return (astNode){ forLoopKind, primitive_type_from_kind(voidType), .data = forNode };
 }
 
 astNode bind_function_declaration(node *n, ast *tree) {
@@ -390,7 +391,7 @@ astNode bind_function_declaration(node *n, ast *tree) {
 
 	for (int i=0;i<fn.parameterCount;i+=2) {
 		typedIdentifierNode id = *(typedIdentifierNode*)fn.parameters[i].data;
-		astSymbol *param = declare_variable(tree, id.identifier.span, resolve_type_from_span(tree, id.type.span), VARIABLE_INITIALIZED);
+		astSymbol *param = declare_variable(tree, id.identifier.span, primitive_type_from_kind(resolve_primitive_type_from_span(tree, id.type.span)), VARIABLE_INITIALIZED);
 		if (param == NULL) {
 			hasErrors = true;
 			goto end;
@@ -408,7 +409,7 @@ astNode bind_function_declaration(node *n, ast *tree) {
 
 	astSymbol *function = declare_function(tree, fn.identifier.span, flags, hasErrors?NULL:&fn.body, nodesStorage, nodesCount, functionScope);
 
-	return (astNode){ functionDeclarationKind , voidType, .data = function };
+	return (astNode){ functionDeclarationKind , primitive_type_from_kind(voidType), .data = function };
 }
 
 astNode bind_namespace_declaration(node *n, ast *tree) {
@@ -426,7 +427,7 @@ astNode bind_namespace_declaration(node *n, ast *tree) {
 
 	tree->currentNamespace = parentNamespace;
 
-	return (astNode){ namespaceDeclarationKind , voidType, .data = ns };
+	return (astNode){ namespaceDeclarationKind , primitive_type_from_kind(voidType), .data = ns };
 }
 
 astNode bind_unary_expression(node *n, ast *tree) {
@@ -434,7 +435,7 @@ astNode bind_unary_expression(node *n, ast *tree) {
 
 	astNode boundOperand = bind_expression(&un.operand, tree);
 
-	bool hasErrors = boundOperand.type == errorType || boundOperand.type == unresolvedType;
+	bool hasErrors = boundOperand.type.kind == errorType || boundOperand.type.kind == unresolvedType;
 
 	if (un.operator.kind == plusPlusOperator || un.operator.kind == minusMinusOperator) {
 		if (boundOperand.kind != variableReferenceKind) {
@@ -443,11 +444,11 @@ astNode bind_unary_expression(node *n, ast *tree) {
 		}
 	}
 
-	enum astUnaryOperator op = get_unary_operator(un.operator.kind, boundOperand.type, un.left);
+	enum astUnaryOperator op = get_unary_operator(un.operator.kind, boundOperand.type.kind, un.left);
 
 	if (!op) {
 		hasErrors=true;
-		report_diagnostic(&tree->diagnostics, undefinedUnaryOperatorDiagnostic, un.operator.span, un.operator.kind, boundOperand.type, 0);
+		report_diagnostic(&tree->diagnostics, undefinedUnaryOperatorDiagnostic, un.operator.span, un.operator.kind, boundOperand.type.kind, 0);
 	}
 
 	if (!hasErrors && feature_constantfolding && boundOperand.kind == literalKind) {
@@ -471,11 +472,11 @@ astNode bind_binary_expression(node *n, ast *tree) {
 	typedOperator op = get_binary_operator(bn.operator.kind, boundLeft.type, boundRight.type);
 
 	// silence errors if the problem lies elsewhere
-	bool hasErrors = boundLeft.type == errorType || boundLeft.type == unresolvedType ||
-					boundRight.type == errorType || boundRight.type == unresolvedType;
+	bool hasErrors = boundLeft.type.kind == errorType || boundLeft.type.kind == unresolvedType ||
+					boundRight.type.kind == errorType || boundRight.type.kind == unresolvedType;
 
 	if (!op.operator && !hasErrors) {
-		report_diagnostic(&tree->diagnostics, undefinedBinaryOperatorDiagnostic, n->span, bn.operator.kind, boundLeft.type, boundRight.type);
+		report_diagnostic(&tree->diagnostics, undefinedBinaryOperatorDiagnostic, n->span, bn.operator.kind, boundLeft.type.kind, boundRight.type.kind);
 		hasErrors = true;
 	}
 
@@ -492,9 +493,11 @@ astNode bind_binary_expression(node *n, ast *tree) {
 astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 	functionCallNode cn = *(functionCallNode*)n->data;
 
+	// this matches primitive types
+	// TODO: also match enum types
 	u8 cast = 0;
 	for (int i=0;i<=charType;i++) {
-		if (span_compare(tree->text, cn.identifier.span, astTypeText[i])) {
+		if (span_compare(tree->text, cn.identifier.span, astKindText[i])) {
 			cast = i;
 			break;
 		}
@@ -507,10 +510,10 @@ astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 				:  textspan_from_bounds(&cn.arguments[1], &cn.arguments[cn.argumentCount-1]);
 
 			report_diagnostic(&tree->diagnostics, oneArgumentCastDiagnostic, errSpan, 0, 0, 0);
-			return (astNode){ castExpressionKind, errorType, .data = 0 };
+			return (astNode){ castExpressionKind, primitive_type_from_kind(errorType), .data = 0 };
 		}
 
-		return cast_expression(&cn.arguments[0], tree, cast, true);
+		return cast_expression(&cn.arguments[0], tree, primitive_type_from_kind(cast), true);
 	}
 
 	astSymbol *function = functionScope == NULL
@@ -519,7 +522,7 @@ astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 
 	callExpressionAst *callNode = NULL;
 
-	bool hasErrors = function == NULL || function->type == errorType;
+	bool hasErrors = function == NULL || function->type.kind == errorType;
 
 	if (hasErrors) goto end;
 
@@ -541,7 +544,7 @@ astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 	for (int i=0;i<cn.argumentCount;i+=2) {
 		if (isPrint) {
 			if (i==0) {
-				sb_push(arguments, bind_expression_of_type(&cn.arguments[i], tree, stringType, cn.arguments[i].span));
+				sb_push(arguments, bind_expression_of_type(&cn.arguments[i], tree, primitive_type_from_kind(stringType), cn.arguments[i].span));
 			} else {
 				sb_push(arguments, bind_expression(&cn.arguments[i], tree));
 			}
@@ -562,29 +565,29 @@ astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 
 	end:;
 
-	return (astNode){ callExpressionKind , voidType, .data = callNode };
+	return (astNode){ callExpressionKind , primitive_type_from_kind(voidType), .data = callNode };
 }
 
-astNode cast_expression(node *n, ast *tree, enum astType toType, bool isExplicit) {
+astNode cast_expression(node *n, ast *tree, astType toType, bool isExplicit) {
 	astNode bn = bind_expression_internal(n, tree);
 
-	bool hasErrors = bn.type == errorType;
+	bool hasErrors = bn.type.kind == errorType;
 
-	u8 castType = getCastInformation(bn.type, toType);
+	u8 castKind = getCastInformation(bn.type, toType);
 
-	if (hasErrors || castType == CAST_IDENTITY || toType <= 2) return bn;
+	if (hasErrors || castKind == CAST_IDENTITY || toType.kind <= 2) return bn;
 
-	if (!hasErrors && castType == CAST_ILLEGAL) {
+	if (!hasErrors && castKind == CAST_ILLEGAL) {
 		hasErrors = true;
-		report_diagnostic(&tree->diagnostics, illegalCastDiagnostic, n->span, bn.type, toType, 0);
+		report_diagnostic(&tree->diagnostics, illegalCastDiagnostic, n->span, bn.type.kind, toType.kind, 0);
 	}
 
-	if (!hasErrors && castType == CAST_EXPLICIT && !isExplicit) {
+	if (!hasErrors && castKind == CAST_EXPLICIT && !isExplicit) {
 		hasErrors = true;
-		report_diagnostic(&tree->diagnostics, illegalImplicitCastDiagnostic, n->span, bn.type, toType, 0);
+		report_diagnostic(&tree->diagnostics, illegalImplicitCastDiagnostic, n->span, bn.type.kind, toType.kind, 0);
 	}
 
-	if (hasErrors) return (astNode){ castExpressionKind, errorType, .data = 0 };
+	if (hasErrors) return (astNode){ castExpressionKind, primitive_type_from_kind(errorType), .data = 0 };
 
 	if (feature_constantfolding && bn.kind == literalKind) {
 		if (isExplicit) return fold_cast_expression(bn.type, toType, bn.numValue);
@@ -613,15 +616,15 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 	if (tree->currentNamespace == NULL || tree->currentNamespace->symbolKind == SYMBOL_NAMESPACE)
 		flags |= VARIABLE_GLOBAL;
 
-	enum astType type =  0;
-	if (vn.type.kind != 0) type = resolve_type_from_span(tree, vn.type.span);
+	astType type =  {0};
+	if (vn.type.kind != 0) type.kind = resolve_primitive_type_from_span(tree, vn.type.span);
 
 	if (hasInitializer) {
-		boundInitializer = type != 0
+		boundInitializer = type.kind != 0
 			? bind_expression_of_type(&vn.expression, tree, type, vn.expression.span)
 			: bind_expression(&vn.expression, tree);
 
-		if (type == 0) type = boundInitializer.type;
+		if (type.kind == 0) type = boundInitializer.type;
 
 		flags |= VARIABLE_INITIALIZED;
 	} else if (flags & VARIABLE_GLOBAL) {
@@ -634,7 +637,7 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 	if (variable != 0 && boundInitializer.kind == literalKind) {
 		variable->flags |= VARIABLE_VALUE_KNOWN;
 
-		if (variable->type == stringType) {
+		if (variable->type.kind == stringType) {
 			variable->stringValue = boundInitializer.stringValue;
 		} else {
 			variable->numValue = boundInitializer.numValue;
@@ -644,7 +647,7 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 	variableDeclarationAst *declNode = arena_malloc(binder_arena, sizeof(variableDeclarationAst));
 	*declNode = (variableDeclarationAst){ variable, boundInitializer };
 
-	return (astNode){ variableDeclarationKind , type, .data = declNode };
+	return (astNode){ variableDeclarationKind, type, .data = declNode };
 }
 
 astNode bind_variable_assignment(node *n, ast *tree) {
@@ -656,7 +659,7 @@ astNode bind_variable_assignment(node *n, ast *tree) {
 
 	astSymbol *variable = find_variable_in_scope(an.identifier.span, tree, NULL);
 
-	bool hasErrors = variable == 0 || boundExpression.type == errorType || boundExpression.type == unresolvedType;
+	bool hasErrors = variable == 0 || boundExpression.type.kind == errorType || boundExpression.type.kind == unresolvedType;
 
 	typedOperator op = {0};
 	if (opKind != 0 && !hasErrors) {
@@ -664,13 +667,13 @@ astNode bind_variable_assignment(node *n, ast *tree) {
 	}
 
 	if (opKind != 0 && !op.operator) {
-		report_diagnostic(&tree->diagnostics, undefinedBinaryOperatorDiagnostic, n->span, opKind, variable->type, boundExpression.type);
+		report_diagnostic(&tree->diagnostics, undefinedBinaryOperatorDiagnostic, n->span, opKind, variable->type.kind, boundExpression.type.kind);
 		hasErrors = true;
 	}
 
 	if (!hasErrors) {
-		if (opKind == 0 && variable->type != boundExpression.type) {
-			report_diagnostic(&tree->diagnostics, cannotAssignDiagnostic, an.identifier.span, variable->type, boundExpression.type, 0);
+		if (opKind == 0 && variable->type.kind != boundExpression.type.kind) {
+			report_diagnostic(&tree->diagnostics, cannotAssignDiagnostic, an.identifier.span, variable->type.kind, boundExpression.type.kind, 0);
 		} else if (!(variable->flags & VARIABLE_MUTABLE)) {
 			report_diagnostic(&tree->diagnostics, cannotAssignConstantDiagnostic, an.expression.span, (u64)&an.identifier.span, 0, 0);
 		} else if (!(variable->flags & VARIABLE_INITIALIZED)) {
@@ -736,7 +739,7 @@ void declare_builtin_function(ast *tree, char* name) {
 
 	function->symbolKind = SYMBOL_FUNCTION;
 	function->name = aName;
-	function->type = voidType;
+	function->type = primitive_type_from_kind(voidType);
 	function->flags = 0;
 	function->functionData = fd;
 }
@@ -757,14 +760,14 @@ astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, node *body, 
 
 	functionSymbolData *fd = arena_malloc(binder_arena, sizeof(functionSymbolData));
 
-	*fd = (functionSymbolData){ parameters, parameterCount, voidType, (astNode){0} };
+	*fd = (functionSymbolData){ parameters, parameterCount, primitive_type_from_kind(voidType), (astNode){0} };
 
 	function->symbolKind = SYMBOL_FUNCTION;
 
 	function->name = ast_substring(tree->text, nameSpan, string_arena);
 	function->parentNamespace = tree->currentNamespace;
 
-	function->type = body == NULL ? errorType : voidType;
+	function->type = primitive_type_from_kind(body == NULL ? errorType : voidType);
 	function->flags = flags;
 	function->functionData = fd;
 
@@ -779,8 +782,8 @@ astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, node *body, 
 	return function;
 }
 
-astSymbol* declare_variable(ast *tree, textspan nameSpan, enum astType variableType, u8 flags) {
-	if (variableType == voidType) {
+astSymbol* declare_variable(ast *tree, textspan nameSpan, astType variableType, u8 flags) {
+	if (variableType.kind == voidType) {
 		report_diagnostic(&tree->diagnostics, variableCannotBeVoidDiagnostic, nameSpan, 0, 0, 0);
 		return 0;
 	}
@@ -862,9 +865,8 @@ astNode resolve_symbol_reference(node *n, ast *tree) {
 
 	if (outScope == NULL) {
 		report_diagnostic(&tree->diagnostics, referenceToUndefinedVariableDiagnostic, deepestNamespan, 0, 0, 0);
-		return (astNode){ missingKind, errorType, .data = NULL };
+		return (astNode){ missingKind, primitive_type_from_kind(errorType), .data = NULL };
 	}
-
 
 	switch(n->kind) {
 		case callExpression: return bind_call_expression(n, tree, outScope);
@@ -903,7 +905,7 @@ astSymbol* declare_namespace(ast *tree, node *n, u8 flags) {
 			ns->symbolKind = SYMBOL_NAMESPACE;
 			ns->parentNamespace = symbol;
 			ns->name = ast_substring(tree->text, namespan, string_arena);
-			ns->type = voidType;
+			ns->type = primitive_type_from_kind(voidType);
 			ns->flags = flags;
 			ns->namespaceScope = create_scope(tree);
 			symbol = ns;
@@ -984,8 +986,9 @@ astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand) {
 	return (astNode){ literalKind , boundOperand->type, .numValue = v };
 }
 
-astNode fold_cast_expression(enum astType from, enum astType to, i64 value) {
-	switch (to) {
+astNode fold_cast_expression(astType from, astType to, i64 value) {
+	// TODO: support enum
+	switch (to.kind) {
 	case intType : value = (int )value; break;
 	case u8Type  : value = (u8  )value; break;
 	case u16Type : value = (u16 )value; break;
@@ -998,7 +1001,7 @@ astNode fold_cast_expression(enum astType from, enum astType to, i64 value) {
 	case boolType: value = (bool)value; break;
 	case charType: value = (char)value; break;
 	default:
-		fprintf(stderr, "%sUnhandled type %s in fold_cast_expression%s", TERMRED, astTypeText[to], TERMRESET);
+		fprintf(stderr, "%sUnhandled type %s in fold_cast_expression%s", TERMRED, astKindText[to.kind], TERMRESET);
 		exit(1);
 	}
 
@@ -1015,7 +1018,7 @@ bool check_bounds(astNode n, diagnosticContainer *d, textspan span) {
 	bool errored=false;
 	bool overflow=false;
 
-	switch(n.type) {
+	switch(n.type.kind) {
 		case charType: {
 			if (value > CHAR_MAX ) { errored=true; overflow=true; }
 			else if (value < CHAR_MIN) { errored=true; } } break;
@@ -1047,12 +1050,12 @@ bool check_bounds(astNode n, diagnosticContainer *d, textspan span) {
 		case boolType: break;
 
 		default:
-			fprintf(stderr, "%sUnhandled type %s in check_bounds%s", TERMRED, astTypeText[n.type], TERMRESET);
+			fprintf(stderr, "%sUnhandled type %s in check_bounds%s", TERMRED, astKindText[n.type.kind], TERMRESET);
 			exit(1);
 	}
 
 	if (errored) {
-		report_diagnostic(d, valueOutOfBoundsDiagnostic, span, n.type, overflow, 0);
+		report_diagnostic(d, valueOutOfBoundsDiagnostic, span, n.type.kind, overflow, 0);
 	}
 
 	return !errored;
