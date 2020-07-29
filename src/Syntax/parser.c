@@ -132,7 +132,7 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 				(res.kind == breakKeyword || res.kind == continueKeyword))
 					report_diagnostic(d, notAllowedInContextDiagnostic, res.span, res.kind, p->parentKind, 0); break;
 		case namespaceDeclaration:
-			if (res.kind != functionDeclaration && res.kind != variableDeclaration)
+			if (res.kind != functionDeclaration && res.kind != variableDeclaration && res.kind != enumDeclaration)
 				report_diagnostic(d, notAllowedInContextDiagnostic, res.span, res.kind, p->parentKind, 0); break;
 		case fileStatement:
 			if (res.kind == breakKeyword || res.kind == continueKeyword)

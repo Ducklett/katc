@@ -16,6 +16,7 @@ enum astSyntaxKind {
 	variableDeclarationKind,
 	variableAssignmentKind,
 	variableReferenceKind,
+	enumReferenceKind,
 	fileStatementKind,
 	blockStatementKind,
 	ifStatementKind,
@@ -45,6 +46,7 @@ static const char *astSyntaxKindText[] = {
 	"variableDeclaration",
 	"variableAssignment",
 	"variableReference",
+	"enumReference",
 	"fileStatement",
 	"blockStatement",
 	"ifStatement",
@@ -295,8 +297,9 @@ typedef struct astNode {
 #define SYMBOL_VARIABLE 1
 #define SYMBOL_FUNCTION 2
 #define SYMBOL_NAMESPACE 3
-#define SYMBOL_ENUM 3
-#define SYMBOL_ENUM_MEMBER 4
+#define SYMBOL_ENUM 4
+#define SYMBOL_ENUM_MEMBER 5
+#define SYMBOL_ANY 0xFF
 
 typedef struct functionSymbolData {
 	struct astSymbol **parameters;
@@ -687,9 +690,16 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	case variableReferenceKind: {
 		astSymbol *vs = (astSymbol*)root->data;
 
-		printf ("%*s%s%s ", indent, "", TERMMAGENTA);
+		printf ("%*s%s ", indent, "", TERMMAGENTA);
 		printfSymbolReference(stdout, vs, ".");
 		printf ("%s%s", astKindText[vs->type.kind], TERMRESET);
+		break;
+	}
+	case enumReferenceKind: {
+
+		printf ("%*s%senum ", indent, "", TERMMAGENTA);
+		printfSymbolReference(stdout, root->type.declaration->namespaceScope->symbols[root->numValue], ".");
+		printf ("%s", TERMRESET);
 		break;
 	}
 	default: {

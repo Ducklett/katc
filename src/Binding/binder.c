@@ -39,6 +39,7 @@ astSymbol* declare_enum(ast *tree, textspan nameSpan, node *enums, int enumCount
 astSymbol* declare_enum_member(ast *tree, textspan nameSpan, astSymbol *enumSymbol, u8 value);
 astSymbol* find_function_in_scope(textspan nameSpan, ast *tree, scope *currentScope, bool recurse);
 astSymbol* find_variable_in_scope(textspan nameSpan, ast *tree, scope *currentScope);
+astSymbol* find_enum_in_scope(node *n, ast *tree, scope *currentScope);
 astNode fold_binary_expression(typedOperator *op, int left, int right);
 astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand);
 astNode fold_cast_expression(astType from, astType to, i64 value);
@@ -129,7 +130,16 @@ astNode bind_variable_reference(node *n, ast *tree, scope *variableScope) {
 		report_diagnostic(&tree->diagnostics, variableNotInitializedDiagnostic, n->span, (u64)variable->name, 0, 0);
 	}
 
-	return (astNode){ variableReferenceKind, hasErrors ? errorType : variable->type, .data = variable };
+	return (astNode){ variableReferenceKind, hasErrors ? primitive_type_from_kind(errorType) : variable->type, .data = variable };
+}
+
+astNode bind_enum_reference(node *n, ast *tree, scope *enumScope) {
+
+	astSymbol *enumRef = find_enum_in_scope(n, tree, enumScope);
+
+	bool  hasErrors = enumRef == 0;
+
+	return (astNode){ enumReferenceKind,  hasErrors ? primitive_type_from_kind(errorType) : enumRef->type, .numValue = hasErrors ? 0 : enumRef->numValue };
 }
 
 astNode bind_block_statement(node *n, ast *tree, scope *withScope) {
@@ -850,11 +860,12 @@ astNode resolve_symbol_reference(node *n, ast *tree) {
 		outScope = scopesToSearch[i];
 		u8 currentDepth=0;
 		while (nSearch->kind == symbolReferenceExpression) {
-			binaryExpressionNode bn = *(binaryExpressionNode*)nSearch->data;
-			node namespace = bn.left;
+			binaryExpressionNode *bn = (binaryExpressionNode*)nSearch->data;
+			node namespace = bn->left;
 			textspan namespan = namespace.span;
 
-			astSymbol *symbol  = find_symbol_in_scope_internal(namespan, tree, outScope, SYMBOL_NAMESPACE, FLAG_NONE);
+			astSymbol *symbol  = find_symbol_in_scope_internal(namespan, tree, outScope, SYMBOL_ANY, FLAG_NONE);
+
 			if (symbol == NULL) {
 				foundInScope = false;
 				if (currentDepth > depth) {
@@ -862,8 +873,10 @@ astNode resolve_symbol_reference(node *n, ast *tree) {
 					deepestNamespan = namespan;
 				}
 				break;
+			} else if (symbol->symbolKind == SYMBOL_ENUM) {
+				nSearch->kind = enumReferenceExpression;
 			} else {
-				nSearch = &bn.right;
+				nSearch = &bn->right;
 				outScope = symbol->namespaceScope;
 				currentDepth++;
 			}
@@ -883,6 +896,7 @@ astNode resolve_symbol_reference(node *n, ast *tree) {
 	}
 
 	switch(n->kind) {
+		case enumReferenceExpression: return bind_enum_reference(n, tree, outScope);
 		case callExpression: return bind_call_expression(n, tree, outScope);
 		case identifierToken: return bind_variable_reference(n, tree, outScope);
 		default: {
@@ -984,13 +998,21 @@ astSymbol* declare_enum_member(ast *tree, textspan nameSpan, astSymbol *enumSymb
 astSymbol* find_variable_in_scope(textspan nameSpan, ast *tree, scope *currentScope) {
 	return find_symbol_in_scope_internal(nameSpan, tree, currentScope == NULL ? tree->currentScope : currentScope, SYMBOL_VARIABLE, (currentScope == NULL ? FLAG_RECURSE : FLAG_NONE) | FLAG_THROW);
 }
+
+astSymbol* find_enum_in_scope(node *n, ast *tree, scope *currentScope) {
+	binaryExpressionNode bn = *(binaryExpressionNode*)n->data;
+	astSymbol *enumSymbol = find_symbol_in_scope_internal(bn.left.span, tree, currentScope, SYMBOL_ENUM, FLAG_NONE | FLAG_THROW);
+	if (enumSymbol == NULL) return NULL;
+	return find_symbol_in_scope_internal(bn.right.span, tree, enumSymbol->namespaceScope, SYMBOL_ENUM_MEMBER, FLAG_NONE | FLAG_THROW);
+}
+
 astSymbol* find_function_in_scope(textspan nameSpan, ast *tree, scope *currentScope, bool recurse) {
 	return find_symbol_in_scope_internal(nameSpan, tree, currentScope, SYMBOL_FUNCTION, recurse | FLAG_THROW);
 }
 
 astSymbol* find_symbol_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope, u8 symbolKind, u8 flags) {
 	for (int i = 0; i < sb_count(currentScope->symbols); i++) {
-		if (span_compare(tree->text, nameSpan, currentScope->symbols[i]->name) && currentScope->symbols[i]->symbolKind == symbolKind) {
+		if (span_compare(tree->text, nameSpan, currentScope->symbols[i]->name) && (currentScope->symbols[i]->symbolKind == symbolKind || symbolKind == SYMBOL_ANY) ) {
 			return currentScope->symbols[i];
 		}
 	}
