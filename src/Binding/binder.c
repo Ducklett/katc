@@ -140,7 +140,7 @@ astNode bind_enum_reference(node *n, ast *tree, scope *enumScope, bool prefix) {
 
 	bool  hasErrors = enumRef == 0;
 
-	return (astNode){ enumReferenceKind,  hasErrors ? primitive_type_from_kind(errorType) : enumRef->type, .numValue = hasErrors ? 0 : enumRef->numValue };
+	return (astNode){ literalKind,  hasErrors ? primitive_type_from_kind(errorType) : enumRef->type, .numValue = hasErrors ? 0 : enumRef->numValue };
 }
 
 astNode bind_block_statement(node *n, ast *tree, scope *withScope) {
@@ -250,7 +250,7 @@ astNode bind_switch_branch(node *n, ast *tree, astType caseType, scope *enumScop
 			    : bind_enum_reference(&cn.condition, tree, enumScope, false)
 			: bind_expression_of_type(&cn.condition, tree, caseType, cn.condition.span);
 
-	if (boundCondition.kind != rangeExpressionKind && boundCondition.kind != literalKind && boundCondition.kind != enumReferenceKind && boundCondition.type.kind > 2) {
+	if (boundCondition.kind != rangeExpressionKind && boundCondition.kind != literalKind && boundCondition.type.kind > 2) {
 		report_diagnostic(&tree->diagnostics, nonConstantDiagnostic, cn.condition.span, 0, 0, 0);
 		boundCondition.type = primitive_type_from_kind(errorType);
 	} 
@@ -359,7 +359,7 @@ astNode bind_range_expression(node *n, ast *tree) {
 	}
 
 
-	if (!isNumberType(type.kind) && type.kind != charType ) {
+	if (!isNumberType(type.kind) && type.kind != charType && type.kind != enumType) {
 		report_diagnostic(&tree->diagnostics, illegalRangeDiagnostic, rn.start.span, type.kind, 0, 0);
 	}
 
@@ -371,10 +371,10 @@ astNode bind_range_expression(node *n, ast *tree) {
 
 	rangeExpressionAst *rangeNode = arena_malloc(binder_arena, sizeof(rangeExpressionAst));
 
-	if (type.kind == intType) {
-		*rangeNode = (rangeExpressionAst){ .fromInt = from.numValue, .toInt = to.numValue };
-	} else {
+	if (type.kind == charType) {
 		*rangeNode = (rangeExpressionAst){ .fromChar = from.charValue, .toChar = to.charValue };
+	} else {
+		*rangeNode = (rangeExpressionAst){ .fromInt = from.numValue, .toInt = to.numValue };
 	}
 
 	return (astNode){ rangeExpressionKind, type, .data = rangeNode };

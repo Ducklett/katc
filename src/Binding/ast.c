@@ -16,7 +16,6 @@ enum astSyntaxKind {
 	variableDeclarationKind,
 	variableAssignmentKind,
 	variableReferenceKind,
-	enumReferenceKind,
 	fileStatementKind,
 	blockStatementKind,
 	ifStatementKind,
@@ -46,7 +45,6 @@ static const char *astSyntaxKindText[] = {
 	"variableDeclaration",
 	"variableAssignment",
 	"variableReference",
-	"enumReference",
 	"fileStatement",
 	"blockStatement",
 	"ifStatement",
@@ -494,7 +492,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 				case boolType: printf ("%s", root->boolValue ? "true" : "false"); break;
 				case stringType: printf ("\"%s\"", root->stringValue); break;
 				case charType: printf ("'%c'", root->charValue); break;
-				case enumType: printf (" %s", root->type.declaration->namespaceScope->symbols[root->numValue]->name); break;
+				case enumType: printfSymbolReference(stdout, root->type.declaration->namespaceScope->symbols[root->numValue], "."); break;
 				default:
 					fprintf(stderr, "%sUnhandled type '%s' in print_ast%s", TERMRED, astKindText[root->type.kind], TERMRESET);
 					exit(1);
@@ -599,8 +597,8 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	case rangeExpressionKind: {
 
 		rangeExpressionAst rn = *(rangeExpressionAst*)root->data;
-		if (root->type.kind == intType) printf ("%*s%s%d..%d%s", indent, "", TERMMAGENTA, rn.fromInt, rn.toInt, TERMRESET);
-		else printf ("%*s%s'%d'..'%d'%s", indent, "", TERMMAGENTA, rn.fromChar, rn.toChar, TERMRESET);
+		if (root->type.kind != charType) printf ("%*s%s%d..%d%s", indent, "", TERMMAGENTA, rn.fromInt, rn.toInt, TERMRESET);
+		else printf ("%*s%s'%c'..'%c'%s", indent, "", TERMMAGENTA, rn.fromChar, rn.toChar, TERMRESET);
 		break;
 	}
 	case breakKind: break;
@@ -696,14 +694,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 
 		printf ("%*s%s ", indent, "", TERMMAGENTA);
 		printfSymbolReference(stdout, vs, ".");
-		printf ("%s%s", astKindText[vs->type.kind], TERMRESET);
-		break;
-	}
-	case enumReferenceKind: {
-
-		printf ("%*s%senum ", indent, "", TERMMAGENTA);
-		printfSymbolReference(stdout, root->type.declaration->namespaceScope->symbols[root->numValue], ".");
-		printf ("%s", TERMRESET);
+		printf (" %s%s", astKindText[vs->type.kind], TERMRESET);
 		break;
 	}
 	default: {
