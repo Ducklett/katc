@@ -191,6 +191,9 @@ static inline astType primitive_type_from_kind(enum astKind kind) {
 }
 
 typedOperator get_binary_operator(enum syntaxKind operatorToken, astType left, astType right) {
+	if (operatorToken == euqualsEqualsOperator && left.kind == enumType && right.kind == enumType && left.declaration == right.declaration) return (typedOperator) { equalOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == bangEqualsOperator    && left.kind == enumType && right.kind == enumType && left.declaration == right.declaration) return (typedOperator){ inEqualOp, primitive_type_from_kind(boolType) };
+
 	if (operatorToken == plusOperator          && left.kind == charType && isNumberType(right.kind)) return (typedOperator){ addOp, primitive_type_from_kind(charType) };
 	if (operatorToken == minusOperator         && left.kind == charType && isNumberType(right.kind)) return (typedOperator){ subtractOp, primitive_type_from_kind(charType) };
 	if (operatorToken == euqualsEqualsOperator && left.kind == charType && right.kind == charType) return (typedOperator) { equalOp, primitive_type_from_kind(boolType) };

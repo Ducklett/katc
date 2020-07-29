@@ -511,7 +511,7 @@ astNode bind_binary_expression(node *n, ast *tree) {
 	binaryExpressionAst *binaryNode = arena_malloc(binder_arena, sizeof(binaryExpressionAst));
 	*binaryNode = (binaryExpressionAst){ op.operator, boundLeft, boundRight };
 
-	return (astNode){ binaryExpressionKind, hasErrors ? errorType : op.type, .data = binaryNode };
+	return (astNode){ binaryExpressionKind, hasErrors ? primitive_type_from_kind(errorType) : op.type, .data = binaryNode };
 }
 
 astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
