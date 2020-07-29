@@ -40,6 +40,7 @@ astSymbol* declare_enum_member(ast *tree, textspan nameSpan, astSymbol *enumSymb
 astSymbol* find_function_in_scope(textspan nameSpan, ast *tree, scope *currentScope, bool recurse);
 astSymbol* find_variable_in_scope(textspan nameSpan, ast *tree, scope *currentScope);
 astSymbol* find_enum_in_scope(node *n, ast *tree, scope *currentScope);
+astSymbol* find_enum_type_in_scope(textspan nameSpan, ast *tree, scope *currentScope);
 astNode fold_binary_expression(typedOperator *op, int left, int right);
 astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand);
 astNode fold_cast_expression(astType from, astType to, i64 value);
@@ -517,17 +518,26 @@ astNode bind_binary_expression(node *n, ast *tree) {
 astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 	functionCallNode cn = *(functionCallNode*)n->data;
 
-	// this matches primitive types
-	// TODO: also match enum types
-	u8 cast = 0;
+	astType castType = {0};
+	bool isCast = false;
 	for (int i=0;i<=charType;i++) {
 		if (span_compare(tree->text, cn.identifier.span, astKindText[i])) {
-			cast = i;
-			break;
+			if (i>2) {
+				castType = primitive_type_from_kind(i);
+				break;
+			}
 		}
 	}
 
-	if (cast > 2) {
+	if (!isCast) {
+		astSymbol *enumSymbol = find_enum_type_in_scope(cn.identifier.span, tree, functionScope == NULL ? tree->currentScope : functionScope);
+		if (enumSymbol != NULL) {
+			isCast = true;
+			castType = enumSymbol->type;
+		}
+	}
+
+	if (isCast) {
 		if (cn.argumentCount != 1) {
 			textspan errSpan = cn.argumentCount == 0
 				?  textspan_from_bounds(&cn.openParen, &cn.closeParen)
@@ -537,7 +547,7 @@ astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 			return (astNode){ castExpressionKind, primitive_type_from_kind(errorType), .data = 0 };
 		}
 
-		return cast_expression(&cn.arguments[0], tree, primitive_type_from_kind(cast), true);
+		return cast_expression(&cn.arguments[0], tree, castType, true);
 	}
 
 	astSymbol *function = functionScope == NULL
@@ -809,7 +819,7 @@ astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, node *body, 
 astSymbol* declare_variable(ast *tree, textspan nameSpan, astType variableType, u8 flags) {
 	if (variableType.kind == voidType) {
 		report_diagnostic(&tree->diagnostics, variableCannotBeVoidDiagnostic, nameSpan, 0, 0, 0);
-		return 0;
+		variableType.kind = errorType;
 	}
 
 	scope *currentScope = tree->currentScope;
@@ -961,7 +971,7 @@ astSymbol* declare_enum(ast *tree, textspan nameSpan, node *enums, int enumCount
 	enumSymbol->symbolKind = SYMBOL_ENUM;
 	enumSymbol->name = ast_substring(tree->text, nameSpan, string_arena);
 	enumSymbol->parentNamespace = tree->currentNamespace;
-	enumSymbol->type = primitive_type_from_kind(voidType);
+	enumSymbol->type = (astType){ enumType, enumSymbol };
 	enumSymbol->flags = flags;
 	enumSymbol->namespaceScope = create_scope(tree);
 
@@ -1004,6 +1014,10 @@ astSymbol* find_enum_in_scope(node *n, ast *tree, scope *currentScope) {
 	astSymbol *enumSymbol = find_symbol_in_scope_internal(bn.left.span, tree, currentScope, SYMBOL_ENUM, FLAG_NONE | FLAG_THROW);
 	if (enumSymbol == NULL) return NULL;
 	return find_symbol_in_scope_internal(bn.right.span, tree, enumSymbol->namespaceScope, SYMBOL_ENUM_MEMBER, FLAG_NONE | FLAG_THROW);
+}
+
+astSymbol* find_enum_type_in_scope(textspan nameSpan, ast *tree, scope *currentScope) {
+	return find_symbol_in_scope_internal(nameSpan, tree, currentScope, SYMBOL_ENUM, FLAG_NONE);
 }
 
 astSymbol* find_function_in_scope(textspan nameSpan, ast *tree, scope *currentScope, bool recurse) {
@@ -1073,7 +1087,6 @@ astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand) {
 }
 
 astNode fold_cast_expression(astType from, astType to, i64 value) {
-	// TODO: support enum
 	switch (to.kind) {
 	case intType : value = (int )value; break;
 	case u8Type  : value = (u8  )value; break;
@@ -1086,6 +1099,7 @@ astNode fold_cast_expression(astType from, astType to, i64 value) {
 	case i64Type : value = (i64 )value; break;
 	case boolType: value = (bool)value; break;
 	case charType: value = (char)value; break;
+	case enumType: break;
 	default:
 		fprintf(stderr, "%sUnhandled type %s in fold_cast_expression%s", TERMRED, astKindText[to.kind], TERMRESET);
 		exit(1);
@@ -1129,6 +1143,9 @@ bool check_bounds(astNode n, diagnosticContainer *d, textspan span) {
 		case u32Type: {
 			if (value > U32_MAX ) { errored=true; overflow=true; }
 			else if (value < U32_MIN) { errored=true; } } break;
+		case enumType: {
+			if (value >= sb_count(n.type.declaration->namespaceScope->symbols)  ) { errored=true; overflow=true; }
+			else if (value < 0) { errored=true; } } break;
 
 		case i64Type:
 		case u64Type:

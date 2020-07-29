@@ -494,6 +494,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 				case boolType: printf ("%s", root->boolValue ? "true" : "false"); break;
 				case stringType: printf ("\"%s\"", root->stringValue); break;
 				case charType: printf ("'%c'", root->charValue); break;
+				case enumType: printf (" %s", root->type.declaration->namespaceScope->symbols[root->numValue]->name); break;
 				default:
 					fprintf(stderr, "%sUnhandled type '%s' in print_ast%s", TERMRED, astKindText[root->type.kind], TERMRESET);
 					exit(1);
