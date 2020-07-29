@@ -11,7 +11,7 @@ astNode bind_block_statement(node *n, ast *tree, scope *withScope);
 astNode bind_if_statement(node *n, ast *tree);
 astNode bind_case_branch(node *n, ast *tree);
 astNode bind_case_statement(node *n, ast *tree);
-astNode bind_switch_branch(node *n, ast *tree, astType caseType);
+astNode bind_switch_branch(node *n, ast *tree, astType caseType, scope *enumScope);
 astNode bind_switch_statement(node *n, ast *tree);
 astNode bind_range_expression(node *n, ast *tree);
 astNode bind_while_loop(node *n, ast *tree);
@@ -39,7 +39,7 @@ astSymbol* declare_enum(ast *tree, textspan nameSpan, node *enums, int enumCount
 astSymbol* declare_enum_member(ast *tree, textspan nameSpan, astSymbol *enumSymbol, u8 value);
 astSymbol* find_function_in_scope(textspan nameSpan, ast *tree, scope *currentScope, bool recurse);
 astSymbol* find_variable_in_scope(textspan nameSpan, ast *tree, scope *currentScope);
-astSymbol* find_enum_in_scope(node *n, ast *tree, scope *currentScope);
+astSymbol* find_enum_in_scope(node *n, ast *tree, scope *currentScope, bool prefix);
 astSymbol* find_enum_type_in_scope(textspan nameSpan, ast *tree, scope *currentScope);
 astNode fold_binary_expression(typedOperator *op, int left, int right);
 astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand);
@@ -134,9 +134,9 @@ astNode bind_variable_reference(node *n, ast *tree, scope *variableScope) {
 	return (astNode){ variableReferenceKind, hasErrors ? primitive_type_from_kind(errorType) : variable->type, .data = variable };
 }
 
-astNode bind_enum_reference(node *n, ast *tree, scope *enumScope) {
+astNode bind_enum_reference(node *n, ast *tree, scope *enumScope, bool prefix) {
 
-	astSymbol *enumRef = find_enum_in_scope(n, tree, enumScope);
+	astSymbol *enumRef = find_enum_in_scope(n, tree, enumScope, prefix);
 
 	bool  hasErrors = enumRef == 0;
 
@@ -239,14 +239,18 @@ astNode bind_case_statement(node *n, ast *tree) {
 	return (astNode){ caseStatementKind, caseType, .data = caseNode, };
 }
 
-astNode bind_switch_branch(node *n, ast *tree, astType caseType) {
+astNode bind_switch_branch(node *n, ast *tree, astType caseType, scope *enumScope) {
 	switchBranchNode cn = *(switchBranchNode*)n->data;
 
 	astNode boundCondition = cn.condition.kind == 0
 		? (astNode){0}
-		: bind_expression_of_type(&cn.condition, tree, caseType, cn.condition.span);
+		: caseType.kind == enumType
+			? cn.condition.kind == symbolReferenceExpression
+				? resolve_symbol_reference(&cn.condition, tree)
+			    : bind_enum_reference(&cn.condition, tree, enumScope, false)
+			: bind_expression_of_type(&cn.condition, tree, caseType, cn.condition.span);
 
-	if (boundCondition.kind != rangeExpressionKind && boundCondition.kind != literalKind && boundCondition.type.kind > 2) {
+	if (boundCondition.kind != rangeExpressionKind && boundCondition.kind != literalKind && boundCondition.kind != enumReferenceKind && boundCondition.type.kind > 2) {
 		report_diagnostic(&tree->diagnostics, nonConstantDiagnostic, cn.condition.span, 0, 0, 0);
 		boundCondition.type = primitive_type_from_kind(errorType);
 	} 
@@ -263,10 +267,15 @@ astNode bind_switch_statement(node *n, ast *tree) {
 
 	astNode *boundBranches = NULL;
 	int *branchValues = NULL;
+	scope *enumScope = NULL;
 
 	switchStatementNode cn = *(switchStatementNode*)n->data;
 
 	astNode boundTarget = bind_expression(&cn.targetExpression, tree);
+
+	if (boundTarget.type.kind == enumType) {
+		enumScope = boundTarget.type.declaration->namespaceScope;
+	}
 
 	if (boundTarget.type.kind == stringType || boundTarget.type.kind == boolType) {
 		report_diagnostic(&tree->diagnostics, invalidSwitchTypeDiagnostic, cn.targetExpression.span, boundTarget.type.kind, 0, 0);
@@ -277,7 +286,7 @@ astNode bind_switch_statement(node *n, ast *tree) {
 	astType caseType = boundTarget.type;
 
 	for (int i = 0; i < cn.branchCount; i++) {
-		astNode bn = bind_switch_branch(&cn.branches[i], tree, caseType);
+		astNode bn = bind_switch_branch(&cn.branches[i], tree, caseType, enumScope);
 		sb_push(boundBranches, bn);
 		astNode bc = (*(switchBranchAst*)bn.data).condition;
 		if (bc.kind == literalKind) {
@@ -906,7 +915,7 @@ astNode resolve_symbol_reference(node *n, ast *tree) {
 	}
 
 	switch(n->kind) {
-		case enumReferenceExpression: return bind_enum_reference(n, tree, outScope);
+		case enumReferenceExpression: return bind_enum_reference(n, tree, outScope, true);
 		case callExpression: return bind_call_expression(n, tree, outScope);
 		case identifierToken: return bind_variable_reference(n, tree, outScope);
 		default: {
@@ -1009,11 +1018,15 @@ astSymbol* find_variable_in_scope(textspan nameSpan, ast *tree, scope *currentSc
 	return find_symbol_in_scope_internal(nameSpan, tree, currentScope == NULL ? tree->currentScope : currentScope, SYMBOL_VARIABLE, (currentScope == NULL ? FLAG_RECURSE : FLAG_NONE) | FLAG_THROW);
 }
 
-astSymbol* find_enum_in_scope(node *n, ast *tree, scope *currentScope) {
-	binaryExpressionNode bn = *(binaryExpressionNode*)n->data;
-	astSymbol *enumSymbol = find_symbol_in_scope_internal(bn.left.span, tree, currentScope, SYMBOL_ENUM, FLAG_NONE | FLAG_THROW);
-	if (enumSymbol == NULL) return NULL;
-	return find_symbol_in_scope_internal(bn.right.span, tree, enumSymbol->namespaceScope, SYMBOL_ENUM_MEMBER, FLAG_NONE | FLAG_THROW);
+astSymbol* find_enum_in_scope(node *n, ast *tree, scope *currentScope, bool prefix) {
+	if (prefix) {
+		binaryExpressionNode bn = *(binaryExpressionNode*)n->data;
+		astSymbol *enumSymbol = find_symbol_in_scope_internal(bn.left.span, tree, currentScope, SYMBOL_ENUM, FLAG_NONE | FLAG_THROW);
+		if (enumSymbol == NULL) return NULL;
+		return find_symbol_in_scope_internal(bn.right.span, tree, enumSymbol->namespaceScope, SYMBOL_ENUM_MEMBER, FLAG_NONE | FLAG_THROW);
+	} else {
+		return find_symbol_in_scope_internal(n->span, tree, currentScope, SYMBOL_ENUM_MEMBER, FLAG_NONE | FLAG_THROW);
+	}
 }
 
 astSymbol* find_enum_type_in_scope(textspan nameSpan, ast *tree, scope *currentScope) {
