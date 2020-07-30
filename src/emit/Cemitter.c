@@ -15,6 +15,7 @@ static inline void emit_c_unaryExpression(astNode *n, ast *tree);
 static inline void emit_c_callExpression(astNode *n, ast *tree);
 static inline void emit_c_castExpression(astNode *n, ast *tree);
 static inline void emit_c_variableDeclaration(astNode *n, ast *tree);
+static inline void emit_c_enumDeclaration(astNode *n, ast *tree);
 static inline void emit_c_variableAssignment(astNode *n, ast *tree);
 static inline void emit_c_variableReference(astNode *n, ast *tree);
 char* escape_string_c(char *str);
@@ -67,6 +68,7 @@ static const char *cTypeText[] = {
 	"int",		      // bool
 	"char*",          // string
 	"char",           // char
+	"enum",           // enum
 };
 
 
@@ -171,6 +173,9 @@ static inline void emit_c_functions_in_block(astNode *n, ast *tree, bool isNames
 		} else if (kind == variableDeclarationKind && isNamespace) {
 			emit_c_variableDeclaration(bn.statements + i, tree);
 			fprintf(fp, ";\n");
+		} else if (kind == enumDeclarationKind) {
+			emit_c_enumDeclaration(bn.statements + i, tree);
+			fprintf(fp, ";\n");
 		} else if (kind == functionDeclarationKind) {
 			emit_c_function(bn.statements + i, tree);
 			fprintf(fp,"\n");
@@ -206,7 +211,7 @@ static inline void emit_c_blockStatement(astNode *n, ast *tree) {
 	blockStatementAst bn = *(blockStatementAst*)n->data;
 	for (int i= 0; i < bn.statementsCount; i++) {
 		enum astSyntaxKind kind = bn.statements[i].kind;
-		if (kind == functionDeclarationKind || kind == namespaceDeclarationKind) continue;
+		if (kind == functionDeclarationKind || kind == namespaceDeclarationKind || kind == enumDeclarationKind) continue;
 		fprintf(fp,"%*s", c_indent, "");
 		emit_c_node(bn.statements + i, tree);
 		if(needs_semicolon(bn.statements[i].kind)) fprintf(fp,";\n");
@@ -294,13 +299,16 @@ static inline void emit_c_forLoop(astNode *n, ast *tree) {
 	forLoopAst fn = *(forLoopAst*)n->data;
 	rangeExpressionAst rn = *(rangeExpressionAst*)fn.range.data;
 
+	enum astKind forKind = fn.value->type.kind;
+	if (forKind == enumType) forKind = intType;
+
 	if (fn.index == 0) {
 		char* compOp = rn.toInt > rn.fromInt ? "<=" : ">=";
 		char* incOp = rn.toInt > rn.fromInt ? "++" : "--";
 
 		fprintf(fp,"for (");
 		// int x = 1; 
-		fprintf(fp,"%s %s = %d; ", cTypeText[fn.value->type.kind], fn.value->name, rn.fromInt);
+		fprintf(fp,"%s %s = %d; ", cTypeText[forKind], fn.value->name, rn.fromInt);
 		// x <= 100
 		fprintf(fp,"%s %s %d; ", fn.value->name, compOp, rn.toInt);
 		// x++
@@ -315,8 +323,8 @@ static inline void emit_c_forLoop(astNode *n, ast *tree) {
 		kindStack_push(blockStatementKind);
 
 		fprintf(fp,"%*s", c_indent, "");
-		if (rn.toInt > rn.fromInt) fprintf(fp,"%s %s = i + %d;\n", cTypeText[fn.value->type.kind], fn.value->name, rn.fromInt);
-		else fprintf(fp,"%s %s = %d - i;\n",cTypeText[fn.value->type.kind], fn.value->name, rn.fromInt);
+		if (rn.toInt > rn.fromInt) fprintf(fp,"%s %s = i + %d;\n", cTypeText[forKind], fn.value->name, rn.fromInt);
+		else fprintf(fp,"%s %s = %d - i;\n",cTypeText[forKind], fn.value->name, rn.fromInt);
 
 		if (fn.block.kind != blockStatementKind) fprintf(fp,"%*s", c_indent, "");
 		emit_c_node(&fn.block, tree);
@@ -338,6 +346,7 @@ static inline void emit_c_literal(astNode *n, ast *tree) {
 		free(escapedStr);
 	}
 	case charType: fprintf(fp,"'%c'", n->charValue); break;
+	case enumType: printfSymbolReference(fp, n->type.declaration->namespaceScope->symbols[n->numValue], "_"); break;
 	default:
 		fprintf(stderr,"%sUnhandled type %s in c emitter%s", TERMRED, astKindText[n->type.kind], TERMRESET);
 		exit(1);
@@ -378,8 +387,15 @@ static inline void emit_c_callExpression(astNode *n, ast *tree) {
 	fprintf(fp,"(");
 
 	for (int i= 0; i < cn->argumentCount; i++) {
-		emit_c_node(cn->arguments + i, tree);
-		if (cn->arguments[i].type.kind == boolType) fprintf(fp, " ? \"true\" : \"false\"");
+		if (cn->arguments[i].type.kind == enumType) {
+			printfSymbolReference(fp, cn->arguments[i].type.declaration, "_");
+			fprintf(fp, "__TEXT[");
+			emit_c_node(cn->arguments + i, tree);
+			fprintf(fp, "]");
+		} else {
+			emit_c_node(cn->arguments + i, tree);
+			if (cn->arguments[i].type.kind == boolType) fprintf(fp, " ? \"true\" : \"false\"");
+		}
 		if (i != cn->argumentCount-1) fprintf(fp,", ");
 	}
 	fprintf(fp,")");
@@ -396,13 +412,44 @@ static inline void emit_c_variableDeclaration(astNode *n, ast *tree) {
 
 	variableDeclarationAst *dn = (variableDeclarationAst*)n->data;
 
-	fprintf(fp,"%s ", cTypeText[dn->variable->type.kind]);
+	if (dn->variable->type.kind == enumType) {
+		fprintf(fp,"enum ");
+		printfSymbolReference(fp, dn->variable->type.declaration, "_");
+		fprintf(fp," ");
+	} else {
+		fprintf(fp,"%s ", cTypeText[dn->variable->type.kind]);
+	}
+
 	printfSymbolReference(fp, dn->variable, "_");
 
 	if (dn->initalizer.kind != missingKind) {
 		fprintf(fp," = ");
 		emit_c_node(&dn->initalizer, tree);
 	}
+}
+
+static inline void emit_c_enumDeclaration(astNode *n, ast *tree) {
+
+	astSymbol *en = (astSymbol*)n->data;
+
+	fprintf(fp, "enum ");
+	printfSymbolReference(fp, en, "_");
+	fprintf (fp, " { ");
+	int count = sb_count(en->namespaceScope->symbols);
+	for (int i=0;i<count;i++) {
+		printfSymbolReference(fp, en->namespaceScope->symbols[i], "_");
+		fprintf(fp, "%s ", i==count-1?"":",");
+	}
+	fprintf(fp, "};\n");
+
+
+	fprintf(fp, "static const char * ");
+	printfSymbolReference(fp, en, "_");
+	fprintf(fp, "__TEXT[] = {");
+	for (int i=0;i<count;i++) {
+		fprintf(fp, "\"%s\"%s", en->namespaceScope->symbols[i]->name, i==count-1?"":",");
+	}
+	fprintf(fp, "};\n");
 }
 
 static inline void emit_c_variableAssignment(astNode *n, ast *tree) {
