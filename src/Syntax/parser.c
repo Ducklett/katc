@@ -534,6 +534,9 @@ node parser_parse_enum_declaration(parser *p, diagnosticContainer *d) {
 		if (cur.kind == closeCurlyToken || cur.kind == endOfFileToken) break;
 
 		sb_push(enums, parser_match_token(p, d, commaToken));
+
+		// support trailing comma
+		if (parser_current(p,d).kind == closeCurlyToken) break;
 	}
 	end: ;
 
