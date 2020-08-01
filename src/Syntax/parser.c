@@ -19,7 +19,7 @@ node parser_parse_switch_statement(parser *p, diagnosticContainer *d);
 node parser_parse_switch_branch(parser *p, diagnosticContainer *d);
 node parser_parse_while_loop(parser *p, diagnosticContainer *d);
 node parser_parse_for_loop(parser *p, diagnosticContainer *d);
-node parser_parse_symbol_reference(parser *p, diagnosticContainer *d, bool isNamespaceDeclaration);
+node parser_parse_symbol_reference(parser *p, diagnosticContainer *d, bool isIdentifier);
 node parser_parse_function_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_variable_assignment(parser *p, diagnosticContainer *d);
@@ -367,16 +367,15 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 	node identifier = parser_match_token(p, d, identifierToken);
 	node colon = parser_match_token(p, d, colonToken);
 
-	enum syntaxKind mutKind = parser_current(p, d).kind;
-	if (mutKind == identifierToken) mutKind = parser_peek(p, d, 1).kind;
-	bool hasInitializer = mutKind == colonToken || mutKind == equalsToken;
-
 	node type = {0};
-	if (parser_current(p, d).kind == identifierToken || !hasInitializer) {
-		type = parser_match_token(p, d, identifierToken);
+	if (parser_current(p, d).kind == identifierToken) {
+		type = parser_parse_symbol_reference(p,d,true);
 	}
 
-	if (type.kind == NULL && p->parentKind == namespaceDeclaration) {
+	enum syntaxKind mutKind = parser_current(p, d).kind;
+	bool hasInitializer = mutKind == colonToken || mutKind == equalsToken;
+
+	if (type.kind == NULL && (p->parentKind == namespaceDeclaration || !hasInitializer) ) {
 		report_diagnostic(d, variableMustHaveTypeInCurrentContextDiagnostic, identifier.span, 0,0, 0);
 	}
 
@@ -626,18 +625,18 @@ node parser_parse_range_expression(parser *p, diagnosticContainer *d, bool allow
 	return (node) { rangeExpression, textspan_from_bounds(&from, &to), .data = rangeNode, };
 }
 
-node parser_parse_symbol_reference(parser *p, diagnosticContainer *d, bool isNamespaceDeclaration) {
+node parser_parse_symbol_reference(parser *p, diagnosticContainer *d, bool isIdentifier) {
 
 	node left;
 
-	if (!isNamespaceDeclaration && parser_peek(p,d,1).kind == openParenthesisToken) left = parser_parse_function_call(p, d);
+	if (!isIdentifier && parser_peek(p,d,1).kind == openParenthesisToken) left = parser_parse_function_call(p, d);
 	else left = parser_match_token(p, d, identifierToken);
 
 	if (parser_current(p, d).kind != dotToken) return left;
 
 	node dotNode = parser_match_token(p, d, dotToken);
 
-	node right = parser_parse_symbol_reference(p, d, isNamespaceDeclaration);
+	node right = parser_parse_symbol_reference(p, d, isIdentifier);
 
 	binaryExpressionNode *binaryNode = arena_malloc(parser_arena, sizeof(binaryExpressionNode));
 	*binaryNode = (binaryExpressionNode){ left, dotNode, right, };

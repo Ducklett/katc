@@ -31,6 +31,7 @@ scope* push_scope_and_get_reference(ast *tree, scope **outScope);
 void pop_scope(ast *tree, scope* parentScope);
 void declare_builtin_function(ast *tree, char* name);
 astSymbol* find_symbol_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope, u8 symbolKind, u8 flags);
+astType resolve_type_reference(node *n, ast *tree, scope *typeScope);
 astNode resolve_symbol_reference(node *n, ast *tree);
 astSymbol* declare_namespace(ast *tree, node *n, u8 flags);
 astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, node *body, astSymbol **parameters, u16 parameterCount, scope *functionScope);
@@ -527,26 +528,9 @@ astNode bind_binary_expression(node *n, ast *tree) {
 astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 	functionCallNode cn = *(functionCallNode*)n->data;
 
-	astType castType = {0};
-	bool isCast = false;
-	for (int i=0;i<=charType;i++) {
-		if (span_compare(tree->text, cn.identifier.span, astKindText[i])) {
-			if (i>2) {
-				castType = primitive_type_from_kind(i);
-				break;
-			}
-		}
-	}
+	astType castType = resolve_type_reference(&cn.identifier, tree, functionScope);
 
-	if (!isCast) {
-		astSymbol *enumSymbol = find_enum_type_in_scope(cn.identifier.span, tree, functionScope == NULL ? tree->currentScope : functionScope);
-		if (enumSymbol != NULL) {
-			isCast = true;
-			castType = enumSymbol->type;
-		}
-	}
-
-	if (isCast) {
+	if (castType.kind > 2) {
 		if (cn.argumentCount != 1) {
 			textspan errSpan = cn.argumentCount == 0
 				?  textspan_from_bounds(&cn.openParen, &cn.closeParen)
@@ -660,7 +644,7 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 		flags |= VARIABLE_GLOBAL;
 
 	astType type =  {0};
-	if (vn.type.kind != 0) type.kind = resolve_primitive_type_from_span(tree, vn.type.span);
+	if (vn.type.kind != 0) type = resolve_type_reference(&vn.type, tree, NULL);
 
 	if (hasInitializer) {
 		boundInitializer = type.kind != 0
@@ -859,6 +843,77 @@ astSymbol* find_real_namespace_of_symbol(astSymbol *s) {
 	return find_real_namespace_of_symbol(s->parentNamespace);
 }
 
+astType resolve_type_reference(node *n, ast *tree, scope *typeScope) {
+	for (int i=0;i<=charType;i++) {
+		if (span_compare(tree->text, n->span, astKindText[i])) {
+			if (i>2) {
+				return primitive_type_from_kind(i);
+			}
+		}
+	}
+
+	scope **scopesToSearch = NULL;
+	astSymbol *currentNamespace = find_real_namespace_of_symbol(tree->currentNamespace);
+
+	if (typeScope != NULL) {
+		sb_push(scopesToSearch, typeScope);
+	} else {
+		if (currentNamespace != NULL) sb_push(scopesToSearch, currentNamespace->namespaceScope);
+
+		sb_push(scopesToSearch, tree->scopes[0]);
+	}
+
+	scope *outScope = NULL;
+
+	textspan deepestNamespan = n->span;
+	i8 depth=-1;
+
+	for (int i=0;i<sb_count(scopesToSearch);i++) {
+		bool foundInScope = true;
+		node *nSearch = n;
+		outScope = scopesToSearch[i];
+		u8 currentDepth=0;
+		while (nSearch->kind == symbolReferenceExpression) {
+			binaryExpressionNode *bn = (binaryExpressionNode*)nSearch->data;
+			node namespace = bn->left;
+			textspan namespan = namespace.span;
+
+			astSymbol *symbol  = find_symbol_in_scope_internal(namespan, tree, outScope, SYMBOL_NAMESPACE, FLAG_THROW);
+
+			if (symbol == NULL) {
+				foundInScope = false;
+				if (currentDepth > depth) {
+					depth = currentDepth;
+					deepestNamespan = namespan;
+				}
+				break;
+			} else {
+				nSearch = &bn->right;
+				outScope = symbol->namespaceScope;
+				currentDepth++;
+			}
+		}
+
+		if (foundInScope) {
+			n = nSearch;
+			break;
+		} else outScope = NULL;
+	}
+
+	sb_free(scopesToSearch);
+
+
+	astSymbol *foundSymbol = NULL;
+
+	textspan symbolName = n->span;
+
+	if (outScope != NULL) foundSymbol = find_symbol_in_scope_internal(symbolName, tree, outScope, SYMBOL_ANY, FLAG_THROW);
+
+	if (foundSymbol == NULL) return (astType){0};
+
+	return foundSymbol->type;
+}
+
 astNode resolve_symbol_reference(node *n, ast *tree) {
 
 	scope **scopesToSearch = NULL;
@@ -1039,8 +1094,13 @@ astSymbol* find_function_in_scope(textspan nameSpan, ast *tree, scope *currentSc
 
 astSymbol* find_symbol_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope, u8 symbolKind, u8 flags) {
 	for (int i = 0; i < sb_count(currentScope->symbols); i++) {
-		if (span_compare(tree->text, nameSpan, currentScope->symbols[i]->name) && (currentScope->symbols[i]->symbolKind == symbolKind || symbolKind == SYMBOL_ANY) ) {
-			return currentScope->symbols[i];
+		if (span_compare(tree->text, nameSpan, currentScope->symbols[i]->name)) {
+			if (currentScope->symbols[i]->symbolKind == symbolKind || symbolKind == SYMBOL_ANY) {
+				return currentScope->symbols[i];
+			} else {
+				printf("%s is of kind %d, expected %d\n", currentScope->symbols[i]->name, currentScope->symbols[i]->symbolKind, symbolKind);
+				exit(1);
+			}
 		}
 	}
 
