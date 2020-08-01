@@ -1,0 +1,21 @@
+namespace Foo {
+	enum Color { Red, Green, Blue, White, Black, }
+}
+
+colorA:Foo.Color = Foo.Color.Red
+colorB := Foo.Color.Green
+colorC := Foo.Color(0)
+
+print("%s\n", colorA)
+print("%s == %s = %s\n", colorA, colorB, colorA == colorB)
+print("%s != %s = %s\n", colorA, colorB, colorA != colorB)
+print("%s == %s = %s\n", colorA, colorC, colorA == colorC)
+
+for c in Foo.Color.Red..Foo.Color.Black {
+	switch c {
+		case Red: print("r!\n")
+		case Green: print("g!\n")
+		case Blue: print("b!\n")
+		default: print("Some other color\n")
+	}
+}
