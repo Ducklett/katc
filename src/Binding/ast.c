@@ -595,10 +595,9 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		break;
 	}
 	case rangeExpressionKind: {
-
-		rangeExpressionAst rn = *(rangeExpressionAst*)root->data;
-		if (root->type.kind != charType) printf ("%*s%s%d..%d%s", indent, "", TERMMAGENTA, rn.fromInt, rn.toInt, TERMRESET);
-		else printf ("%*s%s'%c'..'%c'%s", indent, "", TERMMAGENTA, rn.fromChar, rn.toChar, TERMRESET);
+		rangeExpressionAst *rn = (rangeExpressionAst*)root->data;
+		if (root->type.kind != charType) printf ("%*s%s%d..%d%s", indent, "", TERMMAGENTA, rn->fromInt, rn->toInt, TERMRESET);
+		else printf ("%*s%s'%c'..'%c'%s", indent, "", TERMMAGENTA, rn->fromChar, rn->toChar, TERMRESET);
 		break;
 	}
 	case breakKind: break;
@@ -662,14 +661,14 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		break;
 	}
 	case enumDeclarationKind: {
-		astSymbol vn = *(astSymbol*)root->data;
+		astSymbol *vn = (astSymbol*)root->data;
 
 		printf("%*s%s", indent, "", TERMMAGENTA);
 		printf ("enum ");
-		printfSymbolReference(stdout, &vn, ".");
+		printfSymbolReference(stdout, vn, ".");
 		printf (" {");
-		for (int i=0;i<sb_count(vn.namespaceScope->symbols);i++) {
-			printf (" %s,", vn.namespaceScope->symbols[i]->name);
+		for (int i=0;i<sb_count(vn->namespaceScope->symbols);i++) {
+			printf (" %s,", vn->namespaceScope->symbols[i]->name);
 		}
 		printf("}%s", TERMRESET);
 		break;
@@ -730,6 +729,12 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 				free(stringText);
 			}
 			case charType: fprintf (fp, "Label%p[label=\"'%c'\"]\n", root, root->charValue); break;
+
+			case enumType: 
+				fprintf (fp, "Label%p[label=\"", root);
+				printfSymbolReference(stdout, root->type.declaration->namespaceScope->symbols[root->numValue], ".");
+				fprintf (fp, "\"]\n");
+				break;
 			default:
 				fprintf(stderr, "%sUnhandled type '%s' in print_ast_graph%s", TERMRED, astKindText[root->type.kind], TERMRESET);
 				exit(1);
@@ -805,6 +810,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 	case switchStatementKind: {
 		switchStatementAst *cn = (switchStatementAst*)root->data;
 
+		ENDLABEL
 		print_ast_graph_internal(text, &cn->target, fp, false);
 			fprintf (fp, "Label%p -> Label%p\n", root, &cn->target);
 
@@ -839,9 +845,9 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		break;
 	}
 	case rangeExpressionKind: {
-		rangeExpressionAst rn = *(rangeExpressionAst*)root->data;
-		if (root->type.kind == intType) printf ("%d..%d", rn.fromInt, rn.toInt);
-		else printf ("'%c'..'%c'", rn.fromChar, rn.toChar);
+		rangeExpressionAst *rn = (rangeExpressionAst*)root->data;
+		if (root->type.kind != charType) printf ("%d..%d", rn->fromInt, rn->toInt);
+		else printf ("'%c'..'%c'", rn->fromChar, rn->toChar);
 		ENDLABEL
 		break;
 	}
@@ -912,6 +918,19 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		ENDLABEL
 		print_ast_graph_internal(text, &fd->body, fp, false);
 		fprintf (fp, "Label%p -> Label%p\n", root, &fd->body);
+		break;
+	}
+	case enumDeclarationKind: {
+		astSymbol *vn = (astSymbol*)root->data;
+
+		fprintf (fp, "enum ");
+		printfSymbolReference(stdout, vn, ".");
+		fprintf(fp, " {");
+		for (int i=0;i<sb_count(vn->namespaceScope->symbols);i++) {
+			fprintf(fp, " %s,", vn->namespaceScope->symbols[i]->name);
+		}
+		fprintf(fp, "}");
+		ENDLABEL
 		break;
 	}
 	case variableDeclarationKind: {
