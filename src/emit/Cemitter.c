@@ -426,6 +426,8 @@ static inline void emit_c_variableDeclaration(astNode *n, ast *tree) {
 
 	variableDeclarationAst *dn = (variableDeclarationAst*)n->data;
 
+	if (feature_constantfolding && !(dn->variable->flags & VARIABLE_MUTABLE) && dn->variable->flags & VARIABLE_VALUE_KNOWN) return;
+
 	if (dn->variable->type.kind == enumType) {
 		fprintf(fp,"enum ");
 		printfSymbolReference(fp, dn->variable->type.declaration, "_");
