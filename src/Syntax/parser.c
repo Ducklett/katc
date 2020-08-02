@@ -559,6 +559,18 @@ node parser_parse_enum_declaration(parser *p, diagnosticContainer *d) {
 
 node parser_parse_expression(parser *p, diagnosticContainer *d) { return parser_parse_binary_expression(p, d,-2); }
 
+node parser_parse_ternary_expression(parser *p, diagnosticContainer *d, node *condition) {
+	node questionmark = parser_match_token(p,d,questionmarkToken);
+	node thenStatement = parser_parse_expression(p,d);
+	node colon = parser_match_token(p,d,colonToken);
+	node elseStatement = parser_parse_expression(p,d);
+
+	ternaryExpressionNode *ternaryNode = arena_malloc(parser_arena, sizeof(ternaryExpressionNode));
+	*ternaryNode = (ternaryExpressionNode){ *condition, questionmark, thenStatement, colon, elseStatement };
+
+	return (node) { ternaryExpression, textspan_from_bounds(&condition, &elseStatement), .data = ternaryNode, };
+}
+
 node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parentPrecedence) {
 
 	bool unaryOnLeft = true;
@@ -580,8 +592,6 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 		} 
 	} else if (left.kind == endOfFileToken || left.kind == errorToken) return left;
 
-
-
 	while (true) {
 		node operator = parser_current(p, d);
 
@@ -600,6 +610,8 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 		if (precedence == -1 || precedence <= parentPrecedence) {
 			return left;
 		}
+
+		if (operator.kind == questionmarkToken) return parser_parse_ternary_expression(p, d, &left);
 
 		operator = parser_next_token(p, d);
 

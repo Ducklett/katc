@@ -21,6 +21,7 @@ astNode bind_namespace_declaration(node *n, ast *tree);
 astNode bind_enum_declaration(node *n, ast *tree);
 astNode bind_unary_expression(node *n, ast *tree);
 astNode bind_binary_expression(node *n, ast *tree);
+astNode bind_ternary_expression(node *n, ast *tree);
 astNode bind_call_expression(node *n, ast *tree, scope *functionScope);
 astNode bind_variable_declaration(node *n, ast *tree);
 astNode bind_variable_assignment(node *n, ast *tree);
@@ -102,6 +103,7 @@ astNode bind_expression_internal(node *n, ast* tree) {
 
 		case unaryExpression: return bind_unary_expression(n, tree);
 		case binaryExpression: return bind_binary_expression(n, tree);
+		case ternaryExpression: return bind_ternary_expression(n, tree);
 		case callExpression: return bind_call_expression(n, tree, NULL);
 		case variableDeclaration: return bind_variable_declaration(n, tree);
 		case variableAssignment: return bind_variable_assignment(n, tree);
@@ -523,6 +525,32 @@ astNode bind_binary_expression(node *n, ast *tree) {
 	*binaryNode = (binaryExpressionAst){ op.operator, boundLeft, boundRight };
 
 	return (astNode){ binaryExpressionKind, hasErrors ? primitive_type_from_kind(errorType) : op.type, .data = binaryNode };
+}
+
+astNode bind_ternary_expression(node *n, ast *tree) {
+	ternaryExpressionNode *tn = (ternaryExpressionNode*)n->data;
+
+	astNode boundCondition = bind_expression_of_type(&tn->condition, tree, primitive_type_from_kind(boolType), tn->condition.span);
+	astNode boundThen = bind_expression(&tn->thenExpression, tree);
+	astNode boundElse = bind_expression(&tn->elseExpression, tree);
+
+	// silence errors if the problem lies elsewhere
+	bool hasErrors = boundCondition.type.kind == errorType || boundCondition.type.kind == unresolvedType ||
+					 boundThen.type.kind == errorType || boundThen.type.kind == unresolvedType ||
+					 boundElse.type.kind == errorType || boundElse.type.kind == unresolvedType;
+
+	if (!hasErrors && boundThen.type.kind != boundElse.type.kind) {
+		report_diagnostic(&tree->diagnostics, ternaryTypesMustBeEqualDiagnostic, tn->condition.span, boundThen.type.kind, boundElse.type.kind, 0);
+	}
+
+	if (!hasErrors && feature_constantfolding && boundCondition.kind == literalKind && boundThen.kind == literalKind && boundElse.kind == literalKind) {
+		return boundCondition.boolValue ? boundThen : boundElse;
+	}
+
+	ternaryExpressionAst *ternaryNode = arena_malloc(binder_arena, sizeof(ternaryExpressionAst));
+	*ternaryNode = (ternaryExpressionAst){ boundCondition, boundThen, boundElse };
+
+	return (astNode){ ternaryExpressionKind, hasErrors ? primitive_type_from_kind(errorType) : boundThen.type, .data = ternaryNode };
 }
 
 astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {

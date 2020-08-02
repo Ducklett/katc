@@ -41,6 +41,7 @@ enum syntaxKind {
 	pipeOperator,
 
 	equalsToken,
+	questionmarkToken,
 	colonToken,
 	commaToken,
 	dotToken,
@@ -80,6 +81,7 @@ enum syntaxKind {
 
 	unaryExpression,
 	binaryExpression,
+	ternaryExpression,
 	parenthesizedExpression,
 	rangeExpression,
 	symbolReferenceExpression,
@@ -139,6 +141,7 @@ static const char *syntaxKindText[] = {
 	"^",
 	"|",
 	"=",
+	"?",
 	":",
 	",",
 	".",
@@ -174,6 +177,7 @@ static const char *syntaxKindText[] = {
 	"enum",
 	"unaryExpression",
 	"binaryExpression",
+	"ternaryExpression",
 	"parenthesizedExpression",
 	"rangeExpression",
 	"symbolReferenceExpression",
@@ -246,6 +250,15 @@ typedef struct binaryExpressionNode {
 	node operator;
 	node right;
 } binaryExpressionNode;
+
+// a > b ? a : b
+typedef struct ternaryExpressionNode {
+	node condition;
+	node questionmark;
+	node thenExpression;
+	node colon;
+	node elseExpression;
+} ternaryExpressionNode;
 
 // (10)
 // (a * b)
@@ -528,6 +541,7 @@ static inline i8 getBinaryOperatorPrecedence(enum syntaxKind kind) {
 	case pipeOperator: return 6;
 	case ampersandAmpersandOperator: return 5;
 	case pipePipeOperator: return 4;
+	case questionmarkToken: return 3;
 	default: return -1;
 	}
 }
@@ -723,6 +737,15 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		print_syntaxtree_internal(text, &bn.left, indent, verbose, true);
 		print_syntaxtree_internal(text, &bn.operator, indent, verbose, true);
 		print_syntaxtree_internal(text, &bn.right, indent, verbose, false);
+		break;
+	}
+	case ternaryExpression: {
+		ternaryExpressionNode tn = *(ternaryExpressionNode*)root->data;
+		print_syntaxtree_internal(text, &tn.condition, indent, verbose, true);
+		print_syntaxtree_internal(text, &tn.questionmark, indent, verbose, true);
+		print_syntaxtree_internal(text, &tn.thenExpression, indent, verbose, true);
+		print_syntaxtree_internal(text, &tn.colon, indent, verbose, true);
+		print_syntaxtree_internal(text, &tn.elseExpression, indent, verbose, false);
 		break;
 	}
 	case parenthesizedExpression: {

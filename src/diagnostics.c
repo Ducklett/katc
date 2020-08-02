@@ -33,6 +33,7 @@ static const char *diagnosticText[] = {
 	"a value of type '%s' cannot be used in switch statements. (%d,%d)\n",
 	"duplicate value in switch case. (%d,%d)\n",
 	"argument count does not match in call to '%s'. (%d,%d)\n",
+	"ternary values must be of the same type, got %s and %s. (%d,%d)\n",
 };
 
 void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u64 param1, u64 param2, u64 param3) {
@@ -126,6 +127,7 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		case invalidSwitchTypeDiagnostic: fprintf(stderr, diagnosticText[d.kind], astKindText[d.param1], d.span.start, d.span.length); break;
 		case duplicateSwitchValueDiagnostic: fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
 		case argCountDoensntMatchDiagnostic: fprintf(stderr, diagnosticText[d.kind], d.param1, d.span.start, d.span.length); break;
+		case ternaryTypesMustBeEqualDiagnostic: fprintf(stderr, diagnosticText[d.kind], astKindText[d.param1], astKindText[d.param2], d.span.start, d.span.length); break;
 		default: {
 			fprintf(stderr, "Unhandled case %s in print_diagnostics%s\n", diagnosticMetaText[d.kind], TERMRESET);
 			exit(1);

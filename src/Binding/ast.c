@@ -7,6 +7,7 @@ enum astSyntaxKind {
 	literalKind,
 	unaryExpressionKind,
 	binaryExpressionKind,
+	ternaryExpressionKind,
 	rangeExpressionKind,
 	callExpressionKind,
 	castExpressionKind,
@@ -36,6 +37,7 @@ static const char *astSyntaxKindText[] = {
 	"literal",
 	"unaryExpression",
 	"binaryExpression",
+	"ternaryExpression",
 	"rangeExpression",
 	"callExpression",
 	"castExpression",
@@ -337,6 +339,12 @@ typedef struct binaryExpressionAst {
 	astNode right;
 } binaryExpressionAst;
 
+typedef struct ternaryExpressionAst {
+	astNode condition;
+	astNode thenExpression;
+	astNode elseExpression;
+} ternaryExpressionAst;
+
 // TODO: range expression should eventually also support identifiers for start and end values
 typedef struct rangeExpressionAst {
 	union {
@@ -617,6 +625,14 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		print_ast_internal(text, &un.right, indent, verbose, false);
 		break;
 	}
+	case ternaryExpressionKind: {
+		ternaryExpressionAst *tn = (ternaryExpressionAst*)root->data;
+
+		print_ast_internal(text, &tn->condition, indent, verbose, true);
+		print_ast_internal(text, &tn->thenExpression, indent, verbose, true);
+		print_ast_internal(text, &tn->elseExpression, indent, verbose, false);
+		break;
+	}
 	case callExpressionKind: {
 		callExpressionAst cn = *(callExpressionAst*)root->data;
 
@@ -871,6 +887,18 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		fprintf (fp, "Label%p -> Label%p\n", root, &un->right);
 		print_ast_graph_internal(text, &un->left, fp, false);
 		print_ast_graph_internal(text, &un->right, fp, false);
+		break;
+	}
+	case ternaryExpressionKind: {
+		ternaryExpressionAst *tn = (ternaryExpressionAst*)root->data;
+
+		ENDLABEL
+		fprintf (fp, "Label%p -> Label%p\n", root, &tn->condition);
+		fprintf (fp, "Label%p -> Label%p\n", root, &tn->thenExpression);
+		fprintf (fp, "Label%p -> Label%p\n", root, &tn->elseExpression);
+		print_ast_graph_internal(text, &tn->condition, fp, false);
+		print_ast_graph_internal(text, &tn->thenExpression, fp, false);
+		print_ast_graph_internal(text, &tn->elseExpression, fp, false);
 		break;
 	}
 	case callExpressionKind: {

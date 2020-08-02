@@ -161,6 +161,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 	case '^': if (lexer_peek(l,1) == '=') return lex_basic_token(l, caretEqualsToken, 2);
 			  else return lex_basic_token(l, caretOperator, 1);
 
+	case '?': return lex_basic_token(l, questionmarkToken, 1);
 	case ':': return lex_basic_token(l, colonToken, 1);
 	case ';': return lex_basic_token(l, semicolonToken, 1);
 	case ',': return lex_basic_token(l, commaToken, 1);

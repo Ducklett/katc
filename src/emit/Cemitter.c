@@ -11,6 +11,7 @@ static inline void emit_c_forLoop(astNode *n, ast *tree);
 
 static inline void emit_c_literal(astNode *n, ast *tree);
 static inline void emit_c_binaryExpression(astNode *n, ast *tree);
+static inline void emit_c_ternaryExpression(astNode *n, ast *tree);
 static inline void emit_c_unaryExpression(astNode *n, ast *tree);
 static inline void emit_c_callExpression(astNode *n, ast *tree);
 static inline void emit_c_castExpression(astNode *n, ast *tree);
@@ -141,6 +142,7 @@ void emit_c_node(astNode *n, ast *tree) {
 
 	case literalKind: emit_c_literal(n, tree); break;
 	case binaryExpressionKind: emit_c_binaryExpression(n, tree); break;
+	case ternaryExpressionKind: emit_c_ternaryExpression(n, tree); break;
 	case unaryExpressionKind: emit_c_unaryExpression(n, tree); break;
 	case callExpressionKind: emit_c_callExpression(n, tree); break;
 	case castExpressionKind: emit_c_castExpression(n, tree); break;
@@ -361,6 +363,18 @@ static inline void emit_c_binaryExpression(astNode *n, ast *tree) {
 	fprintf(fp," %s ", cBinaryText[bn.operator]);
 	emit_c_node(&bn.right, tree);
 	if (needsParen) fprintf(fp,")");
+}
+
+static inline void emit_c_ternaryExpression(astNode *n, ast *tree) {
+	ternaryExpressionAst *tn = (ternaryExpressionAst*)n->data;
+	bool needsParen = parentKind == binaryExpressionKind || parentKind == unaryExpressionKind;
+	if (needsParen) fprintf(fp,"(");
+	emit_c_node(&tn->condition, tree);
+	if (needsParen) fprintf(fp,")");
+	fprintf(fp," ? ");
+	emit_c_node(&tn->thenExpression, tree);
+	fprintf(fp," : ");
+	emit_c_node(&tn->elseExpression, tree);
 }
 
 static inline void emit_c_unaryExpression(astNode *n, ast *tree) {
