@@ -324,6 +324,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			else if (span_compare(l->text, t.span, "fn")) t.kind = fnKeyword;
 			else if (span_compare(l->text, t.span, "namespace")) t.kind = namespaceKeyword;
 			else if (span_compare(l->text, t.span, "enum")) t.kind = enumKeyword;
+			else if (span_compare(l->text, t.span, "struct")) t.kind = structKeyword;
 			break;
 		}
 		t.kind = badToken;

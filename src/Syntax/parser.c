@@ -26,6 +26,7 @@ node parser_parse_variable_assignment(parser *p, diagnosticContainer *d);
 node parser_parse_function_call(parser *p, diagnosticContainer *d);
 node parser_parse_namespace_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_enum_declaration(parser *p, diagnosticContainer *d);
+node parser_parse_struct_declaration(parser *p, diagnosticContainer *d);
 
 node parser_parse_expression(parser *p, diagnosticContainer *d);
 node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parentPrecedence);
@@ -113,6 +114,7 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	case continueKeyword: res = parser_next_token(p, d); break;
 	case fnKeyword: res = parser_parse_function_declaration(p, d); break;
 	case namespaceKeyword: res = parser_parse_namespace_declaration(p, d); break;
+	case structKeyword: res = parser_parse_struct_declaration(p, d); break;
 	case enumKeyword: res = parser_parse_enum_declaration(p, d); break;
 	case identifierToken:
 		if  (l2kind == colonToken) {
@@ -516,6 +518,20 @@ node parser_parse_namespace_declaration(parser *p, diagnosticContainer *d) {
 	return (node) { namespaceDeclaration, textspan_from_bounds(&namespaceToken, &block), .data = nnode, };
 }
 
+node parser_parse_struct_declaration(parser *p, diagnosticContainer *d) {
+	node structToken = parser_match_token(p, d, structKeyword);
+	node identifier = parser_match_token(p, d, identifierToken);
+
+	enum syntaxKind prevKind = parser_push_context(p, structDeclaration);
+	node block = parser_parse_block_statement(p, d, false);
+	parser_pop_context(p,prevKind);
+
+	structDeclarationNode *nnode = arena_malloc(parser_arena, sizeof(structDeclarationNode));
+	*nnode = (structDeclarationNode){ structToken, identifier, block };
+
+	return (node) { structDeclaration, textspan_from_bounds(&structToken, &block), .data = nnode, };
+}
+
 node parser_parse_enum_declaration(parser *p, diagnosticContainer *d) {
 	node enumToken = parser_match_token(p, d, enumKeyword);
 	node identifier = parser_match_token(p,d,identifierToken);
@@ -568,7 +584,7 @@ node parser_parse_ternary_expression(parser *p, diagnosticContainer *d, node *co
 	ternaryExpressionNode *ternaryNode = arena_malloc(parser_arena, sizeof(ternaryExpressionNode));
 	*ternaryNode = (ternaryExpressionNode){ *condition, questionmark, thenStatement, colon, elseStatement };
 
-	return (node) { ternaryExpression, textspan_from_bounds(&condition, &elseStatement), .data = ternaryNode, };
+	return (node) { ternaryExpression, textspan_from_bounds(condition, &elseStatement), .data = ternaryNode, };
 }
 
 node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parentPrecedence) {

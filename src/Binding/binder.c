@@ -18,6 +18,7 @@ astNode bind_while_loop(node *n, ast *tree);
 astNode bind_for_loop(node *n, ast *tree);
 astNode bind_function_declaration(node *n, ast *tree);
 astNode bind_namespace_declaration(node *n, ast *tree);
+astNode bind_struct_declaration(node *n, ast *tree);
 astNode bind_enum_declaration(node *n, ast *tree);
 astNode bind_unary_expression(node *n, ast *tree);
 astNode bind_binary_expression(node *n, ast *tree);
@@ -35,6 +36,7 @@ astSymbol* find_symbol_in_scope_internal(textspan nameSpan, ast *tree, scope *cu
 astType resolve_type_reference(node *n, ast *tree, scope *typeScope);
 astNode resolve_symbol_reference(node *n, ast *tree);
 astSymbol* declare_namespace(ast *tree, node *n, u8 flags);
+astSymbol* declare_struct(ast *tree, textspan nameSpan, u8 flags);
 astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, node *body, astSymbol **parameters, u16 parameterCount, scope *functionScope);
 astSymbol* declare_variable(ast *tree, textspan nameSpan, astType variableType, u8 flags);
 astSymbol* declare_enum(ast *tree, textspan nameSpan, node *enums, int enumCount, u8 flags);
@@ -83,6 +85,7 @@ astNode bind_expression_internal(node *n, ast* tree) {
 		case forLoop: return bind_for_loop(n, tree);
 		case functionDeclaration: return bind_function_declaration(n, tree);
 		case namespaceDeclaration: return bind_namespace_declaration(n, tree);
+		case structDeclaration: return bind_struct_declaration(n, tree);
 		case enumDeclaration: return bind_enum_declaration(n, tree);
 
 		case breakKeyword: return (astNode){ breakKind, primitive_type_from_kind(voidType), .data = 0 };
@@ -457,6 +460,24 @@ astNode bind_namespace_declaration(node *n, ast *tree) {
 	return (astNode){ namespaceDeclarationKind , primitive_type_from_kind(voidType), .data = ns };
 }
 
+astNode bind_struct_declaration(node *n, ast *tree) {
+
+	structDeclarationNode fn = *(structDeclarationNode*)n->data;
+
+	u8 flags = 0;
+	astSymbol *structSymbol = declare_struct(tree, fn.identifier.span, flags);
+
+	astSymbol *parentNamespace = tree->currentNamespace;
+	tree->currentNamespace = structSymbol;
+
+	structAst *ns = arena_malloc(binder_arena, sizeof(structAst));
+	*ns = (structAst){ structSymbol, bind_block_statement(&fn.body, tree, structSymbol->namespaceScope) };
+
+	tree->currentNamespace = parentNamespace;
+
+	return (astNode){ structDeclarationKind , primitive_type_from_kind(voidType), .data = ns };
+}
+
 astNode bind_enum_declaration(node *n, ast *tree) {
 
 	enumDeclarationNode en = *(enumDeclarationNode*)n->data;
@@ -553,11 +574,55 @@ astNode bind_ternary_expression(node *n, ast *tree) {
 	return (astNode){ ternaryExpressionKind, hasErrors ? primitive_type_from_kind(errorType) : boundThen.type, .data = ternaryNode };
 }
 
+astNode bind_struct_constructor(node *n, ast *tree, astSymbol *structDeclaration) {
+	functionCallNode cn = *(functionCallNode*)n->data;
+
+	callExpressionAst *callNode = NULL;
+
+	bool hasErrors = false;
+
+	astNode *arguments = NULL;
+
+	u16 nodesCount = (cn.argumentCount+1)/2;
+
+	int symbolCount = sb_count(structDeclaration->namespaceScope->symbols);
+
+	if (symbolCount != nodesCount) {
+		report_diagnostic(&tree->diagnostics, argCountDoensntMatchDiagnostic, cn.identifier.span, (u64)structDeclaration->name, 0, 0);
+		hasErrors = true;
+		goto end;
+	}
+
+	// skip the comma tokens
+	for (int i=0;i<cn.argumentCount;i+=2) {
+		sb_push(arguments, bind_expression_of_type(&cn.arguments[i], tree, structDeclaration->namespaceScope->symbols[i/2]->type, cn.arguments[i].span));
+	}
+
+
+	size_t nodesSize = nodesCount * sizeof(astNode);
+	astNode* nodesStorage = arena_malloc(binder_arena, nodesSize);
+	memcpy(nodesStorage, arguments, nodesSize);
+
+	callNode = arena_malloc(binder_arena, sizeof(callExpressionAst));
+	*callNode = (callExpressionAst){ structDeclaration, nodesStorage, nodesCount };
+
+	sb_free(arguments);
+
+	end:;
+
+	return (astNode){ callExpressionKind , structDeclaration->type, .data = callNode };
+}
+
 astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 	functionCallNode cn = *(functionCallNode*)n->data;
 
 	astType castType = resolve_type_reference(&cn.identifier, tree, functionScope);
 
+	if (castType.kind == structType) {
+		return bind_struct_constructor(n, tree, castType.declaration);
+	}
+
+	// TODO: add function kind and add !functionKind to the condition
 	if (castType.kind > 2) {
 		if (cn.argumentCount != 1) {
 			textspan errSpan = cn.argumentCount == 0
@@ -835,6 +900,29 @@ astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, node *body, 
 	}
 
 	return function;
+}
+
+astSymbol* declare_struct(ast *tree, textspan nameSpan, u8 flags) {
+	scope *currentScope = tree->currentScope;
+
+	for (int i = 0; i < sb_count(currentScope->symbols); i++) {
+		if (span_compare(tree->text, nameSpan, currentScope->symbols[i]->name)) {
+			report_diagnostic(&tree->diagnostics, redeclarationOfSymbolDiagnostic, nameSpan, (u64)currentScope->symbols[i]->name, 0, 0);
+			return 0;
+		}
+	}
+
+	astSymbol *structDeclaration = arena_malloc(binder_arena, sizeof(astSymbol));
+	sb_push(currentScope->symbols, structDeclaration);
+
+	structDeclaration->symbolKind = SYMBOL_VARIABLE;
+	structDeclaration->name = ast_substring(tree->text, nameSpan, string_arena);
+	structDeclaration->parentNamespace = tree->currentNamespace;
+	structDeclaration->type = (astType){ structType, structDeclaration };
+	structDeclaration->flags = flags;
+	structDeclaration->namespaceScope = create_scope(tree);
+
+	return structDeclaration;
 }
 
 astSymbol* declare_variable(ast *tree, textspan nameSpan, astType variableType, u8 flags) {

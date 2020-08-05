@@ -78,6 +78,7 @@ enum syntaxKind {
 	fnKeyword,
 	namespaceKeyword,
 	enumKeyword,
+	structKeyword,
 
 	unaryExpression,
 	binaryExpression,
@@ -92,6 +93,7 @@ enum syntaxKind {
 	variableDeclaration,
 	namespaceDeclaration,
 	enumDeclaration,
+	structDeclaration,
 	variableAssignment,
 	blockStatement,
 	ifStatement,
@@ -175,6 +177,7 @@ static const char *syntaxKindText[] = {
 	"fn",
 	"namespace",
 	"enum",
+	"struct",
 	"unaryExpression",
 	"binaryExpression",
 	"ternaryExpression",
@@ -188,6 +191,7 @@ static const char *syntaxKindText[] = {
 	"variableDeclaration",
 	"namespaceDeclaration",
 	"enumDeclaration",
+	"structDeclaration",
 	"variableAssignment",
 	"blockStatement",
 	"ifStatement",
@@ -436,7 +440,7 @@ typedef struct forLoopNode {
 	node block;
 } forLoopNode;
 
-// used in function and struct declarations
+// used in function declarations
 // x: int
 typedef struct typedIdentifierNode {
 	node identifier;
@@ -444,6 +448,7 @@ typedef struct typedIdentifierNode {
 	node type;
 } typedIdentifierNode;
 
+// fn max(x:int, y:int) -> int { return x > y ? x : y }
 typedef struct functionDeclarationNode {
 	node fnKeyword;
 	node identifier;
@@ -454,11 +459,26 @@ typedef struct functionDeclarationNode {
 	node body;
 } functionDeclarationNode;
 
+// namespace Foo {
+// 	x:int
+// 	y:int
+
+// 	fn travel(dx:int, dy:int) { x += dx ; y += dy }
+// 	fn max(x:int, y:int) -> int { return x > y ? x : y }
+// }
 typedef struct namespaceDeclarationNode {
 	node namespaceKeyword;
 	node identifier;
 	node body;
 } namespaceDeclarationNode;
+
+
+// struct Point { x:int; y:int }
+typedef struct structDeclarationNode {
+	node structKeyword;
+	node identifier;
+	node body;
+} structDeclarationNode;
 
 textspan textspan_create(u32 start, u16 length) {
 	textspan span = { start, length, };
@@ -712,6 +732,13 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		print_syntaxtree_internal(text, &nn.namespaceKeyword, indent, verbose, true);
 		print_syntaxtree_internal(text, &nn.identifier, indent, verbose, true);
 		print_syntaxtree_internal(text, &nn.body, indent, verbose, false);
+		break;
+	}
+	case structDeclaration: {
+		structDeclarationNode *sn = (structDeclarationNode*)root->data;
+		print_syntaxtree_internal(text, &sn->structKeyword, indent, verbose, true);
+		print_syntaxtree_internal(text, &sn->identifier, indent, verbose, true);
+		print_syntaxtree_internal(text, &sn->body, indent, verbose, false);
 		break;
 	}
 	case fileStatement:

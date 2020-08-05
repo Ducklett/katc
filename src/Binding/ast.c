@@ -13,6 +13,7 @@ enum astSyntaxKind {
 	castExpressionKind,
 	namespaceDeclarationKind,
 	enumDeclarationKind,
+	structDeclarationKind,
 	functionDeclarationKind,
 	variableDeclarationKind,
 	variableAssignmentKind,
@@ -43,6 +44,7 @@ static const char *astSyntaxKindText[] = {
 	"castExpression",
 	"namespaceDeclaration",
 	"enumDeclarationKind",
+	"structDeclarationKind",
 	"functionDeclaration",
 	"variableDeclaration",
 	"variableAssignment",
@@ -78,6 +80,7 @@ enum astKind {
 	stringType,
 	charType,
 	enumType,
+	structType,
 };
 
 static const char *astKindText[] = {
@@ -97,6 +100,7 @@ static const char *astKindText[] = {
 	"string",
 	"char",
 	"enum",
+	"struct",
 };
 
 bool isNumberType(enum astKind t) {
@@ -302,6 +306,8 @@ typedef struct astNode {
 #define SYMBOL_NAMESPACE 3
 #define SYMBOL_ENUM 4
 #define SYMBOL_ENUM_MEMBER 5
+#define SYMBOL_STRUCT 6
+#define SYMBOL_STRUCT_INSTANCE 7
 #define SYMBOL_ANY 0xFF
 
 typedef struct functionSymbolData {
@@ -422,6 +428,11 @@ typedef struct namespaceAst {
 	astSymbol* namespace;
 	astNode block;
 } namespaceAst;
+
+typedef struct structAst {
+	astSymbol* structSymbol;
+	astNode block;
+} structAst;
 
 typedef struct jumpAst {
 
@@ -656,6 +667,16 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 
 		printf ("%*s%s", indent, "", TERMMAGENTA);
 		printfSymbolReference(stdout, ns->namespace, ".");
+		printf ("%s\n", TERMRESET);
+
+		print_ast_internal(text, &ns->block, indent, verbose, false);
+		break;
+	}
+	case structDeclarationKind: {
+		structAst *ns = (structAst*)root->data;
+
+		printf ("%*s%s", indent, "", TERMMAGENTA);
+		printfSymbolReference(stdout, ns->structSymbol, ".");
 		printf ("%s\n", TERMRESET);
 
 		print_ast_internal(text, &ns->block, indent, verbose, false);
