@@ -14,6 +14,7 @@ enum astSyntaxKind {
 	namespaceDeclarationKind,
 	enumDeclarationKind,
 	structDeclarationKind,
+	structReferenceKind,
 	functionDeclarationKind,
 	variableDeclarationKind,
 	variableAssignmentKind,
@@ -45,6 +46,7 @@ static const char *astSyntaxKindText[] = {
 	"namespaceDeclaration",
 	"enumDeclarationKind",
 	"structDeclarationKind",
+	"structReferenceKind",
 	"functionDeclaration",
 	"variableDeclaration",
 	"variableAssignment",
@@ -307,7 +309,6 @@ typedef struct astNode {
 #define SYMBOL_ENUM 4
 #define SYMBOL_ENUM_MEMBER 5
 #define SYMBOL_STRUCT 6
-#define SYMBOL_STRUCT_INSTANCE 7
 #define SYMBOL_ANY 0xFF
 
 typedef struct functionSymbolData {
@@ -344,6 +345,11 @@ typedef struct binaryExpressionAst {
 	astNode left;
 	astNode right;
 } binaryExpressionAst;
+
+typedef struct structReferenceAst {
+	astNode left;
+	astNode right;
+} structReferenceAst;
 
 typedef struct ternaryExpressionAst {
 	astNode condition;
@@ -632,6 +638,13 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		binaryExpressionAst un = *(binaryExpressionAst*)root->data;
 
 		printf ("%*s%s%s%s\n", indent, "", TERMMAGENTA, astBinaryText[un.operator], TERMRESET);
+		print_ast_internal(text, &un.left, indent, verbose, true);
+		print_ast_internal(text, &un.right, indent, verbose, false);
+		break;
+	}
+	case structReferenceKind: {
+		structReferenceAst un = *(structReferenceAst*)root->data;
+
 		print_ast_internal(text, &un.left, indent, verbose, true);
 		print_ast_internal(text, &un.right, indent, verbose, false);
 		break;

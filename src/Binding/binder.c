@@ -26,6 +26,7 @@ astNode bind_ternary_expression(node *n, ast *tree);
 astNode bind_call_expression(node *n, ast *tree, scope *functionScope);
 astNode bind_variable_declaration(node *n, ast *tree);
 astNode bind_variable_assignment(node *n, ast *tree);
+astNode bind_expression_in_scope(node *n, ast *tree, scope *expressionScope);
 scope* create_scope(ast *tree);
 scope* set_current_scope(ast *tree, scope* s);
 scope* push_scope(ast *tree);
@@ -147,6 +148,23 @@ astNode bind_enum_reference(node *n, ast *tree, scope *enumScope, bool prefix) {
 	bool  hasErrors = enumRef == 0;
 
 	return (astNode){ literalKind,  hasErrors ? primitive_type_from_kind(errorType) : enumRef->type, .numValue = hasErrors ? 0 : enumRef->numValue };
+}
+
+astNode bind_struct_reference(node *n, ast *tree, scope *targetScope) {
+	binaryExpressionNode *bn = (binaryExpressionNode*)n->data;
+
+	astNode boundLeft = bind_expression_in_scope(&bn->left, tree, targetScope);
+
+	if (boundLeft.type.kind != structType) {
+		printf("expected left to be a struct");
+		exit(1);
+	}
+	astNode boundRight = bind_expression_in_scope(&bn->right, tree, boundLeft.type.declaration->namespaceScope);
+
+	structReferenceAst *refNode = arena_malloc(binder_arena, sizeof(structReferenceAst));
+	*refNode = (structReferenceAst){ boundLeft, boundRight };
+
+	return (astNode){ structReferenceKind, /*hasErrors ? primitive_type_from_kind(errorType) :*/ boundRight.type, .data = refNode };
 }
 
 astNode bind_block_statement(node *n, ast *tree, scope *withScope) {
@@ -733,7 +751,7 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 		? VARIABLE_MUTABLE
 		: 0;
 
-	if (tree->currentNamespace == NULL || tree->currentNamespace->symbolKind == SYMBOL_NAMESPACE)
+	if (tree->currentNamespace == NULL || tree->currentNamespace->symbolKind == SYMBOL_NAMESPACE | tree->currentNamespace->symbolKind == SYMBOL_STRUCT)
 		flags |= VARIABLE_GLOBAL;
 
 	astType type =  {0};
@@ -915,7 +933,7 @@ astSymbol* declare_struct(ast *tree, textspan nameSpan, u8 flags) {
 	astSymbol *structDeclaration = arena_malloc(binder_arena, sizeof(astSymbol));
 	sb_push(currentScope->symbols, structDeclaration);
 
-	structDeclaration->symbolKind = SYMBOL_VARIABLE;
+	structDeclaration->symbolKind = SYMBOL_STRUCT;
 	structDeclaration->name = ast_substring(tree->text, nameSpan, string_arena);
 	structDeclaration->parentNamespace = tree->currentNamespace;
 	structDeclaration->type = (astType){ structType, structDeclaration };
@@ -1065,6 +1083,8 @@ astNode resolve_symbol_reference(node *n, ast *tree) {
 				break;
 			} else if (symbol->symbolKind == SYMBOL_ENUM) {
 				nSearch->kind = enumReferenceExpression;
+			} else if (symbol->type.kind == structType) {
+				nSearch->kind = structReferenceExpression;
 			} else {
 				nSearch = &bn->right;
 				outScope = symbol->namespaceScope;
@@ -1085,12 +1105,19 @@ astNode resolve_symbol_reference(node *n, ast *tree) {
 		return (astNode){ missingKind, primitive_type_from_kind(errorType), .data = NULL };
 	}
 
+	return bind_expression_in_scope(n, tree, outScope);
+}
+
+
+astNode bind_expression_in_scope(node *n, ast *tree, scope *expressionScope) {
 	switch(n->kind) {
-		case enumReferenceExpression: return bind_enum_reference(n, tree, outScope, true);
-		case callExpression: return bind_call_expression(n, tree, outScope);
-		case identifierToken: return bind_variable_reference(n, tree, outScope);
+		case symbolReferenceExpression:
+		case structReferenceExpression: return bind_struct_reference(n, tree, expressionScope);
+		case enumReferenceExpression: return bind_enum_reference(n, tree, expressionScope, true);
+		case callExpression: return bind_call_expression(n, tree, expressionScope);
+		case identifierToken: return bind_variable_reference(n, tree, expressionScope);
 		default: {
-			fprintf(stderr, "%sUnhandled node of type %s in binder symbol resolver%s", TERMRED, syntaxKindText[n->kind], TERMRESET);
+			fprintf(stderr, "%sUnhandled node of type %s in binder.c -> bind_expression_in_scope%s", TERMRED, syntaxKindText[n->kind], TERMRESET);
 			exit(1);
 		}
 	}
