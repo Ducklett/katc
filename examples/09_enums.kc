@@ -12,6 +12,8 @@ print("%s != %s = %s\n", colorA, colorB, colorA != colorB)
 print("%s == %s = %s\n", colorA, colorC, colorA == colorC)
 
 for c in Foo.Color.Red..Foo.Color.Black {
+	// switch cases pick up on the type of c
+	// and allows you to access the enum members without prefix
 	switch c {
 		case Red: print("r!\n")
 		case Green: print("g!\n")

@@ -628,7 +628,7 @@ astNode bind_struct_constructor(node *n, ast *tree, astSymbol *structDeclaration
 
 	end:;
 
-	return (astNode){ callExpressionKind , structDeclaration->type, .data = callNode };
+	return (astNode){ constructorExpressionKind , structDeclaration->type, .data = callNode };
 }
 
 astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {

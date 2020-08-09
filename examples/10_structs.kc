@@ -1,0 +1,16 @@
+struct Point { x:int ; y:int }
+struct Monster { hp:int ; location:Point }
+
+p := Point(10, 20)
+
+print("Point { x: %d, y: %d }\n", p.x, p.y)
+
+p.x = 30
+print("Point { x: %d, y: %d }\n", p.x, p.y)
+print("x + y = %d\n", p.x + p.y)
+
+print("\n====================\n\n")
+
+m := Monster(255, p)
+
+print("hp: %d, location: (%d, %d)\n", m.hp, m.location.x, m.location.y);

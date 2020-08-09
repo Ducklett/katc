@@ -10,6 +10,7 @@ enum astSyntaxKind {
 	ternaryExpressionKind,
 	rangeExpressionKind,
 	callExpressionKind,
+	constructorExpressionKind,
 	castExpressionKind,
 	namespaceDeclarationKind,
 	enumDeclarationKind,
@@ -42,6 +43,7 @@ static const char *astSyntaxKindText[] = {
 	"ternaryExpression",
 	"rangeExpression",
 	"callExpression",
+	"constructorExpressionKind",
 	"castExpression",
 	"namespaceDeclaration",
 	"enumDeclarationKind",
@@ -657,6 +659,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		print_ast_internal(text, &tn->elseExpression, indent, verbose, false);
 		break;
 	}
+	case constructorExpressionKind:
 	case callExpressionKind: {
 		callExpressionAst cn = *(callExpressionAst*)root->data;
 
@@ -935,6 +938,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		print_ast_graph_internal(text, &tn->elseExpression, fp, false);
 		break;
 	}
+	case constructorExpressionKind:
 	case callExpressionKind: {
 		callExpressionAst *cn = (callExpressionAst*)root->data;
 

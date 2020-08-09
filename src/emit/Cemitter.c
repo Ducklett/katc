@@ -14,12 +14,14 @@ static inline void emit_c_binaryExpression(astNode *n, ast *tree);
 static inline void emit_c_ternaryExpression(astNode *n, ast *tree);
 static inline void emit_c_unaryExpression(astNode *n, ast *tree);
 static inline void emit_c_callExpression(astNode *n, ast *tree);
+static inline void emit_c_constructorExpression(astNode *n, ast *tree);
 static inline void emit_c_castExpression(astNode *n, ast *tree);
 static inline void emit_c_variableDeclaration(astNode *n, ast *tree);
 static inline void emit_c_enumDeclaration(astNode *n, ast *tree);
 static inline void emit_c_structDeclaration(astNode *n, ast *tree);
 static inline void emit_c_variableAssignment(astNode *n, ast *tree);
 static inline void emit_c_variableReference(astNode *n, ast *tree);
+static inline void emit_c_structReference(astNode *n, ast *tree);
 char* escape_string_c(char *str);
 
 int c_indent=0;
@@ -146,10 +148,12 @@ void emit_c_node(astNode *n, ast *tree) {
 	case ternaryExpressionKind: emit_c_ternaryExpression(n, tree); break;
 	case unaryExpressionKind: emit_c_unaryExpression(n, tree); break;
 	case callExpressionKind: emit_c_callExpression(n, tree); break;
+	case constructorExpressionKind: emit_c_constructorExpression(n, tree); break;
 	case castExpressionKind: emit_c_castExpression(n, tree); break;
 	case variableDeclarationKind: emit_c_variableDeclaration(n, tree); break;
 	case variableAssignmentKind: emit_c_variableAssignment(n, tree); break;
 	case variableReferenceKind: emit_c_variableReference(n, tree); break;
+	case structReferenceKind: emit_c_structReference(n, tree); break;
 	default:
 		fprintf(stderr, "%sUnhandled node of type %s in c emitter%s", TERMRED, astSyntaxKindText[n->kind], TERMRESET);
 		exit(1);
@@ -419,6 +423,31 @@ static inline void emit_c_callExpression(astNode *n, ast *tree) {
 	fprintf(fp,")");
 }
 
+static inline void emit_c_constructorExpression(astNode *n, ast *tree) {
+	callExpressionAst *cn = (callExpressionAst*)n->data;
+
+	char* name = cn->function->name;
+
+	fprintf(fp,"((struct ");
+	printfSymbolReference(fp, cn->function, "_");
+
+	fprintf(fp,"){");
+
+	for (int i= 0; i < cn->argumentCount; i++) {
+		if (cn->arguments[i].type.kind == enumType) {
+			printfSymbolReference(fp, cn->arguments[i].type.declaration, "_");
+			fprintf(fp, "__TEXT[");
+			emit_c_node(cn->arguments + i, tree);
+			fprintf(fp, "]");
+		} else {
+			emit_c_node(cn->arguments + i, tree);
+			if (cn->arguments[i].type.kind == boolType) fprintf(fp, " ? \"true\" : \"false\"");
+		}
+		if (i != cn->argumentCount-1) fprintf(fp,", ");
+	}
+	fprintf(fp,"})");
+}
+
 static inline void emit_c_castExpression(astNode *n, ast *tree) {
 	astNode cn = *(astNode*)n->data;
 	fprintf(fp,"((%s)", cTypeText[n->type.kind]);
@@ -507,4 +536,12 @@ static inline void emit_c_variableAssignment(astNode *n, ast *tree) {
 
 static inline void emit_c_variableReference(astNode *n, ast *tree) {
 	printfSymbolReference(fp, (astSymbol*)n->data, "_");
+}
+
+static inline void emit_c_structReference(astNode *n, ast *tree) {
+
+	structReferenceAst *sn = (structReferenceAst*)n->data;
+	emit_c_node(&sn->left, tree);
+	fprintf(fp, ".");
+	emit_c_node(&sn->right, tree);
 }
