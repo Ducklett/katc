@@ -439,7 +439,7 @@ astNode bind_function_declaration(node *n, ast *tree) {
 
 	for (int i=0;i<fn.parameterCount;i+=2) {
 		typedIdentifierNode id = *(typedIdentifierNode*)fn.parameters[i].data;
-		astSymbol *param = declare_variable(tree, id.identifier.span, primitive_type_from_kind(resolve_primitive_type_from_span(tree, id.type.span)), VARIABLE_INITIALIZED);
+		astSymbol *param = declare_variable(tree, id.identifier.span, resolve_type_reference(&id.type, tree, NULL), VARIABLE_INITIALIZED);
 		if (param == NULL) {
 			hasErrors = true;
 			goto end;

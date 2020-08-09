@@ -411,7 +411,7 @@ node parser_parse_variable_assignment(parser *p, diagnosticContainer *d, node id
 node parse_typed_identifier(parser *p, diagnosticContainer *d) {
 	node identifier = parser_match_token(p, d, identifierToken);
 	node colon = parser_match_token(p, d, colonToken);
-	node type = parser_match_token(p, d, identifierToken);
+	node type = parser_parse_symbol_reference(p, d, true);
 
 	typedIdentifierNode *id = arena_malloc(parser_arena, sizeof(typedIdentifierNode));
 	*id = (typedIdentifierNode){ identifier, colon, type };

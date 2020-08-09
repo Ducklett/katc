@@ -209,7 +209,17 @@ static inline void emit_c_function(astNode *n, ast *tree) {
 	printfSymbolReference(fp, vn, "_");
 	fprintf(fp,"(");
 	for (int i=0;i<fd->parameterCount;i++) {
-		fprintf (fp, "%s %s%s", cTypeText[fd->parameters[i]->type.kind], fd->parameters[i]->name, i == fd->parameterCount-1?"":", ");
+
+		astType t = fd->parameters[i]->type;
+
+		fprintf (fp, "%s ", cTypeText[t.kind]);
+
+		if (t.kind == enumType || t.kind == structType) {
+			printfSymbolReference(fp, t.declaration, "_");
+			fprintf (fp, " ");
+		}
+
+		fprintf (fp, "%s%s", fd->parameters[i]->name, i == fd->parameterCount-1?"":", ");
 	}
 	fprintf(fp, ") ");
 
@@ -404,16 +414,21 @@ static inline void emit_c_callExpression(astNode *n, ast *tree) {
 
 	char* name = cn->function->name;
 
-	if (!strcmp(name, "print")) fprintf(fp, "printf");
+	bool isPrint = (!strcmp(name, "print"));
+	if (isPrint) fprintf(fp, "printf");
 	else printfSymbolReference(fp, cn->function, "_");
 	fprintf(fp,"(");
 
 	for (int i= 0; i < cn->argumentCount; i++) {
 		if (cn->arguments[i].type.kind == enumType) {
-			printfSymbolReference(fp, cn->arguments[i].type.declaration, "_");
-			fprintf(fp, "__TEXT[");
-			emit_c_node(cn->arguments + i, tree);
-			fprintf(fp, "]");
+			if (isPrint) {
+				printfSymbolReference(fp, cn->arguments[i].type.declaration, "_");
+				fprintf(fp, "__TEXT[");
+				emit_c_node(cn->arguments + i, tree);
+				fprintf(fp, "]");
+			} else {
+				emit_c_node(cn->arguments + i, tree);
+			}
 		} else {
 			emit_c_node(cn->arguments + i, tree);
 			if (cn->arguments[i].type.kind == boolType) fprintf(fp, " ? \"true\" : \"false\"");
@@ -434,15 +449,8 @@ static inline void emit_c_constructorExpression(astNode *n, ast *tree) {
 	fprintf(fp,"){");
 
 	for (int i= 0; i < cn->argumentCount; i++) {
-		if (cn->arguments[i].type.kind == enumType) {
-			printfSymbolReference(fp, cn->arguments[i].type.declaration, "_");
-			fprintf(fp, "__TEXT[");
-			emit_c_node(cn->arguments + i, tree);
-			fprintf(fp, "]");
-		} else {
-			emit_c_node(cn->arguments + i, tree);
-			if (cn->arguments[i].type.kind == boolType) fprintf(fp, " ? \"true\" : \"false\"");
-		}
+		emit_c_node(cn->arguments + i, tree);
+		if (cn->arguments[i].type.kind == boolType) fprintf(fp, " ? \"true\" : \"false\"");
 		if (i != cn->argumentCount-1) fprintf(fp,", ");
 	}
 	fprintf(fp,"})");
