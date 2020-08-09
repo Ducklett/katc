@@ -10,3 +10,5 @@ fn greet(name:string, age:int) {
 
 helloworld()
 greet("bob", 20)
+// functions can optionally be called with the parameter names in front
+greet(name: "bob", age: 20)

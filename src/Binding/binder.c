@@ -615,7 +615,15 @@ astNode bind_struct_constructor(node *n, ast *tree, astSymbol *structDeclaration
 
 	// skip the comma tokens
 	for (int i=0;i<cn.argumentCount;i+=2) {
-		sb_push(arguments, bind_expression_of_type(&cn.arguments[i], tree, structDeclaration->namespaceScope->symbols[i/2]->type, cn.arguments[i].span));
+		node expr = cn.arguments[i];
+		if (cn.arguments[i].kind == namedArgument) {
+			namedArgumentNode nn = *(namedArgumentNode*)expr.data;
+			expr = nn.value;
+			if (!span_compare(tree->text, nn.name.span, structDeclaration->namespaceScope->symbols[i/2]->name)) {
+				printf("name doesn't match function declaration\n"); exit(1);
+			}
+		} 
+		sb_push(arguments, bind_expression_of_type(&expr, tree, structDeclaration->namespaceScope->symbols[i/2]->type, cn.arguments[i].span));
 	}
 
 
@@ -689,7 +697,15 @@ astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 				sb_push(arguments, bind_expression(&cn.arguments[i], tree));
 			}
 		} else {
-			sb_push(arguments, bind_expression_of_type(&cn.arguments[i], tree, fd->parameters[i/2]->type, cn.arguments[i].span));
+			node expr = cn.arguments[i];
+			if (cn.arguments[i].kind == namedArgument) {
+				namedArgumentNode nn = *(namedArgumentNode*)expr.data;
+				expr = nn.value;
+				if (!span_compare(tree->text, nn.name.span, fd->parameters[i/2]->name)) {
+					printf("name doesn't match function declaration\n"); exit(1);
+				}
+			} 
+			sb_push(arguments, bind_expression_of_type(&expr, tree, fd->parameters[i/2]->type, cn.arguments[i].span));
 		}
 	}
 

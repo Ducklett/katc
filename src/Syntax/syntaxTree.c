@@ -89,6 +89,7 @@ enum syntaxKind {
 	symbolReferenceExpression,
 	enumReferenceExpression,
 	structReferenceExpression,
+	namedArgument,
 	callExpression,
 	typedIdentifier,
 	functionDeclaration,
@@ -190,6 +191,7 @@ static const char *syntaxKindText[] = {
 	"symbolReferenceExpression",
 	"enumReferenceExpression",
 	"structReferenceExpression",
+	"namedArgument",
 	"callExpression",
 	"typedIdentifier",
 	"functionDeclaration",
@@ -288,6 +290,13 @@ typedef struct rangeExpressionNode {
 	node dotDot;
 	node end;
 } rangeExpressionNode;
+
+
+typedef struct namedArgumentNode {
+	node name;
+	node colon;
+	node value;
+} namedArgumentNode;
 
 // print("Hello world")
 // add(10, 20)
@@ -631,6 +640,13 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		print_syntaxtree_internal(text, &an.identifier, indent, verbose, true);
 		print_syntaxtree_internal(text, &an.assignmentOperator, indent, verbose, true);
 		print_syntaxtree_internal(text, &an.expression, indent, verbose, false);
+		break;
+	}
+	case namedArgument: {
+		namedArgumentNode nn = *(namedArgumentNode*)root->data;
+		print_syntaxtree_internal(text, &nn.name, indent, verbose, true);
+		print_syntaxtree_internal(text, &nn.colon, indent, verbose, true);
+		print_syntaxtree_internal(text, &nn.value, indent, verbose, false);
 		break;
 	}
 	case callExpression: {

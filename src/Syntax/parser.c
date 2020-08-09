@@ -473,7 +473,18 @@ node* parse_function_arguments(parser *p, diagnosticContainer *d, u16 *argCount)
 	if (parser_current(p,d).kind == closeParenthesisToken) goto end;
 	while (true) {
 
-		sb_push(arguments, parser_parse_expression(p, d));
+
+		if (parser_current(p,d).kind == identifierToken && parser_peek(p, d, 1).kind == colonToken) {
+			node name = parser_match_token(p, d, identifierToken);
+			node colon = parser_match_token(p, d, colonToken);
+			node expr = parser_parse_expression(p, d);
+
+			namedArgumentNode* argNode = arena_malloc(parser_arena, sizeof(namedArgumentNode));
+			*argNode = (namedArgumentNode){ name, colon, expr };
+			sb_push(arguments, ((node){ namedArgument, textspan_from_bounds(&name, &expr), .data = argNode }));
+		} else {
+			sb_push(arguments, parser_parse_expression(p, d));
+		}
 
 		node cur = parser_current(p,d);
 		if (cur.kind == closeParenthesisToken || cur.kind == endOfFileToken) break;
