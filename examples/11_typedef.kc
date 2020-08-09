@@ -1,0 +1,17 @@
+namespace Foo {
+	// similar to how constants can act as aliases for values
+	// typedefs can act as aliases for types
+	typedef Size :: u8
+	typedef Price :: u16
+}
+
+JEANS_SIZE :: 32
+
+struct Jeans {
+	size:Foo.Size
+	price:Foo.Price
+}
+
+j := Jeans(JEANS_SIZE, 128)
+
+print("size: %d, price: %d", j.size, j.price) 
