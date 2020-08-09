@@ -20,6 +20,7 @@ enum astSyntaxKind {
 	variableDeclarationKind,
 	variableAssignmentKind,
 	variableReferenceKind,
+	typeDeclarationKind,
 	fileStatementKind,
 	blockStatementKind,
 	ifStatementKind,
@@ -53,6 +54,7 @@ static const char *astSyntaxKindText[] = {
 	"variableDeclaration",
 	"variableAssignment",
 	"variableReference",
+	"typeDeclaration",
 	"fileStatement",
 	"blockStatement",
 	"ifStatement",
@@ -311,6 +313,7 @@ typedef struct astNode {
 #define SYMBOL_ENUM 4
 #define SYMBOL_ENUM_MEMBER 5
 #define SYMBOL_STRUCT 6
+#define SYMBOL_TYPEDEF 7
 #define SYMBOL_ANY 0xFF
 
 typedef struct functionSymbolData {
@@ -741,6 +744,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		print_ast_internal(text, &va.expression, indent, verbose, false);
 		break;
 	}
+	case typeDeclarationKind:
 	case variableReferenceKind: {
 		astSymbol *vs = (astSymbol*)root->data;
 
@@ -1023,6 +1027,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		fprintf (fp, "Label%p -> Label%p\n", root, &va->expression);
 		break;
 	}
+	case typeDeclarationKind:
 	case variableReferenceKind: {
 		astSymbol *vs = (astSymbol*)root->data;
 		printfSymbolReference(fp, vs, ".");

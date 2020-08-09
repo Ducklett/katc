@@ -230,7 +230,7 @@ static inline void emit_c_blockStatement(astNode *n, ast *tree) {
 	blockStatementAst bn = *(blockStatementAst*)n->data;
 	for (int i= 0; i < bn.statementsCount; i++) {
 		enum astSyntaxKind kind = bn.statements[i].kind;
-		if (kind == functionDeclarationKind || kind == namespaceDeclarationKind || kind == enumDeclarationKind || kind == structDeclarationKind) continue;
+		if (kind == functionDeclarationKind || kind == namespaceDeclarationKind || kind == enumDeclarationKind || kind == structDeclarationKind || kind == typeDeclarationKind) continue;
 		fprintf(fp,"%*s", c_indent, "");
 		emit_c_node(bn.statements + i, tree);
 		if(needs_semicolon(bn.statements[i].kind)) fprintf(fp,";\n");

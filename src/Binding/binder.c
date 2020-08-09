@@ -26,6 +26,7 @@ astNode bind_ternary_expression(node *n, ast *tree);
 astNode bind_call_expression(node *n, ast *tree, scope *functionScope);
 astNode bind_variable_declaration(node *n, ast *tree);
 astNode bind_variable_assignment(node *n, ast *tree);
+astNode bind_typedef_declaration(node *n, ast *tree);
 astNode bind_expression_in_scope(node *n, ast *tree, scope *expressionScope);
 scope* create_scope(ast *tree);
 scope* set_current_scope(ast *tree, scope* s);
@@ -40,6 +41,7 @@ astSymbol* declare_namespace(ast *tree, node *n, u8 flags);
 astSymbol* declare_struct(ast *tree, textspan nameSpan, u8 flags);
 astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, node *body, astSymbol **parameters, u16 parameterCount, scope *functionScope);
 astSymbol* declare_variable(ast *tree, textspan nameSpan, astType variableType, u8 flags);
+astSymbol* declare_type(ast *tree, textspan nameSpan, astType type, u8 flags);
 astSymbol* declare_enum(ast *tree, textspan nameSpan, node *enums, int enumCount, u8 flags);
 astSymbol* declare_enum_member(ast *tree, textspan nameSpan, astSymbol *enumSymbol, u8 value);
 astSymbol* find_function_in_scope(textspan nameSpan, ast *tree, scope *currentScope, bool recurse);
@@ -111,6 +113,7 @@ astNode bind_expression_internal(node *n, ast* tree) {
 		case callExpression: return bind_call_expression(n, tree, NULL);
 		case variableDeclaration: return bind_variable_declaration(n, tree);
 		case variableAssignment: return bind_variable_assignment(n, tree);
+		case typedefDeclaration: return bind_typedef_declaration(n, tree);
 
 		default: {
 			fprintf(stderr, "%sUnhandled node of type %s in binder%s", TERMRED, syntaxKindText[n->kind], TERMRESET);
@@ -787,6 +790,17 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 	return (astNode){ variableDeclarationKind, type, .data = declNode };
 }
 
+astNode bind_typedef_declaration(node *n, ast *tree) {
+
+	typedefDeclarationNode tn = *(typedefDeclarationNode*)n->data;
+
+
+	astType type = resolve_type_reference(&tn.type, tree, NULL, true);
+	astSymbol *typeSymbol = declare_type(tree, tn.identifier.span, type, 0);
+
+	return (astNode){ typeDeclarationKind, type, .data = typeSymbol };
+}
+
 astSymbol* extract_symbol_from_reference(astNode *n) {
 	if (n->kind == structReferenceKind) {
 		structReferenceAst sn = *(structReferenceAst*)n->data;
@@ -980,6 +994,28 @@ astSymbol* declare_variable(ast *tree, textspan nameSpan, astType variableType, 
 	variable->flags = flags;
 
 	return variable;
+}
+
+astSymbol* declare_type(ast *tree, textspan nameSpan, astType type, u8 flags) {
+	scope *currentScope = tree->currentScope;
+
+	for (int i = 0; i < sb_count(currentScope->symbols); i++) {
+		if (span_compare(tree->text, nameSpan, currentScope->symbols[i]->name)) {
+			report_diagnostic(&tree->diagnostics, redeclarationOfSymbolDiagnostic, nameSpan, (u64)currentScope->symbols[i]->name, 0, 0);
+			return 0;
+		}
+	}
+
+	astSymbol *typeSymbol = arena_malloc(binder_arena, sizeof(astSymbol));
+	sb_push(currentScope->symbols, typeSymbol);
+
+	typeSymbol->symbolKind = SYMBOL_TYPEDEF;
+	typeSymbol->name = ast_substring(tree->text, nameSpan, string_arena);
+	typeSymbol->parentNamespace = tree->currentNamespace;
+	typeSymbol->type = type;
+	typeSymbol->flags = flags;
+
+	return typeSymbol;
 }
 
 // bypass pseudo namespaces like functions and returns the underlying "real" namespace
