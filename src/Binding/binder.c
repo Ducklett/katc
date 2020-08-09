@@ -1063,8 +1063,10 @@ astType resolve_type_reference(node *n, ast *tree, scope *typeScope, bool throw)
 astNode resolve_symbol_reference(node *n, ast *tree) {
 
 	scope **scopesToSearch = NULL;
-	astSymbol *currentNamespace = find_real_namespace_of_symbol(tree->currentNamespace);
 
+	sb_push(scopesToSearch, tree->currentScope);
+
+	astSymbol *currentNamespace = find_real_namespace_of_symbol(tree->currentNamespace);
 	if (currentNamespace != NULL) sb_push(scopesToSearch, currentNamespace->namespaceScope);
 
 	sb_push(scopesToSearch, tree->scopes[0]);
@@ -1084,7 +1086,7 @@ astNode resolve_symbol_reference(node *n, ast *tree) {
 			node namespace = bn->left;
 			textspan namespan = namespace.span;
 
-			astSymbol *symbol  = find_symbol_in_scope_internal(namespan, tree, outScope, SYMBOL_ANY, FLAG_NONE);
+			astSymbol *symbol = find_symbol_in_scope_internal(namespan, tree, outScope, SYMBOL_ANY, FLAG_NONE);
 
 			if (symbol == NULL) {
 				foundInScope = false;

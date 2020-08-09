@@ -1,16 +1,29 @@
 struct Point { x:int ; y:int }
 struct Monster { hp:int ; location:Point }
 
+fn PrintPoint(p: Point) { print("Point { x: %d, y: %d }\n", p.x, p.y) }
+fn PrintMonster(m: Monster) { print("hp: %d, location: (%d, %d)\n", m.hp, m.location.x, m.location.y) }
+
+fn move(m:Monster, d:Point) {
+	m.location.x += d.x
+	m.location.y += d.y
+	PrintMonster(m)
+}
+
 p := Point(10, 20)
 
-print("Point { x: %d, y: %d }\n", p.x, p.y)
+PrintPoint(p)
 
 p.x = 30
-print("Point { x: %d, y: %d }\n", p.x, p.y)
+PrintPoint(p)
 print("x + y = %d\n", p.x + p.y)
 
 print("\n====================\n\n")
 
 m := Monster(255, p)
 
-print("hp: %d, location: (%d, %d)\n", m.hp, m.location.x, m.location.y);
+PrintMonster(m)
+
+n:Monster = Monster(128, p)
+
+move(m, Point(1,2))

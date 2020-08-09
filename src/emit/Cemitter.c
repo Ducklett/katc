@@ -73,6 +73,7 @@ static const char *cTypeText[] = {
 	"char*",          // string
 	"char",           // char
 	"enum",           // enum
+	"struct",         // struct
 };
 
 
@@ -164,8 +165,6 @@ void emit_c_node(astNode *n, ast *tree) {
 void emit_c_file(astNode *n, ast *tree) {
 	fprintf(fp,"#include <stdio.h>\n\n");
 	emit_c_functions_in_block(n, tree, false);
-	// TODO: actually fix the issue
-	c_indent=4;
 	fprintf(fp,"void main() ");
 	emit_c_node(n,tree);
 }
