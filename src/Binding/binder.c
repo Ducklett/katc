@@ -34,7 +34,7 @@ scope* push_scope_and_get_reference(ast *tree, scope **outScope);
 void pop_scope(ast *tree, scope* parentScope);
 void declare_builtin_function(ast *tree, char* name);
 astSymbol* find_symbol_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope, u8 symbolKind, u8 flags);
-astType resolve_type_reference(node *n, ast *tree, scope *typeScope);
+astType resolve_type_reference(node *n, ast *tree, scope *typeScope, bool throw);
 astNode resolve_symbol_reference(node *n, ast *tree);
 astSymbol* declare_namespace(ast *tree, node *n, u8 flags);
 astSymbol* declare_struct(ast *tree, textspan nameSpan, u8 flags);
@@ -422,7 +422,6 @@ astNode bind_for_loop(node *n, ast *tree) {
 }
 
 astNode bind_function_declaration(node *n, ast *tree) {
-
 	functionDeclarationNode fn = *(functionDeclarationNode*)n->data;
 
 	u8 flags = 0;
@@ -439,7 +438,7 @@ astNode bind_function_declaration(node *n, ast *tree) {
 
 	for (int i=0;i<fn.parameterCount;i+=2) {
 		typedIdentifierNode id = *(typedIdentifierNode*)fn.parameters[i].data;
-		astSymbol *param = declare_variable(tree, id.identifier.span, resolve_type_reference(&id.type, tree, NULL), VARIABLE_INITIALIZED);
+		astSymbol *param = declare_variable(tree, id.identifier.span, resolve_type_reference(&id.type, tree, NULL, true), VARIABLE_INITIALIZED);
 		if (param == NULL) {
 			hasErrors = true;
 			goto end;
@@ -634,7 +633,7 @@ astNode bind_struct_constructor(node *n, ast *tree, astSymbol *structDeclaration
 astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 	functionCallNode cn = *(functionCallNode*)n->data;
 
-	astType castType = resolve_type_reference(&cn.identifier, tree, functionScope);
+	astType castType = resolve_type_reference(&cn.identifier, tree, functionScope, false);
 
 	if (castType.kind == structType) {
 		return bind_struct_constructor(n, tree, castType.declaration);
@@ -755,7 +754,7 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 		flags |= VARIABLE_GLOBAL;
 
 	astType type =  {0};
-	if (vn.type.kind != 0) type = resolve_type_reference(&vn.type, tree, NULL);
+	if (vn.type.kind != 0) type = resolve_type_reference(&vn.type, tree, NULL, true);
 
 	if (hasInitializer) {
 		boundInitializer = type.kind != 0
@@ -990,7 +989,7 @@ astSymbol* find_real_namespace_of_symbol(astSymbol *s) {
 	return find_real_namespace_of_symbol(s->parentNamespace);
 }
 
-astType resolve_type_reference(node *n, ast *tree, scope *typeScope) {
+astType resolve_type_reference(node *n, ast *tree, scope *typeScope, bool throw) {
 	for (int i=0;i<=charType;i++) {
 		if (span_compare(tree->text, n->span, astKindText[i])) {
 			if (i>2) {
@@ -1025,7 +1024,7 @@ astType resolve_type_reference(node *n, ast *tree, scope *typeScope) {
 			node namespace = bn->left;
 			textspan namespan = namespace.span;
 
-			astSymbol *symbol  = find_symbol_in_scope_internal(namespan, tree, outScope, SYMBOL_NAMESPACE, FLAG_THROW);
+			astSymbol *symbol  = find_symbol_in_scope_internal(namespan, tree, outScope, SYMBOL_NAMESPACE, throw?FLAG_THROW:0);
 
 			if (symbol == NULL) {
 				foundInScope = false;
@@ -1054,7 +1053,7 @@ astType resolve_type_reference(node *n, ast *tree, scope *typeScope) {
 
 	textspan symbolName = n->span;
 
-	if (outScope != NULL) foundSymbol = find_symbol_in_scope_internal(symbolName, tree, outScope, SYMBOL_ANY, FLAG_THROW);
+	if (outScope != NULL) foundSymbol = find_symbol_in_scope_internal(symbolName, tree, outScope, SYMBOL_ANY, throw?FLAG_THROW:0);
 
 	if (foundSymbol == NULL) return (astType){0};
 
