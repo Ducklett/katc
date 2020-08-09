@@ -22,7 +22,7 @@ node parser_parse_for_loop(parser *p, diagnosticContainer *d);
 node parser_parse_symbol_reference(parser *p, diagnosticContainer *d, bool isIdentifier);
 node parser_parse_function_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d);
-node parser_parse_variable_assignment(parser *p, diagnosticContainer *d);
+node parser_parse_variable_assignment(parser *p, diagnosticContainer *d, node identifier);
 node parser_parse_function_call(parser *p, diagnosticContainer *d);
 node parser_parse_namespace_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_enum_declaration(parser *p, diagnosticContainer *d);
@@ -119,8 +119,6 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	case identifierToken:
 		if  (l2kind == colonToken) {
 			res = parser_parse_variable_declaration(p, d);
-		} else if (isAssignmentOperator(l2kind)) {
-			res = parser_parse_variable_assignment(p, d);
 		} else {
 			res = parser_parse_expression(p, d);
 		} break;
@@ -395,8 +393,7 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 	return (node) { variableDeclaration, textspan_from_bounds(&identifier, &expression), .data = var, };
 }
 
-node parser_parse_variable_assignment(parser *p, diagnosticContainer *d) {
-	node identifier = parser_match_token(p, d, identifierToken);
+node parser_parse_variable_assignment(parser *p, diagnosticContainer *d, node identifier) {
 	node equals = parser_next_token(p, d);
 
 	if (!isAssignmentOperator(equals.kind) && equals.kind != badToken) {
@@ -680,8 +677,13 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 	node lookahead = parser_peek(p, d, 1);
 
 	switch (current.kind) {
-	case identifierToken:
-		return parser_parse_symbol_reference(p,d,false);
+	case identifierToken: {
+		node n = parser_parse_symbol_reference(p,d,false);
+		if (isAssignmentOperator(parser_current(p,d).kind)) {
+			return parser_parse_variable_assignment(p, d, n);
+		}
+		return n;
+	}
 
 	case numberLiteral:
 	case stringLiteral:

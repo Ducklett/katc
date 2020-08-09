@@ -788,6 +788,16 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 	return (astNode){ variableDeclarationKind, type, .data = declNode };
 }
 
+astSymbol* extract_symbol_from_reference(astNode *n) {
+	if (n->kind == structReferenceKind) {
+		structReferenceAst sn = *(structReferenceAst*)n->data;
+		return extract_symbol_from_reference(&sn.right);
+	} else if (n->kind == variableReferenceKind) {
+		return (astSymbol*)n->data;
+	} else {
+		printf("unexpected node kind %s in extract_symbol_reference\n", astSyntaxKindText[n->kind]);
+	}
+}
 astNode bind_variable_assignment(node *n, ast *tree) {
 
 	variableAssignmentNode an = *(variableAssignmentNode*)n->data;
@@ -795,34 +805,37 @@ astNode bind_variable_assignment(node *n, ast *tree) {
 
 	astNode boundExpression = bind_expression(&an.expression, tree);
 
-	astSymbol *variable = find_variable_in_scope(an.identifier.span, tree, NULL);
+	astNode variable = bind_expression(&an.identifier, tree);
 
-	bool hasErrors = variable == 0 || boundExpression.type.kind == errorType || boundExpression.type.kind == unresolvedType;
+	bool hasErrors = variable.type.kind == errorType  || boundExpression.type.kind == errorType || boundExpression.type.kind == unresolvedType;
 
 	typedOperator op = {0};
 	if (opKind != 0 && !hasErrors) {
-		op = get_binary_operator(opKind, variable->type, boundExpression.type);
+		op = get_binary_operator(opKind, variable.type, boundExpression.type);
 	}
 
 	if (opKind != 0 && !op.operator) {
-		report_diagnostic(&tree->diagnostics, undefinedBinaryOperatorDiagnostic, n->span, opKind, variable->type.kind, boundExpression.type.kind);
+		report_diagnostic(&tree->diagnostics, undefinedBinaryOperatorDiagnostic, n->span, opKind, variable.type.kind, boundExpression.type.kind);
 		hasErrors = true;
 	}
 
 	if (!hasErrors) {
-		if (opKind == 0 && variable->type.kind != boundExpression.type.kind) {
-			report_diagnostic(&tree->diagnostics, cannotAssignDiagnostic, an.identifier.span, variable->type.kind, boundExpression.type.kind, 0);
-		} else if (!(variable->flags & VARIABLE_MUTABLE)) {
-			report_diagnostic(&tree->diagnostics, cannotAssignConstantDiagnostic, an.expression.span, (u64)&an.identifier.span, 0, 0);
-		} else if (!(variable->flags & VARIABLE_INITIALIZED)) {
-			variable->flags |= VARIABLE_INITIALIZED;
-		}
+		if (opKind == 0 && variable.type.kind != boundExpression.type.kind) {
+			report_diagnostic(&tree->diagnostics, cannotAssignDiagnostic, an.identifier.span, variable.type.kind, boundExpression.type.kind, 0);
+		} else {
+			astSymbol *variableSymbol = extract_symbol_from_reference(&variable);
+			if (!(variableSymbol->flags & VARIABLE_MUTABLE)) {
+				report_diagnostic(&tree->diagnostics, cannotAssignConstantDiagnostic, an.expression.span, (u64)&an.identifier.span, 0, 0);
+			} else if (!(variableSymbol->flags & VARIABLE_INITIALIZED)) {
+				variableSymbol->flags |= VARIABLE_INITIALIZED;
+			}
+		} 
 	}
 
 	variableAssignmentAst *assignmentNode = arena_malloc(binder_arena, sizeof(variableAssignmentAst));
 	*assignmentNode = (variableAssignmentAst){ variable, boundExpression, op.operator };
 
-	return (astNode){ variableAssignmentKind, variable == 0 ? errorType : variable->type, .data = assignmentNode };
+	return (astNode){ variableAssignmentKind, variable.type, .data = assignmentNode };
 }
 
 scope* create_scope(ast *tree) {

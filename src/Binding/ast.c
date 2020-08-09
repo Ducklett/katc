@@ -381,7 +381,7 @@ typedef struct variableDeclarationAst {
 } variableDeclarationAst;
 
 typedef struct variableAssignmentAst {
-	astSymbol* variable;
+	astNode variable;
 	astNode expression;
 	enum astBinaryOperator compoundOperator;
 } variableAssignmentAst;
@@ -497,7 +497,7 @@ void printfSymbolReference_internal(FILE *f, astSymbol *s, char* separator, bool
 void printfSymbolReference(FILE *f, astSymbol *s, char* separator) { return printfSymbolReference_internal(f, s, separator, true); }
 void printfSymbolReference_internal(FILE *f, astSymbol *s, char* separator, bool entry) {
 
-	if (s->parentNamespace != NULL && (s->symbolKind != SYMBOL_VARIABLE || s->flags & VARIABLE_GLOBAL)) {
+	if (s->parentNamespace != NULL &&  s->parentNamespace->symbolKind != SYMBOL_STRUCT && (s->symbolKind != SYMBOL_VARIABLE || s->flags & VARIABLE_GLOBAL)) {
 		printfSymbolReference_internal(f, s->parentNamespace, separator, false);
 	}
 	fprintf(f, "%s%s", s->name, entry ? "" : separator);
@@ -734,7 +734,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	case variableAssignmentKind: {
 		variableAssignmentAst va = *(variableAssignmentAst*)root->data;
 
-		printf ("%*s%s%s %s %s%s\n", indent, "", TERMMAGENTA,va.variable->name, astKindText[va.variable->type.kind], va.compoundOperator?astBinaryText[va.compoundOperator]:"equals",  TERMRESET);
+		print_ast_internal(text, &va.variable, indent, verbose, true);
 		print_ast_internal(text, &va.expression, indent, verbose, false);
 		break;
 	}
@@ -1013,8 +1013,8 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 	case variableAssignmentKind: {
 		variableAssignmentAst *va = (variableAssignmentAst*)root->data;
 
-		fprintf (fp, "%s %s (%s)", va->variable->name, astKindText[va->variable->type.kind], va->compoundOperator?astBinaryText[va->compoundOperator]:"equals");
 		ENDLABEL
+		print_ast_graph_internal(text, &va->variable, fp, false);
 		print_ast_graph_internal(text, &va->expression, fp, false);
 		fprintf (fp, "Label%p -> Label%p\n", root, &va->expression);
 		break;

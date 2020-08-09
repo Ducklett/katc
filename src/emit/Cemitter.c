@@ -17,6 +17,7 @@ static inline void emit_c_callExpression(astNode *n, ast *tree);
 static inline void emit_c_castExpression(astNode *n, ast *tree);
 static inline void emit_c_variableDeclaration(astNode *n, ast *tree);
 static inline void emit_c_enumDeclaration(astNode *n, ast *tree);
+static inline void emit_c_structDeclaration(astNode *n, ast *tree);
 static inline void emit_c_variableAssignment(astNode *n, ast *tree);
 static inline void emit_c_variableReference(astNode *n, ast *tree);
 char* escape_string_c(char *str);
@@ -172,6 +173,9 @@ static inline void emit_c_functions_in_block(astNode *n, ast *tree, bool isNames
 		if (kind == namespaceDeclarationKind) {
 			astNode *b = &((namespaceAst*)bn.statements[i].data)->block;
 			emit_c_functions_in_block(b, tree, true);
+		} else if (kind == structDeclarationKind) {
+			emit_c_structDeclaration(bn.statements + i, tree);
+			fprintf(fp, ";\n");
 		} else if (kind == variableDeclarationKind && isNamespace) {
 			emit_c_variableDeclaration(bn.statements + i, tree);
 			fprintf(fp, ";\n");
@@ -213,7 +217,7 @@ static inline void emit_c_blockStatement(astNode *n, ast *tree) {
 	blockStatementAst bn = *(blockStatementAst*)n->data;
 	for (int i= 0; i < bn.statementsCount; i++) {
 		enum astSyntaxKind kind = bn.statements[i].kind;
-		if (kind == functionDeclarationKind || kind == namespaceDeclarationKind || kind == enumDeclarationKind) continue;
+		if (kind == functionDeclarationKind || kind == namespaceDeclarationKind || kind == enumDeclarationKind || kind == structDeclarationKind) continue;
 		fprintf(fp,"%*s", c_indent, "");
 		emit_c_node(bn.statements + i, tree);
 		if(needs_semicolon(bn.statements[i].kind)) fprintf(fp,";\n");
@@ -428,7 +432,11 @@ static inline void emit_c_variableDeclaration(astNode *n, ast *tree) {
 
 	if (feature_constantfolding && !(dn->variable->flags & VARIABLE_MUTABLE) && dn->variable->flags & VARIABLE_VALUE_KNOWN) return;
 
-	if (dn->variable->type.kind == enumType) {
+	if (dn->variable->type.kind == structType) {
+		fprintf(fp,"struct ");
+		printfSymbolReference(fp, dn->variable->type.declaration, "_");
+		fprintf(fp," ");
+	} else if (dn->variable->type.kind == enumType) {
 		fprintf(fp,"enum ");
 		printfSymbolReference(fp, dn->variable->type.declaration, "_");
 		fprintf(fp," ");
@@ -438,7 +446,7 @@ static inline void emit_c_variableDeclaration(astNode *n, ast *tree) {
 
 	printfSymbolReference(fp, dn->variable, "_");
 
-	if (dn->initalizer.kind != missingKind) {
+	if (dn->initalizer.kind != missingKind && parentKind != structDeclarationKind) {
 		fprintf(fp," = ");
 		emit_c_node(&dn->initalizer, tree);
 	}
@@ -468,11 +476,31 @@ static inline void emit_c_enumDeclaration(astNode *n, ast *tree) {
 	fprintf(fp, "};\n");
 }
 
+static inline void emit_c_structDeclaration(astNode *n, ast *tree) {
+
+
+	kindStack_push(structDeclarationKind);
+
+	structAst *sn = (structAst*)n->data;
+
+	fprintf(fp, "struct ");
+	printfSymbolReference(fp, sn->structSymbol, "_");
+	fprintf (fp, " {\n");
+
+	blockStatementAst bn = *(blockStatementAst*)sn->block.data;
+	for (int i= 0; i < bn.statementsCount; i++) {
+		emit_c_node(bn.statements + i, tree);
+		fprintf (fp, ";\n");
+	}
+	fprintf(fp, "}");
+	kindStack_pop();
+}
+
 static inline void emit_c_variableAssignment(astNode *n, ast *tree) {
 
 	variableAssignmentAst *an = (variableAssignmentAst*)n->data;
 
-	printfSymbolReference(fp, an->variable, "_");
+	emit_c_node(&an->variable, tree);
 	fprintf(fp," %s= ", an->compoundOperator == 0 ? "" : cBinaryText[an->compoundOperator]);
 	emit_c_node(&an->expression, tree);
 }
