@@ -184,7 +184,10 @@ node parser_parse_block_statement(parser *p, diagnosticContainer *d, bool isFile
 			while (parser_current(p, d).kind == semicolonToken) parser_next_token(p, d);
 		}
 
-		if (isFileStatement && parser_current(p, d).kind == endOfFileToken) break;
+		if (parser_current(p, d).kind == (isFileStatement?endOfFileToken:closeCurlyToken)) {
+			closeCurly = isFileStatement?(node){0}:parser_next_token(p, d);
+			break;
+		}
 
 		node exprNode = parser_parse_statement(p, d);
 
