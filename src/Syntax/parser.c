@@ -26,6 +26,7 @@ node parser_parse_variable_assignment(parser *p, diagnosticContainer *d, node id
 node parser_parse_function_call(parser *p, diagnosticContainer *d);
 node parser_parse_namespace_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_enum_declaration(parser *p, diagnosticContainer *d);
+node parser_parse_typedef_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_struct_declaration(parser *p, diagnosticContainer *d);
 
 node parser_parse_expression(parser *p, diagnosticContainer *d);
@@ -116,6 +117,7 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	case namespaceKeyword: res = parser_parse_namespace_declaration(p, d); break;
 	case structKeyword: res = parser_parse_struct_declaration(p, d); break;
 	case enumKeyword: res = parser_parse_enum_declaration(p, d); break;
+	case typedefKeyword: res = parser_parse_typedef_declaration(p, d); break;
 	case identifierToken:
 		if  (l2kind == colonToken) {
 			res = parser_parse_variable_declaration(p, d);
@@ -568,6 +570,19 @@ node parser_parse_enum_declaration(parser *p, diagnosticContainer *d) {
 	*enode = (enumDeclarationNode){ enumToken, identifier, openCurly,  enumStorage, enumCount, closeCurly };
 
 	return (node) { enumDeclaration, textspan_from_bounds(&enumToken, &closeCurly), .data = enode, };
+}
+
+node parser_parse_typedef_declaration(parser *p, diagnosticContainer *d) {
+	node typedefToken = parser_match_token(p, d, typedefKeyword);
+	node identifier = parser_match_token(p,d,identifierToken);
+	node colon1 = parser_match_token(p,d,colonToken);
+	node colon2 = parser_match_token(p,d,colonToken);
+	node type = parser_parse_symbol_reference(p,d,true);
+
+	typedefDeclarationNode *tnode = arena_malloc(parser_arena, sizeof(typedefDeclarationNode));
+	*tnode = (typedefDeclarationNode){ typedefToken, identifier, colon1, colon2, type};
+
+	return (node) { typedefDeclaration, textspan_from_bounds(&typedefToken, &type), .data = tnode, };
 }
 
 node parser_parse_expression(parser *p, diagnosticContainer *d) { return parser_parse_binary_expression(p, d,-2); }

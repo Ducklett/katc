@@ -79,6 +79,7 @@ enum syntaxKind {
 	namespaceKeyword,
 	enumKeyword,
 	structKeyword,
+	typedefKeyword,
 
 	unaryExpression,
 	binaryExpression,
@@ -94,6 +95,7 @@ enum syntaxKind {
 	variableDeclaration,
 	namespaceDeclaration,
 	enumDeclaration,
+	typedefDeclaration,
 	structDeclaration,
 	variableAssignment,
 	blockStatement,
@@ -179,6 +181,7 @@ static const char *syntaxKindText[] = {
 	"namespace",
 	"enum",
 	"struct",
+	"typedef",
 	"unaryExpression",
 	"binaryExpression",
 	"ternaryExpression",
@@ -193,6 +196,7 @@ static const char *syntaxKindText[] = {
 	"variableDeclaration",
 	"namespaceDeclaration",
 	"enumDeclaration",
+	"typedefDeclaration",
 	"structDeclaration",
 	"variableAssignment",
 	"blockStatement",
@@ -343,6 +347,15 @@ typedef struct enumDeclarationNode {
 	u16 enumCount;
 	node closeCurly;
 } enumDeclarationNode;
+
+// typedef Frequency :: u16
+typedef struct typedefDeclarationNode {
+	node typedefKeyword;
+	node identifier;
+	node colon1;
+	node colon2;
+	node type;
+} typedefDeclarationNode;
 
 // the else clause of if statements is optional
 // then `thenExpression` and `elseExpression` can be any statment
@@ -709,6 +722,15 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 			print_syntaxtree_internal(text, &en.enums[i], indent, verbose, true);
 		}
 		print_syntaxtree_internal(text, &en.closeCurly, indent, verbose, false);
+		break;
+	}
+	case typedefDeclaration: {
+		typedefDeclarationNode tn = *(typedefDeclarationNode*)root->data;
+		print_syntaxtree_internal(text, &tn.typedefKeyword, indent, verbose, true);
+		print_syntaxtree_internal(text, &tn.identifier, indent, verbose, true);
+		print_syntaxtree_internal(text, &tn.colon1, indent, verbose, true);
+		print_syntaxtree_internal(text, &tn.colon2, indent, verbose, true);
+		print_syntaxtree_internal(text, &tn.type, indent, verbose, false);
 		break;
 	}
 	case typedIdentifier: {
