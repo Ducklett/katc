@@ -15,6 +15,7 @@ enum syntaxKind {
 	floatLiteral,
 	stringLiteral,
 	charLiteral,
+	arrayLiteral,
 
 	plusOperator,
 	minusOperator,
@@ -63,6 +64,8 @@ enum syntaxKind {
 	closeParenthesisToken,
 	openCurlyToken,
 	closeCurlyToken,
+	openBracketToken,
+	closeBracketToken,
 
 	trueKeyword,
 	falseKeyword,
@@ -111,6 +114,8 @@ enum syntaxKind {
 	singleLineComment,
 	multiLineComment,
 	fileStatement,
+
+	arrayKind,
 };
 
 static const char *syntaxKindText[] = {
@@ -126,6 +131,7 @@ static const char *syntaxKindText[] = {
 	"floatLiteral",
 	"stringLiteral",
 	"charLiteral",
+	"arrayLiteral",
 	"+",
 	"-",
 	"++",
@@ -168,6 +174,8 @@ static const char *syntaxKindText[] = {
 	")",
 	"{",
 	"}",
+	"[",
+	"]",
 	"true",
 	"false",
 	"if",
@@ -214,6 +222,7 @@ static const char *syntaxKindText[] = {
 	"singleLineComment",
 	"multiLineComment",
 	"fileStatement",
+	"arrayType",
 };
 
 // marks a span in the source text
@@ -506,6 +515,20 @@ typedef struct structDeclarationNode {
 	node identifier;
 	node body;
 } structDeclarationNode;
+
+typedef struct arrayKindNode {
+	node identifier;
+	node openBracket;
+	node capacity;
+	node closeBracket;
+} arrayKindNode;
+
+typedef struct arrayLiteralNode {
+	node openBracket;
+	node* values;
+	u16 valueCount;
+	node closeBracket;
+} arrayLiteralNode;
 
 textspan textspan_create(u32 start, u16 length) {
 	textspan span = { start, length, };
@@ -830,6 +853,24 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		print_syntaxtree_internal(text, &rn.start, indent, verbose, true);
 		print_syntaxtree_internal(text, &rn.dotDot, indent, verbose, true);
 		print_syntaxtree_internal(text, &rn.end, indent, verbose, false);
+		break;
+	}
+	case arrayKind: {
+		arrayKindNode an = *(arrayKindNode*)root->data;
+		print_syntaxtree_internal(text, &an.identifier, indent, verbose, true);
+		print_syntaxtree_internal(text, &an.openBracket, indent, verbose, true);
+		print_syntaxtree_internal(text, &an.capacity, indent, verbose, true);
+		print_syntaxtree_internal(text, &an.closeBracket, indent, verbose, true);
+		print_syntaxtree_internal(text, &an.identifier, indent, verbose, false);
+		break;
+	}
+	case arrayLiteral: {
+		arrayLiteralNode an = *(arrayLiteralNode*)root->data;
+		print_syntaxtree_internal(text, &an.openBracket, indent, verbose, true);
+		for (int i = 0; i< an.valueCount; i++) {
+			print_syntaxtree_internal(text, &an.values[i], indent, verbose, true);
+		}
+		print_syntaxtree_internal(text, &an.closeBracket, indent, verbose, false);
 		break;
 	}
 	default: {

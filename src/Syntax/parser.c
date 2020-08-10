@@ -95,6 +95,20 @@ void parser_parse(parser *p, diagnosticContainer *d) {
 	parser_match_token(p, d, endOfFileToken);
 }
 
+node parser_parse_type(parser *p, diagnosticContainer *d) {
+	node identifier = parser_parse_symbol_reference(p,d,true);
+	if (!parser_current(p,d).kind == openBracketToken) return identifier;
+
+	node openBracket = parser_match_token(p,d,openBracketToken);
+	// TODO: make capacity optional and infer capacity from assignment
+	node capacity = parser_parse_expression(p,d);
+	node closeBracket = parser_match_token(p,d,closeBracketToken);
+
+	arrayKindNode *ar = arena_malloc(parser_arena, sizeof(arrayKindNode));
+	*ar = (arrayKindNode){ identifier, openBracket, capacity, closeBracket };
+
+	return (node) { arrayKind, textspan_from_bounds(&identifier, &closeBracket), .data = ar, };
+}
 node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	node l1 = parser_peek(p, d, 0);
 	enum syntaxKind l1kind  = l1.kind;
@@ -374,7 +388,7 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 
 	node type = {0};
 	if (parser_current(p, d).kind == identifierToken) {
-		type = parser_parse_symbol_reference(p,d,true);
+		type = parser_parse_type(p,d);
 	}
 
 	enum syntaxKind mutKind = parser_current(p, d).kind;
@@ -416,7 +430,7 @@ node parser_parse_variable_assignment(parser *p, diagnosticContainer *d, node id
 node parse_typed_identifier(parser *p, diagnosticContainer *d) {
 	node identifier = parser_match_token(p, d, identifierToken);
 	node colon = parser_match_token(p, d, colonToken);
-	node type = parser_parse_symbol_reference(p, d, true);
+	node type = parser_parse_type(p, d);
 
 	typedIdentifierNode *id = arena_malloc(parser_arena, sizeof(typedIdentifierNode));
 	*id = (typedIdentifierNode){ identifier, colon, type };
@@ -591,7 +605,7 @@ node parser_parse_typedef_declaration(parser *p, diagnosticContainer *d) {
 	node identifier = parser_match_token(p,d,identifierToken);
 	node colon1 = parser_match_token(p,d,colonToken);
 	node colon2 = parser_match_token(p,d,colonToken);
-	node type = parser_parse_symbol_reference(p,d,true);
+	node type = parser_parse_type(p,d);
 
 	typedefDeclarationNode *tnode = arena_malloc(parser_arena, sizeof(typedefDeclarationNode));
 	*tnode = (typedefDeclarationNode){ typedefToken, identifier, colon1, colon2, type};
@@ -701,6 +715,41 @@ node parser_parse_symbol_reference(parser *p, diagnosticContainer *d, bool isIde
 	return (node) { symbolReferenceExpression, textspan_from_bounds(&left, &right), .data = binaryNode, };
 }
 
+node parser_parse_array_literal(parser *p, diagnosticContainer *d) {
+	node openBracket = parser_match_token(p,d, openBracketToken);
+
+	node *values = NULL;
+
+	if (parser_current(p,d).kind == closeBracketToken) goto end;
+	while (true) {
+
+		sb_push(values, parser_parse_expression(p,d));
+
+		node cur = parser_current(p,d);
+		if (cur.kind == closeBracketToken || cur.kind == endOfFileToken) break;
+
+		sb_push(values, parser_match_token(p, d, commaToken));
+
+		// support trailing comma
+		if (parser_current(p,d).kind == closeBracketToken) break;
+	}
+	end: ;
+
+	u8 valueCount = sb_count(values);
+	size_t valueSize = sizeof(node) * valueCount;
+	node* valueStorage = arena_malloc(parser_arena, valueSize);
+	memcpy(valueStorage, values, valueSize);
+
+	sb_free(values);
+
+	node closeBracket = parser_match_token(p,d,closeBracketToken);
+
+	arrayLiteralNode *anode = arena_malloc(parser_arena, sizeof(arrayLiteralNode));
+	*anode = (arrayLiteralNode){ openBracket, valueStorage, valueCount, closeBracket };
+
+	return (node) { arrayLiteral, textspan_from_bounds(&openBracket, &closeBracket), .data = anode, };
+}
+
 node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 	node current = parser_current(p, d);
 	node lookahead = parser_peek(p, d, 1);
@@ -714,6 +763,7 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 		return n;
 	}
 
+	case openBracketToken: return parser_parse_array_literal(p,d);
 	case numberLiteral:
 	case floatLiteral:
 	case stringLiteral:

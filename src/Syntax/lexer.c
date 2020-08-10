@@ -172,6 +172,8 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 	case ')': return lex_basic_token(l, closeParenthesisToken, 1);
 	case '{': return lex_basic_token(l, openCurlyToken, 1);
 	case '}': return lex_basic_token(l, closeCurlyToken, 1);
+	case '[': return lex_basic_token(l, openBracketToken, 1);
+	case ']': return lex_basic_token(l, closeBracketToken, 1);
 
 	case '\'':
 	case '"': {
