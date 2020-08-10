@@ -69,6 +69,7 @@ static const char *cTypeText[] = {
 	"short",          // i16
 	"int",            // i32
 	"long",           // i64
+	"float",          // float
 	"int",		      // bool
 	"char*",          // string
 	"char",           // char
@@ -358,6 +359,7 @@ static inline void emit_c_literal(astNode *n, ast *tree) {
 	switch (n->type.kind) {
 	case u8Type: case u16Type: case u32Type: case u64Type: case i8Type: case i16Type: case i32Type: case i64Type:
 	case intType: fprintf(fp,"%d", n->numValue); break;
+	case floatType: fprintf(fp,"%f", n->floatValue); break;
 	case boolType: fprintf(fp,"%s", n->boolValue ? "1" : "0"); break;
 	case stringType: {
 		char *escapedStr = escape_string_c(n->stringValue);
@@ -367,7 +369,7 @@ static inline void emit_c_literal(astNode *n, ast *tree) {
 	case charType: fprintf(fp,"'%c'", n->charValue); break;
 	case enumType: printfSymbolReference(fp, n->type.declaration->namespaceScope->symbols[n->numValue], "_"); break;
 	default:
-		fprintf(stderr,"%sUnhandled type %s in c emitter%s", TERMRED, astKindText[n->type.kind], TERMRESET);
+		fprintf(stderr,"%sUnhandled type %s in Cemitter -> emit_c_literal %s", TERMRED, astKindText[n->type.kind], TERMRESET);
 		exit(1);
 	}
 }

@@ -82,6 +82,7 @@ enum astKind {
 	i16Type,
 	i32Type,
 	i64Type,
+	floatType,
 	boolType,
 	stringType,
 	charType,
@@ -102,6 +103,7 @@ static const char *astKindText[] = {
 	"i16",
 	"i32",
 	"i64",
+	"float",
 	"bool",
 	"string",
 	"char",
@@ -119,7 +121,8 @@ bool isNumberType(enum astKind t) {
 		t == i8Type  ||
 		t == i16Type ||
 		t == i32Type ||
-		t == i64Type );
+		t == i64Type ||
+		t == floatType);
 }
 
 typedef struct astType {
@@ -296,6 +299,7 @@ typedef struct astNode {
 	union {
 		void* data; 
 		int numValue; 
+		float floatValue; 
 		bool boolValue; 
 		char* stringValue; 
 		char charValue; 
@@ -519,6 +523,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 			switch (root->type.kind) {
 				case u8Type: case u16Type: case u32Type: case u64Type: case i8Type: case i16Type: case i32Type: case i64Type:
 				case intType: printf ("%d", root->numValue); break;
+				case floatType: printf ("%f", root->floatValue); break;
 				case boolType: printf ("%s", root->boolValue ? "true" : "false"); break;
 				case stringType: printf ("\"%s\"", root->stringValue); break;
 				case charType: printf ("'%c'", root->charValue); break;
@@ -533,6 +538,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 			switch (root->type.kind) {
 				case u8Type: case u16Type: case u32Type: case u64Type: case i8Type: case i16Type: case i32Type: case i64Type:
 				case intType: printf ("%*s%d%s", indent, "", root->numValue, newline?"\n":""); break;
+				case floatType: printf ("%*s%f%s", indent, "", root->floatValue, newline?"\n":""); break;
 				case boolType: printf ("%*s%s%s", indent, "", root->boolValue?"true":"false", newline?"\n":""); break;
 				case stringType: printf ("%*s\"%s\"%s", indent, "", root->stringValue, newline?"\n":""); break;
 				case charType: printf ("%*s%c%s", indent, "", root->charValue, newline?"\n":""); break;

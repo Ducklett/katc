@@ -97,6 +97,7 @@ astNode bind_expression_internal(node *n, ast* tree) {
 		case falseKeyword:
 		case trueKeyword: return (astNode){ literalKind, primitive_type_from_kind(boolType), .boolValue = n->boolValue };
 
+		case floatLiteral: return (astNode){ literalKind, primitive_type_from_kind(floatType), .floatValue = n->floatValue };
 		case numberLiteral: return (astNode){ literalKind, primitive_type_from_kind(intType), .numValue = n->numValue };
 		case stringLiteral: return (astNode){ literalKind, primitive_type_from_kind(stringType), .stringValue = n->stringValue };
 		case charLiteral: return (astNode){ literalKind, primitive_type_from_kind(charType), .charValue = n->charValue };
@@ -1429,6 +1430,7 @@ bool check_bounds(astNode n, diagnosticContainer *d, textspan span) {
 			if (value >= sb_count(n.type.declaration->namespaceScope->symbols)  ) { errored=true; overflow=true; }
 			else if (value < 0) { errored=true; } } break;
 
+		case floatType:
 		case i64Type:
 		case u64Type:
 		case stringType:

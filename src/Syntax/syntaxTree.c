@@ -12,6 +12,7 @@ enum syntaxKind {
 	semicolonToken,
 
 	numberLiteral,
+	floatLiteral,
 	stringLiteral,
 	charLiteral,
 
@@ -122,6 +123,7 @@ static const char *syntaxKindText[] = {
 	"newlineToken",
 	";",
 	"numberLiteral",
+	"floatLiteral",
 	"stringLiteral",
 	"charLiteral",
 	"+",
@@ -233,6 +235,7 @@ typedef struct node {
 	union {
 		void* data; 
 		i64 numValue; 
+		float floatValue; 
 		bool boolValue; 
 		char* stringValue; 
 		char charValue; 
@@ -606,7 +609,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 void print_syntaxtree(char *text, node *root, int indent, bool verbose) { print_syntaxtree_internal(text, root, indent, verbose, true); }
 void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose, bool newline) {
 
-	if (root->data == 0 || root->kind == numberLiteral || root->kind == stringLiteral || root->kind == charLiteral || root->kind == trueKeyword || root->kind == falseKeyword) {
+	if (root->data == 0 || root->kind == numberLiteral || root->kind == floatLiteral || root->kind == stringLiteral || root->kind == charLiteral || root->kind == trueKeyword || root->kind == falseKeyword) {
 		char* tokenText = ast_substring(text, root->span, NULL);
 		if (verbose) {
 			printf ("%*s(", indent, "");

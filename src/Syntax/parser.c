@@ -715,6 +715,7 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 	}
 
 	case numberLiteral:
+	case floatLiteral:
 	case stringLiteral:
 	case charLiteral:
 	case trueKeyword:

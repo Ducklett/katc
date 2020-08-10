@@ -230,6 +230,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 
 	case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': {
 		int value = 0;
+		int decimalDivisor = -1;
 		t.kind = numberLiteral;
 		start =  l->index;
 
@@ -253,9 +254,25 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 		}
 
 		bool foundIllegalCharacter=false;
-		while (isNumber(lexer_current(l)) || lexer_current(l) == '_' || (radix == BASE16 && isLetter(lexer_current(l)) )) {
+		while (isNumber(lexer_current(l)) || lexer_current(l) == '_' || lexer_current(l) == '.' || (radix == BASE16 && isLetter(lexer_current(l)) )) {
 			char nextNum = lexer_move_next(l);
 			if (nextNum == '_') continue;
+			if (nextNum == '.') {
+
+				if (radix != BASE10) {
+					printf("floats should only be base 10\n"); exit(1);
+				}
+
+				if (decimalDivisor != -1) {
+					printf("invalid . in number literal\n"); exit(1);
+				}
+
+				decimalDivisor = 1;
+				continue;
+			}
+
+			if (decimalDivisor != -1) decimalDivisor *= 10;
+
 			switch(radix) {
 				case BASE10: value = value * 10 + parse_numeric_char(nextNum); break;
 				case BASE16: {
@@ -278,7 +295,13 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			}
 		}
 		t.span = textspan_create(start, l->index - start);
-		t.numValue = value;
+
+		if (decimalDivisor != -1) {
+			t.kind = floatLiteral;
+			t.floatValue = (float)value / (float)decimalDivisor;
+		} else {
+			t.numValue = value;
+		}
 		break;
 	}
 
