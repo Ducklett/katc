@@ -48,9 +48,9 @@ astSymbol* find_function_in_scope(textspan nameSpan, ast *tree, scope *currentSc
 astSymbol* find_variable_in_scope(textspan nameSpan, ast *tree, scope *currentScope);
 astSymbol* find_enum_in_scope(node *n, ast *tree, scope *currentScope, bool prefix);
 astSymbol* find_enum_type_in_scope(textspan nameSpan, ast *tree, scope *currentScope);
-astNode fold_binary_expression(typedOperator *op, int left, int right);
+astNode fold_binary_expression(typedOperator *op, astNode *leftNode, astNode *rightNode);
 astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand);
-astNode fold_cast_expression(astType from, astType to, i64 value);
+astNode fold_cast_expression(astType from, astType to, astNode *literal);
 bool check_bounds(astNode n, diagnosticContainer *d, textspan span);
 astNode cast_expression(node *n, ast *tree, astType toType, bool isExplicit);
 
@@ -387,7 +387,7 @@ astNode bind_range_expression(node *n, ast *tree) {
 	}
 
 
-	if (!isNumberType(type.kind) && type.kind != charType && type.kind != enumType) {
+	if (!isIntType(type.kind) && type.kind != charType && type.kind != enumType) {
 		report_diagnostic(&tree->diagnostics, illegalRangeDiagnostic, rn.start.span, type.kind, 0, 0);
 	}
 
@@ -560,7 +560,7 @@ astNode bind_binary_expression(node *n, ast *tree) {
 	}
 
 	if (!hasErrors && feature_constantfolding && boundLeft.kind == literalKind && boundRight.kind == literalKind) {
-		return fold_binary_expression(&op, boundLeft.numValue, boundRight.numValue);
+		return fold_binary_expression(&op, &boundLeft, &boundRight);
 	}
 
 	binaryExpressionAst *binaryNode = arena_malloc(binder_arena, sizeof(binaryExpressionAst));
@@ -747,7 +747,7 @@ astNode cast_expression(node *n, ast *tree, astType toType, bool isExplicit) {
 	if (hasErrors) return (astNode){ castExpressionKind, primitive_type_from_kind(errorType), .data = 0 };
 
 	if (feature_constantfolding && bn.kind == literalKind) {
-		if (isExplicit) return fold_cast_expression(bn.type, toType, bn.numValue);
+		if (isExplicit) return fold_cast_expression(bn.type, toType, &bn);
 		// implicit casts should keep their literal value so they can be bounds checked
 		bn.type = toType;
 		return bn;
@@ -1322,72 +1322,142 @@ astSymbol* find_symbol_in_scope_internal(textspan nameSpan, ast *tree, scope *cu
 	return find_symbol_in_scope_internal(nameSpan, tree, currentScope->parentScope, symbolKind, flags);
 }
 
-astNode fold_binary_expression(typedOperator *op, int left, int right) {
-	int v;
-	switch(op->operator) {
-		case addOp:            v = left +  right; break; 
-		case subtractOp:       v = left -  right; break; 
-		case multiplyOp:       v = left *  right; break;
-		case divideOp:         v = left /  right; break;
-		case moduloOp:         v = left %  right; break;
+astNode fold_binary_expression(typedOperator *op, astNode *leftNode, astNode *rightNode) {
+	if (leftNode->type.kind == floatType || rightNode->type.kind == floatType) {
+		float v;
+		float left = leftNode->type.kind == floatType ? leftNode->floatValue : (float)leftNode->numValue;
+		float right = rightNode->type.kind == floatType ? rightNode->floatValue : (float)rightNode->numValue;
+		switch(op->operator) {
+			case addOp:            v = left +  right; break; 
+			case subtractOp:       v = left -  right; break; 
+			case multiplyOp:       v = left *  right; break;
+			case divideOp:         v = left /  right; break;
 
-		case equalOp:          v = left == right; break;
-		case inEqualOp:        v = left != right; break;
-		case lessOp:           v = left <  right; break;
-		case greaterOp:        v = left >  right; break;
-		case lessOrEqualOp:    v = left <= right; break;  
-		case greaterOrEqualOp: v = left >= right; break;     
+			case equalOp:          v = left == right; break;
+			case inEqualOp:        v = left != right; break;
+			case lessOp:           v = left <  right; break;
+			case greaterOp:        v = left >  right; break;
+			case lessOrEqualOp:    v = left <= right; break;  
+			case greaterOrEqualOp: v = left >= right; break;     
 
-		case shiftLeftOp:      v = left << right; break;
-		case shiftRightOp:     v = left >> right; break;
-		case bitwiseAndOp:     v = left &  right; break;
-		case bitwiseXorOp:     v = left ^  right; break;
-		case bitwiseOrOp:      v = left |  right; break;
+			case logicalAndOp:     v = left && right; break;
+			case logicalOrOp:      v = left || right; break;
+			default:
+				fprintf(stderr, "%sUnhandled binary operator of type %s in binder%s", TERMRED, astBinaryText[op->operator], TERMRESET);
+				exit(1);
+		}
 
-		case logicalAndOp:     v = left && right; break;
-		case logicalOrOp:      v = left || right; break;
-		default:
-			fprintf(stderr, "%sUnhandled binary operator of type %s in binder%s", TERMRED, astBinaryText[op->operator], TERMRESET);
-			exit(1);
+		return (astNode){ literalKind, op->type, .floatValue = v };
+	} else {
+		int v;
+		int left = leftNode->numValue;
+		int right = rightNode->numValue;
+		switch(op->operator) {
+			case addOp:            v = left +  right; break; 
+			case subtractOp:       v = left -  right; break; 
+			case multiplyOp:       v = left *  right; break;
+			case divideOp:         v = left /  right; break;
+			case moduloOp:         v = left %  right; break;
+
+			case equalOp:          v = left == right; break;
+			case inEqualOp:        v = left != right; break;
+			case lessOp:           v = left <  right; break;
+			case greaterOp:        v = left >  right; break;
+			case lessOrEqualOp:    v = left <= right; break;  
+			case greaterOrEqualOp: v = left >= right; break;     
+
+			case shiftLeftOp:      v = left << right; break;
+			case shiftRightOp:     v = left >> right; break;
+			case bitwiseAndOp:     v = left &  right; break;
+			case bitwiseXorOp:     v = left ^  right; break;
+			case bitwiseOrOp:      v = left |  right; break;
+
+			case logicalAndOp:     v = left && right; break;
+			case logicalOrOp:      v = left || right; break;
+			default:
+				fprintf(stderr, "%sUnhandled binary operator of type %s in binder%s", TERMRED, astBinaryText[op->operator], TERMRESET);
+				exit(1);
+		}
+
+		return (astNode){ literalKind, op->type, .numValue = v };
 	}
-
-	return (astNode){ literalKind, op->type, .numValue = v };
 }
 
 astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand) {
-	int v;
-	int operand = boundOperand->numValue;
-	switch(op) {
-	case logicalNegationOp: v = !operand; break;
-	case bitwiseNegationOp: v = ~operand; break;
-	case negationOp:        v = -operand; break;
-	case identityOp:        v =  operand; break;
-	default:
-		fprintf(stderr, "%sUnhandled unary operator of type %s in binder%s", TERMRED, astUnaryText[op], TERMRESET);
-		exit(1);
+	if (boundOperand->type.kind == floatType) {
+		float v;
+		int operand = boundOperand->floatValue;
+		switch(op) {
+		case negationOp:        v = -operand; break;
+		case identityOp:        v =  operand; break;
+		default:
+			fprintf(stderr, "%sUnhandled unary operator of type %s in binder%s", TERMRED, astUnaryText[op], TERMRESET);
+			exit(1);
+		}
+
+		return (astNode){ literalKind , boundOperand->type, .floatValue = v };
+	} else {
+		int v;
+		int operand = boundOperand->numValue;
+		switch(op) {
+		case logicalNegationOp: v = !operand; break;
+		case bitwiseNegationOp: v = ~operand; break;
+		case negationOp:        v = -operand; break;
+		case identityOp:        v =  operand; break;
+		default:
+			fprintf(stderr, "%sUnhandled unary operator of type %s in binder%s", TERMRED, astUnaryText[op], TERMRESET);
+			exit(1);
+		}
+
+		return (astNode){ literalKind , boundOperand->type, .numValue = v };
 	}
-	return (astNode){ literalKind , boundOperand->type, .numValue = v };
 }
 
-astNode fold_cast_expression(astType from, astType to, i64 value) {
-	switch (to.kind) {
-	case intType : value = (int )value; break;
-	case u8Type  : value = (u8  )value; break;
-	case u16Type : value = (u16 )value; break;
-	case u32Type : value = (u32 )value; break;
-	case u64Type : value = (u64 )value; break;
-	case i8Type  : value = (i8  )value; break;
-	case i16Type : value = (i16 )value; break;
-	case i32Type : value = (i32 )value; break;
-	case i64Type : value = (i64 )value; break;
-	case boolType: value = (bool)value; break;
-	case charType: value = (char)value; break;
-	case enumType: break;
-	default:
-		fprintf(stderr, "%sUnhandled type %s in fold_cast_expression%s", TERMRED, astKindText[to.kind], TERMRESET);
-		exit(1);
+astNode fold_cast_expression(astType from, astType to, astNode *literal) {
+	i64 value = literal->numValue;
+	float fvalue = literal->floatValue;
+
+	if (from.kind == floatType) {
+		switch (to.kind) {
+		case intType : value = (int )fvalue; break;
+		case u8Type  : value = (u8  )fvalue; break;
+		case u16Type : value = (u16 )fvalue; break;
+		case u32Type : value = (u32 )fvalue; break;
+		case u64Type : value = (u64 )fvalue; break;
+		case i8Type  : value = (i8  )fvalue; break;
+		case i16Type : value = (i16 )fvalue; break;
+		case i32Type : value = (i32 )fvalue; break;
+		case i64Type : value = (i64 )fvalue; break;
+		case boolType: value = (bool)fvalue; break;
+		case charType: value = (char)fvalue; break;
+		case floatType: fvalue = (float)value; break;
+		case enumType: break;
+		default:
+			fprintf(stderr, "%sUnhandled type %s in fold_cast_expression%s", TERMRED, astKindText[to.kind], TERMRESET);
+			exit(1);
+		}
+	} else {
+		switch (to.kind) {
+		case intType : value = (int )value; break;
+		case u8Type  : value = (u8  )value; break;
+		case u16Type : value = (u16 )value; break;
+		case u32Type : value = (u32 )value; break;
+		case u64Type : value = (u64 )value; break;
+		case i8Type  : value = (i8  )value; break;
+		case i16Type : value = (i16 )value; break;
+		case i32Type : value = (i32 )value; break;
+		case i64Type : value = (i64 )value; break;
+		case boolType: value = (bool)value; break;
+		case charType: value = (char)value; break;
+		case floatType: fvalue = (float)value; break;
+		case enumType: break;
+		default:
+			fprintf(stderr, "%sUnhandled type %s in fold_cast_expression%s", TERMRED, astKindText[to.kind], TERMRESET);
+			exit(1);
+		}
 	}
 
+	if (to.kind == floatType) return (astNode){ literalKind, to, .floatValue = fvalue };
 	return (astNode){ literalKind, to, .numValue = value };
 }
 

@@ -111,7 +111,7 @@ static const char *astKindText[] = {
 	"struct",
 };
 
-bool isNumberType(enum astKind t) {
+bool isIntType(enum astKind t) {
 	return (
 		t == intType ||
 		t == u8Type  ||
@@ -121,8 +121,7 @@ bool isNumberType(enum astKind t) {
 		t == i8Type  ||
 		t == i16Type ||
 		t == i32Type ||
-		t == i64Type ||
-		t == floatType);
+		t == i64Type );
 }
 
 typedef struct astType {
@@ -142,7 +141,7 @@ u8 getCastInformation(astType from, astType to) {
 
 	if (to.kind == stringType || (from.kind == stringType && to.kind != boolType)) return CAST_ILLEGAL;
 
-	if (from.kind == intType && isNumberType(to.kind)) return CAST_IMPLICIT;
+	if (from.kind == intType && isIntType(to.kind)) return CAST_IMPLICIT;
 
 	return CAST_EXPLICIT;
 }
@@ -207,8 +206,24 @@ typedOperator get_binary_operator(enum syntaxKind operatorToken, astType left, a
 	if (operatorToken == euqualsEqualsOperator && left.kind == enumType && right.kind == enumType && left.declaration == right.declaration) return (typedOperator) { equalOp, primitive_type_from_kind(boolType) };
 	if (operatorToken == bangEqualsOperator    && left.kind == enumType && right.kind == enumType && left.declaration == right.declaration) return (typedOperator){ inEqualOp, primitive_type_from_kind(boolType) };
 
-	if (operatorToken == plusOperator          && left.kind == charType && isNumberType(right.kind)) return (typedOperator){ addOp, primitive_type_from_kind(charType) };
-	if (operatorToken == minusOperator         && left.kind == charType && isNumberType(right.kind)) return (typedOperator){ subtractOp, primitive_type_from_kind(charType) };
+	bool bothFloat = left.kind == floatType && right.kind == floatType;
+	bool oneFloat = left.kind == floatType || right.kind == floatType;
+	if (bothFloat || (oneFloat && isIntType(left.kind == floatType ? right.kind : left.kind)) ) {
+		if (operatorToken == plusOperator         ) return (typedOperator){ addOp, floatType };
+		if (operatorToken == minusOperator        ) return (typedOperator){ subtractOp, floatType };
+		if (operatorToken == multipliationOperator) return (typedOperator){ multiplyOp, floatType };
+		if (operatorToken == divisionOperator     ) return (typedOperator){ divideOp, floatType };
+
+		if (operatorToken == euqualsEqualsOperator) return (typedOperator) { equalOp, primitive_type_from_kind(boolType) };
+		if (operatorToken == bangEqualsOperator   ) return (typedOperator){ inEqualOp, primitive_type_from_kind(boolType) };
+		if (operatorToken == lessOperator         ) return (typedOperator){ lessOp, primitive_type_from_kind(boolType) };
+		if (operatorToken == greaterOperator      ) return (typedOperator){ greaterOp, primitive_type_from_kind(boolType) };
+		if (operatorToken == lessEqualsOperator   ) return (typedOperator){ lessOrEqualOp, primitive_type_from_kind(boolType) };
+		if (operatorToken == greaterEqualsOperator) return (typedOperator){ greaterOrEqualOp, primitive_type_from_kind(boolType) };
+	}
+
+	if (operatorToken == plusOperator          && left.kind == charType && isIntType(right.kind)) return (typedOperator){ addOp, primitive_type_from_kind(charType) };
+	if (operatorToken == minusOperator         && left.kind == charType && isIntType(right.kind)) return (typedOperator){ subtractOp, primitive_type_from_kind(charType) };
 	if (operatorToken == euqualsEqualsOperator && left.kind == charType && right.kind == charType) return (typedOperator) { equalOp, primitive_type_from_kind(boolType) };
 	if (operatorToken == bangEqualsOperator    && left.kind == charType && right.kind == charType) return (typedOperator){ inEqualOp, primitive_type_from_kind(boolType) };
 	if (operatorToken == lessOperator          && left.kind == charType && right.kind == charType) return (typedOperator){ lessOp, primitive_type_from_kind(boolType) };
@@ -216,29 +231,29 @@ typedOperator get_binary_operator(enum syntaxKind operatorToken, astType left, a
 	if (operatorToken == lessEqualsOperator    && left.kind == charType && right.kind == charType) return (typedOperator){ lessOrEqualOp, primitive_type_from_kind(boolType) };
 	if (operatorToken == greaterEqualsOperator && left.kind == charType && right.kind == charType) return (typedOperator){ greaterOrEqualOp, primitive_type_from_kind(boolType) };
 
-	if (operatorToken == plusOperator          && isNumberType(left.kind) && isNumberType(right.kind)) return (typedOperator){ addOp, left };
-	if (operatorToken == minusOperator         && isNumberType(left.kind) && isNumberType(right.kind)) return (typedOperator){ subtractOp, left };
-	if (operatorToken == multipliationOperator && isNumberType(left.kind) && isNumberType(right.kind)) return (typedOperator){ multiplyOp, left };
-	if (operatorToken == divisionOperator      && isNumberType(left.kind) && isNumberType(right.kind)) return (typedOperator){ divideOp, left };
-	if (operatorToken == modulusOperator       && isNumberType(left.kind) && isNumberType(right.kind)) return (typedOperator){ moduloOp, left };
+	if (operatorToken == plusOperator          && isIntType(left.kind) && isIntType(right.kind)) return (typedOperator){ addOp, left };
+	if (operatorToken == minusOperator         && isIntType(left.kind) && isIntType(right.kind)) return (typedOperator){ subtractOp, left };
+	if (operatorToken == multipliationOperator && isIntType(left.kind) && isIntType(right.kind)) return (typedOperator){ multiplyOp, left };
+	if (operatorToken == divisionOperator      && isIntType(left.kind) && isIntType(right.kind)) return (typedOperator){ divideOp, left };
+	if (operatorToken == modulusOperator       && isIntType(left.kind) && isIntType(right.kind)) return (typedOperator){ moduloOp, left };
 
-	if (operatorToken == euqualsEqualsOperator && isNumberType(left.kind) && right.kind == left.kind) return (typedOperator) { equalOp, primitive_type_from_kind(boolType) };
-	if (operatorToken == bangEqualsOperator    && isNumberType(left.kind) && right.kind == left.kind) return (typedOperator){ inEqualOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == euqualsEqualsOperator && isIntType(left.kind) && right.kind == left.kind) return (typedOperator) { equalOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == bangEqualsOperator    && isIntType(left.kind) && right.kind == left.kind) return (typedOperator){ inEqualOp, primitive_type_from_kind(boolType) };
 
 	if (operatorToken == euqualsEqualsOperator && left.kind == boolType && right.kind == boolType) return (typedOperator) { equalOp, primitive_type_from_kind(boolType) };
 	if (operatorToken == bangEqualsOperator    && left.kind == boolType && right.kind == boolType) return (typedOperator){ inEqualOp, primitive_type_from_kind(boolType) };
 
-	if (operatorToken == lessOperator          && isNumberType(left.kind) && right.kind == left.kind) return (typedOperator){ lessOp, primitive_type_from_kind(boolType) };
-	if (operatorToken == greaterOperator       && isNumberType(left.kind) && right.kind == left.kind) return (typedOperator){ greaterOp, primitive_type_from_kind(boolType) };
-	if (operatorToken == lessEqualsOperator    && isNumberType(left.kind) && right.kind == left.kind) return (typedOperator){ lessOrEqualOp, primitive_type_from_kind(boolType) };
-	if (operatorToken == greaterEqualsOperator && isNumberType(left.kind) && right.kind == left.kind) return (typedOperator){ greaterOrEqualOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == lessOperator          && isIntType(left.kind) && right.kind == left.kind) return (typedOperator){ lessOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == greaterOperator       && isIntType(left.kind) && right.kind == left.kind) return (typedOperator){ greaterOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == lessEqualsOperator    && isIntType(left.kind) && right.kind == left.kind) return (typedOperator){ lessOrEqualOp, primitive_type_from_kind(boolType) };
+	if (operatorToken == greaterEqualsOperator && isIntType(left.kind) && right.kind == left.kind) return (typedOperator){ greaterOrEqualOp, primitive_type_from_kind(boolType) };
 
-	if (operatorToken == lessLessOperator       && isNumberType(left.kind) && isNumberType(right.kind)) return (typedOperator){ shiftLeftOp, left };
-	if (operatorToken == greaterGreaterOperator && isNumberType(left.kind) && isNumberType(right.kind)) return (typedOperator){ shiftRightOp, left };
+	if (operatorToken == lessLessOperator       && isIntType(left.kind) && isIntType(right.kind)) return (typedOperator){ shiftLeftOp, left };
+	if (operatorToken == greaterGreaterOperator && isIntType(left.kind) && isIntType(right.kind)) return (typedOperator){ shiftRightOp, left };
 
-	if (operatorToken == ampersandOperator && isNumberType(left.kind) && right.kind == left.kind) return (typedOperator){ bitwiseAndOp, left };
-	if (operatorToken == caretOperator     && isNumberType(left.kind) && right.kind == left.kind) return (typedOperator){ bitwiseXorOp, left };
-	if (operatorToken == pipeOperator      && isNumberType(left.kind) && right.kind == left.kind) return (typedOperator){ bitwiseOrOp, left };
+	if (operatorToken == ampersandOperator && isIntType(left.kind) && right.kind == left.kind) return (typedOperator){ bitwiseAndOp, left };
+	if (operatorToken == caretOperator     && isIntType(left.kind) && right.kind == left.kind) return (typedOperator){ bitwiseXorOp, left };
+	if (operatorToken == pipeOperator      && isIntType(left.kind) && right.kind == left.kind) return (typedOperator){ bitwiseOrOp, left };
 
 	if (operatorToken == ampersandOperator && left.kind == boolType && right.kind == boolType) return (typedOperator){ bitwiseAndOp, primitive_type_from_kind(boolType) };
 	if (operatorToken == caretOperator && left.kind == boolType && right.kind == boolType) return (typedOperator){ bitwiseXorOp, primitive_type_from_kind(boolType) };
@@ -275,20 +290,32 @@ static const char *astUnaryText[] = {
 };
 
 enum astUnaryOperator get_unary_operator(enum syntaxKind operatorToken, enum astKind type, bool left) {
-	if (type == charType && operatorToken == plusPlusOperator && left) return preIncrementOp;
-	if (type == charType && operatorToken == plusPlusOperator && !left) return postIncrementOp;
-	if (type == charType && operatorToken == minusMinusOperator && left) return preDecrementOp;
-	if (type == charType && operatorToken == minusMinusOperator && !left) return postDecrementOp;
+	if (type == charType) {
+		if (operatorToken == plusPlusOperator && left) return preIncrementOp;
+		if (operatorToken == plusPlusOperator && !left) return postIncrementOp;
+		if (operatorToken == minusMinusOperator && left) return preDecrementOp;
+		if (operatorToken == minusMinusOperator && !left) return postDecrementOp;
+	} else if (isIntType(type)) {
+		if (operatorToken == plusPlusOperator && left) return preIncrementOp;
+		if (operatorToken == plusPlusOperator && !left) return postIncrementOp;
+		if (operatorToken == minusMinusOperator && left) return preDecrementOp;
+		if (operatorToken == minusMinusOperator && !left) return postDecrementOp;
+		if (operatorToken == tildeOperator && left) return bitwiseNegationOp;
 
-	if (type == intType && operatorToken == plusPlusOperator && left) return preIncrementOp;
-	if (type == intType && operatorToken == plusPlusOperator && !left) return postIncrementOp;
-	if (type == intType && operatorToken == minusMinusOperator && left) return preDecrementOp;
-	if (type == intType && operatorToken == minusMinusOperator && !left) return postDecrementOp;
-	if (type == intType && operatorToken == tildeOperator && left) return bitwiseNegationOp;
+		if (operatorToken == plusOperator && left) return identityOp;
+		if (operatorToken == minusOperator && left) return negationOp;
+	} else if (type == boolType) {
 
-	if (type == intType && operatorToken == plusOperator && left) return identityOp;
-	if (type == intType && operatorToken == minusOperator && left) return negationOp;
-	if (type == boolType && operatorToken == bangOperator && left) return logicalNegationOp;
+		if (operatorToken == bangOperator && left) return logicalNegationOp;
+	} else if (type == floatType) {
+		if (operatorToken == plusPlusOperator && left) return preIncrementOp;
+		if (operatorToken == plusPlusOperator && !left) return postIncrementOp;
+		if (operatorToken == minusMinusOperator && left) return preDecrementOp;
+		if (operatorToken == minusMinusOperator && !left) return postDecrementOp;
+
+		if (operatorToken == plusOperator && left) return identityOp;
+		if (operatorToken == minusOperator && left) return negationOp;
+	}
 
 	return missingUnaryOp;
 }
