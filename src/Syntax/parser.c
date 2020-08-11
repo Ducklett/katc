@@ -96,19 +96,40 @@ void parser_parse(parser *p, diagnosticContainer *d) {
 	parser_match_token(p, d, endOfFileToken);
 }
 
+// when given the array capacity int[10][20], the parser will produce a result of ((int 10) 20)
+// this function reverses the capacities so it becomes ((int 20) 10)
+// void reverse_array_capacity(node *n) {
+// 	if (n->kind != arrayKind) return;
+
+// 	arrayKindNode *an = (arrayKindNode*)n->data;
+// 	if (an->identifier.kind != arrayKind) return;
+
+// 	arrayKindNode *can = (arrayKindNode*)an->identifier.data;
+
+// 	node temp = an->capacity;
+// 	an->capacity = can->capacity;
+// 	can->capacity = temp;
+
+// 	reverse_array_capacity(&an->identifier);
+// }
+
 node parser_parse_type(parser *p, diagnosticContainer *d) {
 	node identifier = parser_parse_symbol_reference(p,d,true);
-	if (!parser_current(p,d).kind == openBracketToken) return identifier;
 
-	node openBracket = parser_match_token(p,d,openBracketToken);
-	// TODO: make capacity optional and infer capacity from assignment
-	node capacity = parser_parse_expression(p,d);
-	node closeBracket = parser_match_token(p,d,closeBracketToken);
+	while (parser_current(p,d).kind == openBracketToken) {
 
-	arrayKindNode *ar = arena_malloc(parser_arena, sizeof(arrayKindNode));
-	*ar = (arrayKindNode){ identifier, openBracket, capacity, closeBracket };
+		node openBracket = parser_match_token(p,d,openBracketToken);
+		// TODO: make capacity optional and infer capacity from assignment
+		node capacity = parser_parse_expression(p,d);
+		node closeBracket = parser_match_token(p,d,closeBracketToken);
 
-	return (node) { arrayKind, textspan_from_bounds(&identifier, &closeBracket), .data = ar, };
+		arrayKindNode *ar = arena_malloc(parser_arena, sizeof(arrayKindNode));
+		*ar = (arrayKindNode){ identifier, openBracket, capacity, closeBracket };
+
+		identifier = (node) { arrayKind, textspan_from_bounds(&identifier, &closeBracket), .data = ar, };
+		// reverse_array_capacity(&identifier);
+	}
+	return identifier;
 }
 node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	node l1 = parser_peek(p, d, 0);

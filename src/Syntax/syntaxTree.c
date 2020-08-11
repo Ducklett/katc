@@ -880,8 +880,7 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		print_syntaxtree_internal(text, &an.identifier, indent, verbose, true);
 		print_syntaxtree_internal(text, &an.openBracket, indent, verbose, true);
 		print_syntaxtree_internal(text, &an.capacity, indent, verbose, true);
-		print_syntaxtree_internal(text, &an.closeBracket, indent, verbose, true);
-		print_syntaxtree_internal(text, &an.identifier, indent, verbose, false);
+		print_syntaxtree_internal(text, &an.closeBracket, indent, verbose, false);
 		break;
 	}
 	case arrayLiteral: {
