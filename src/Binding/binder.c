@@ -7,6 +7,7 @@ astNode bind_expression(node *n, ast *tree);
 astNode bind_expression_internal(node *n, ast* tree);
 astNode bind_expression_of_type(node *n, ast *tree, astType expectedType, textspan errorSpan);
 astNode bind_variable_reference(node *n, ast *tree, scope *variableScope);
+astNode bind_array_literal(node *n, ast *tree);
 astNode bind_block_statement(node *n, ast *tree, scope *withScope);
 astNode bind_if_statement(node *n, ast *tree);
 astNode bind_case_branch(node *n, ast *tree);
@@ -101,6 +102,7 @@ astNode bind_expression_internal(node *n, ast* tree) {
 		case numberLiteral: return (astNode){ literalKind, primitive_type_from_kind(intType), .numValue = n->numValue };
 		case stringLiteral: return (astNode){ literalKind, primitive_type_from_kind(stringType), .stringValue = n->stringValue };
 		case charLiteral: return (astNode){ literalKind, primitive_type_from_kind(charType), .charValue = n->charValue };
+		case arrayLiteral: return bind_array_literal(n, tree);
 		
 		case parenthesizedExpression: return bind_expression(&((parenthesizedExpressionNode*)n->data)->expression, tree);
 
@@ -152,6 +154,43 @@ astNode bind_enum_reference(node *n, ast *tree, scope *enumScope, bool prefix) {
 	bool  hasErrors = enumRef == 0;
 
 	return (astNode){ literalKind,  hasErrors ? primitive_type_from_kind(errorType) : enumRef->type, .numValue = hasErrors ? 0 : enumRef->numValue };
+}
+
+astType create_array_type(astType innerType, u16 capacity) {
+	arrayTypeInfo *arrayInfo = arena_malloc(binder_arena, sizeof(arrayTypeInfo));
+	*arrayInfo = (arrayTypeInfo){ innerType, capacity };
+
+	return (astType){ arrayType, .arrayInfo = arrayInfo };
+}
+
+astNode bind_array_literal(node *n, ast *tree) {
+
+	arrayLiteralNode an = *(arrayLiteralNode*)n->data;
+
+	astType innerType = {0};
+	astNode *values = NULL;
+
+	for (int i=0;i<an.valueCount;i+=2) {
+		bool typeFound = innerType.kind > 2;
+		astNode child = !typeFound
+			? bind_expression(&an.values[i], tree)
+			: bind_expression_of_type(&an.values[i], tree, innerType, an.values[i].span);
+		if (!typeFound && child.type.kind > 2) {
+			innerType = child.type;
+		}
+		sb_push(values, child);
+	}
+
+	u16 capacity = sb_count(values);
+	size_t nodesSize = capacity * sizeof(astNode);
+	astNode* nodesStorage = arena_malloc(binder_arena, nodesSize);
+	memcpy(nodesStorage, values, nodesSize);
+
+	sb_free(values);
+
+	astType type = create_array_type(innerType, capacity);
+
+	return (astNode){ arrayLiteralKind, type, .arrayValues = nodesStorage };
 }
 
 astNode bind_struct_reference(node *n, ast *tree, scope *targetScope) {

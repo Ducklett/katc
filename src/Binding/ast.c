@@ -5,6 +5,7 @@ enum astSyntaxKind {
 	missingKind,
 	errorKind,
 	literalKind,
+	arrayLiteralKind,
 	unaryExpressionKind,
 	binaryExpressionKind,
 	ternaryExpressionKind,
@@ -39,6 +40,7 @@ static const char *astSyntaxKindText[] = {
 	"missing",
 	"error",
 	"literal",
+	"arrayLiteral",
 	"unaryExpression",
 	"binaryExpression",
 	"ternaryExpression",
@@ -88,6 +90,7 @@ enum astKind {
 	charType,
 	enumType,
 	structType,
+	arrayType,
 };
 
 static const char *astKindText[] = {
@@ -109,6 +112,7 @@ static const char *astKindText[] = {
 	"char",
 	"enum",
 	"struct",
+	"array",
 };
 
 bool isIntType(enum astKind t) {
@@ -124,10 +128,20 @@ bool isIntType(enum astKind t) {
 		t == i64Type );
 }
 
+typedef struct arrayTypeInfo;
+
 typedef struct astType {
 	enum astKind kind;
-	struct astSymbol *declaration;
+	union {
+		struct astSymbol *declaration;
+		struct arrayTypeInfo *arrayInfo;
+	};
 } astType;
+
+typedef struct arrayTypeInfo {
+	struct astType ofType;	
+	u16 capacity;
+} arrayTypeInfo;
 
 #define CAST_IDENTITY 0
 #define CAST_IMPLICIT 1
@@ -199,7 +213,7 @@ typedef struct typedOperator {
 } typedOperator;
 
 static inline astType primitive_type_from_kind(enum astKind kind) {
-	return (astType){ kind, 0 };
+	return (astType){ kind, .declaration = NULL };
 }
 
 typedOperator get_binary_operator(enum syntaxKind operatorToken, astType left, astType right) {
@@ -330,6 +344,7 @@ typedef struct astNode {
 		bool boolValue; 
 		char* stringValue; 
 		char charValue; 
+		struct astNode* arrayValues; 
 	};
 } astNode;
 
@@ -589,6 +604,15 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 
 		for(int i=0;i<bn.statementsCount;i++) {
 			print_ast_internal(text, &bn.statements[i], indent, verbose, i!=bn.statementsCount-1);
+		}
+		break;
+	}
+	case arrayLiteralKind: {
+		astNode* nodes = root->arrayValues;
+		u16 capacity = root->type.arrayInfo->capacity;
+
+		for(int i=0;i<capacity;i++) {
+			print_ast_internal(text, &nodes[i], indent, verbose, i!=capacity-1);
 		}
 		break;
 	}
