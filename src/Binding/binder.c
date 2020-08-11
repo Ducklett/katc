@@ -25,6 +25,7 @@ astNode bind_unary_expression(node *n, ast *tree);
 astNode bind_binary_expression(node *n, ast *tree);
 astNode bind_ternary_expression(node *n, ast *tree);
 astNode bind_call_expression(node *n, ast *tree, scope *functionScope);
+astNode bind_array_access_expression(node *n, ast *tree, scope *symbolScope);
 astNode bind_variable_declaration(node *n, ast *tree);
 astNode bind_variable_assignment(node *n, ast *tree);
 astNode bind_typedef_declaration(node *n, ast *tree);
@@ -115,6 +116,7 @@ astNode bind_expression_internal(node *n, ast* tree) {
 		case binaryExpression: return bind_binary_expression(n, tree);
 		case ternaryExpression: return bind_ternary_expression(n, tree);
 		case callExpression: return bind_call_expression(n, tree, NULL);
+		case arrayAccessExpression: return bind_array_access_expression(n, tree, NULL);
 		case variableDeclaration: return bind_variable_declaration(n, tree);
 		case variableAssignment: return bind_variable_assignment(n, tree);
 		case typedefDeclaration: return bind_typedef_declaration(n, tree);
@@ -765,14 +767,34 @@ astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 	return (astNode){ callExpressionKind , primitive_type_from_kind(voidType), .data = callNode };
 }
 
+astNode bind_array_access_expression(node *n, ast *tree, scope *symbolScope) {
+	arrayAccessNode *an = (arrayAccessNode*)n->data;
+
+	astNode left = bind_expression(&an->identifier, tree);
+
+	if (left.type.kind != arrayType) {
+		printf("left should be an array\n");
+		exit(1);
+	}
+
+	astNode index = bind_expression_of_type(&an->index, tree, primitive_type_from_kind(intType), an->index.span);
+
+	arrayAccessAst* aNode = arena_malloc(binder_arena, sizeof(arrayAccessAst));
+	*aNode = (arrayAccessAst){ left, index };
+
+	return (astNode){ arrayAccessKind, left.type.arrayInfo->ofType, .data = aNode };
+}
+
 astNode cast_expression(node *n, ast *tree, astType toType, bool isExplicit) {
 	astNode bn = bind_expression_internal(n, tree);
 
 	bool hasErrors = bn.type.kind == errorType;
 
-	u8 castKind = getCastInformation(bn.type, toType);
+	if (hasErrors || toType.kind <= 2) return bn;
 
-	if (hasErrors || castKind == CAST_IDENTITY || toType.kind <= 2) return bn;
+	u8 castKind =  getCastInformation(bn.type, toType);
+
+	if (castKind == CAST_IDENTITY) return bn;
 
 	if (!hasErrors && castKind == CAST_ILLEGAL) {
 		hasErrors = true;
@@ -864,10 +886,14 @@ astSymbol* extract_symbol_from_reference(astNode *n) {
 		return extract_symbol_from_reference(&sn.right);
 	} else if (n->kind == variableReferenceKind) {
 		return (astSymbol*)n->data;
+	} else if (n->kind == arrayAccessKind) {
+		arrayAccessAst an = *(arrayAccessAst*)n->data;
+		extract_symbol_from_reference(&an.left);
 	} else {
 		printf("unexpected node kind %s in extract_symbol_reference\n", astSyntaxKindText[n->kind]);
 	}
 }
+
 astNode bind_variable_assignment(node *n, ast *tree) {
 
 	variableAssignmentNode an = *(variableAssignmentNode*)n->data;

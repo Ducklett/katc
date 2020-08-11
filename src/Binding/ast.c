@@ -11,6 +11,7 @@ enum astSyntaxKind {
 	ternaryExpressionKind,
 	rangeExpressionKind,
 	callExpressionKind,
+	arrayAccessKind,
 	constructorExpressionKind,
 	castExpressionKind,
 	namespaceDeclarationKind,
@@ -46,6 +47,7 @@ static const char *astSyntaxKindText[] = {
 	"ternaryExpression",
 	"rangeExpression",
 	"callExpression",
+	"arrayAccess",
 	"constructorExpressionKind",
 	"castExpression",
 	"namespaceDeclaration",
@@ -457,6 +459,11 @@ typedef struct callExpressionAst {
 	u8 argumentCount;
 } callExpressionAst;
 
+typedef struct arrayAccessAst {
+	astNode left;
+	astNode index;
+} arrayAccessAst;
+
 typedef struct variableDeclarationAst {
 	astSymbol* variable;
 	astNode initalizer;
@@ -760,6 +767,13 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		for(int i=0;i<cn.argumentCount;i++) {
 			print_ast_internal(text, &cn.arguments[i], indent, verbose, i!=cn.argumentCount-1);
 		}
+		break;
+	}
+	case arrayAccessKind: {
+		arrayAccessAst an = *(arrayAccessAst*)root->data;
+
+		print_ast_internal(text, &an.left, indent, verbose, true);
+		print_ast_internal(text, &an.index, indent, verbose, false);
 		break;
 	}
 	case castExpressionKind: {
