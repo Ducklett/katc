@@ -165,6 +165,9 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 
 	switch(p->parentKind) {
 		case 0: break;
+		case forLoop: break;
+		case whileLoop: break;
+
 		case functionDeclaration:
 			if (
 				res.kind == namespaceDeclaration ||

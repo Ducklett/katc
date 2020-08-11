@@ -10,10 +10,12 @@ static inline void emit_c_whileLoop(astNode *n, ast *tree);
 static inline void emit_c_forLoop(astNode *n, ast *tree);
 
 static inline void emit_c_literal(astNode *n, ast *tree);
+static inline void emit_c_array_literal(astNode *n, ast *tree);
 static inline void emit_c_binaryExpression(astNode *n, ast *tree);
 static inline void emit_c_ternaryExpression(astNode *n, ast *tree);
 static inline void emit_c_unaryExpression(astNode *n, ast *tree);
 static inline void emit_c_callExpression(astNode *n, ast *tree);
+static inline void emit_c_arrayAccess(astNode *n, ast *tree);
 static inline void emit_c_constructorExpression(astNode *n, ast *tree);
 static inline void emit_c_castExpression(astNode *n, ast *tree);
 static inline void emit_c_variableDeclaration(astNode *n, ast *tree);
@@ -75,6 +77,7 @@ static const char *cTypeText[] = {
 	"char",           // char
 	"enum",           // enum
 	"struct",         // struct
+	"",         	  // array
 };
 
 
@@ -113,6 +116,45 @@ static const char *cUnaryText[] = {
 };
 
 FILE *fp;
+
+void print_c_type(astType t, astSymbol *identifier) {
+	switch(t.kind) {
+		case enumType:
+			fprintf(fp, "%s", cTypeText[t.kind]);
+			printfSymbolReference(fp, t.declaration, "_");
+			break;
+		case structType:
+			fprintf(fp, "%s", cTypeText[t.kind]);
+			printfSymbolReference(fp, t.declaration, "_");
+			break;
+		case arrayType:
+			print_c_type(t.arrayInfo->ofType, NULL);
+			if (identifier != NULL) {
+				fprintf(fp, " ");
+				printfSymbolReference(fp, identifier, "_");
+			}
+			fprintf(fp, "[");
+			u16 capacity = t.arrayInfo->capacity;
+			if (capacity) fprintf(fp, "%d", capacity);
+			fprintf(fp, "]");
+			return;
+
+		case voidType:
+		case intType: case u8Type: case u16Type: case u32Type: case u64Type:
+		case i8Type: case i16Type: case i32Type: case i64Type:
+		case floatType: case boolType: case stringType: case charType:
+			fprintf(fp, "%s", cTypeText[t.kind]); break;
+		default:
+			printf("unhandled type %s in print_c_type", astKindText[t.kind]);
+			exit(1); break;
+	}
+
+	if (identifier != NULL) {
+		fprintf(fp, " ");
+		printfSymbolReference(fp, identifier, "_");
+	}
+}
+
 void emit_c_from_ast(ast *tree, const char* outputName, bool run, bool emitSource) {
 	const char* cFileName = (emitSource && outputName && !run) ? outputName : "out.c";
 	fp = fopen(cFileName, "w+");
@@ -146,10 +188,12 @@ void emit_c_node(astNode *n, ast *tree) {
 	case continueKind: fprintf(fp, "continue;\n"); break;
 
 	case literalKind: emit_c_literal(n, tree); break;
+	case arrayLiteralKind: emit_c_array_literal(n, tree); break;
 	case binaryExpressionKind: emit_c_binaryExpression(n, tree); break;
 	case ternaryExpressionKind: emit_c_ternaryExpression(n, tree); break;
 	case unaryExpressionKind: emit_c_unaryExpression(n, tree); break;
 	case callExpressionKind: emit_c_callExpression(n, tree); break;
+	case arrayAccessKind: emit_c_arrayAccess(n, tree); break;
 	case constructorExpressionKind: emit_c_constructorExpression(n, tree); break;
 	case castExpressionKind: emit_c_castExpression(n, tree); break;
 	case variableDeclarationKind: emit_c_variableDeclaration(n, tree); break;
@@ -374,6 +418,19 @@ static inline void emit_c_literal(astNode *n, ast *tree) {
 	}
 }
 
+static inline void emit_c_array_literal(astNode *n, ast *tree) {
+	astNode* nodes = n->arrayValues;
+	u16 capacity = n->type.arrayInfo->capacity;
+
+	fprintf(fp, "{ ");
+	for(int i=0;i<capacity;i++) {
+		emit_c_node(&nodes[i], tree);
+		fprintf(fp, ", ");
+	}
+	fprintf(fp, "}");
+}
+
+
 static inline void emit_c_binaryExpression(astNode *n, ast *tree) {
 	binaryExpressionAst bn = *(binaryExpressionAst*)n->data;
 	bool needsParen = parentKind == binaryExpressionKind || parentKind == unaryExpressionKind;
@@ -439,6 +496,15 @@ static inline void emit_c_callExpression(astNode *n, ast *tree) {
 	fprintf(fp,")");
 }
 
+static inline void emit_c_arrayAccess(astNode *n, ast *tree) {
+	arrayAccessAst *an = (arrayAccessAst*)n->data;
+
+	emit_c_node(&an->left, tree);
+	fprintf(fp, "[");
+	emit_c_node(&an->index, tree);
+	fprintf(fp, "]");
+}
+
 static inline void emit_c_constructorExpression(astNode *n, ast *tree) {
 	callExpressionAst *cn = (callExpressionAst*)n->data;
 
@@ -470,19 +536,7 @@ static inline void emit_c_variableDeclaration(astNode *n, ast *tree) {
 
 	if (feature_constantfolding && !(dn->variable->flags & VARIABLE_MUTABLE) && dn->variable->flags & VARIABLE_VALUE_KNOWN) return;
 
-	if (dn->variable->type.kind == structType) {
-		fprintf(fp,"struct ");
-		printfSymbolReference(fp, dn->variable->type.declaration, "_");
-		fprintf(fp," ");
-	} else if (dn->variable->type.kind == enumType) {
-		fprintf(fp,"enum ");
-		printfSymbolReference(fp, dn->variable->type.declaration, "_");
-		fprintf(fp," ");
-	} else {
-		fprintf(fp,"%s ", cTypeText[dn->variable->type.kind]);
-	}
-
-	printfSymbolReference(fp, dn->variable, "_");
+	print_c_type(dn->variable->type, dn->variable);
 
 	if (dn->initalizer.kind != missingKind && parentKind != structDeclarationKind) {
 		fprintf(fp," = ");
@@ -494,8 +548,8 @@ static inline void emit_c_enumDeclaration(astNode *n, ast *tree) {
 
 	astSymbol *en = (astSymbol*)n->data;
 
-	fprintf(fp, "enum ");
-	printfSymbolReference(fp, en, "_");
+	print_c_type(en->type, en);
+
 	fprintf (fp, " { ");
 	int count = sb_count(en->namespaceScope->symbols);
 	for (int i=0;i<count;i++) {
@@ -521,8 +575,7 @@ static inline void emit_c_structDeclaration(astNode *n, ast *tree) {
 
 	structAst *sn = (structAst*)n->data;
 
-	fprintf(fp, "struct ");
-	printfSymbolReference(fp, sn->structSymbol, "_");
+	print_c_type(sn->structSymbol->type, sn->structSymbol);
 	fprintf (fp, " {\n");
 
 	blockStatementAst bn = *(blockStatementAst*)sn->block.data;
