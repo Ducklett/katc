@@ -23,6 +23,7 @@ node parser_parse_symbol_reference(parser *p, diagnosticContainer *d, bool isIde
 node parser_parse_function_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_variable_assignment(parser *p, diagnosticContainer *d, node identifier);
+node parser_parse_array_access(parser *p, diagnosticContainer *d, node identifier);
 node parser_parse_function_call(parser *p, diagnosticContainer *d);
 node parser_parse_namespace_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_enum_declaration(parser *p, diagnosticContainer *d);
@@ -416,6 +417,17 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 	return (node) { variableDeclaration, textspan_from_bounds(&identifier, &expression), .data = var, };
 }
 
+node parser_parse_array_access(parser *p, diagnosticContainer *d, node identifier) {
+	node openBracket = parser_match_token(p, d, openBracketToken);
+	node index = parser_parse_expression(p,d);
+	node closeBracket = parser_match_token(p, d, closeBracketToken);
+
+	arrayAccessNode *access = arena_malloc(parser_arena, sizeof(arrayAccessNode));
+	*access = (arrayAccessNode){ identifier, openBracket, index, closeBracket };
+
+	return (node) { arrayAccessExpression, textspan_from_bounds(&identifier, &closeBracket), .data = access };
+}
+
 node parser_parse_variable_assignment(parser *p, diagnosticContainer *d, node identifier) {
 	node equals = parser_next_token(p, d);
 
@@ -761,8 +773,13 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 	switch (current.kind) {
 	case identifierToken: {
 		node n = parser_parse_symbol_reference(p,d,false);
+
+		if (parser_current(p,d).kind == openBracketToken) {
+			n = parser_parse_array_access(p, d, n);
+		}
+
 		if (isAssignmentOperator(parser_current(p,d).kind)) {
-			return parser_parse_variable_assignment(p, d, n);
+			n = parser_parse_variable_assignment(p, d, n);
 		}
 		return n;
 	}

@@ -95,6 +95,7 @@ enum syntaxKind {
 	structReferenceExpression,
 	namedArgument,
 	callExpression,
+	arrayAccessExpression,
 	typedIdentifier,
 	functionDeclaration,
 	variableDeclaration,
@@ -203,6 +204,7 @@ static const char *syntaxKindText[] = {
 	"structReferenceExpression",
 	"namedArgument",
 	"callExpression",
+	"arrayAccessExpression",
 	"typedIdentifier",
 	"functionDeclaration",
 	"variableDeclaration",
@@ -516,6 +518,7 @@ typedef struct structDeclarationNode {
 	node body;
 } structDeclarationNode;
 
+// int[10]
 typedef struct arrayKindNode {
 	node identifier;
 	node openBracket;
@@ -523,12 +526,21 @@ typedef struct arrayKindNode {
 	node closeBracket;
 } arrayKindNode;
 
+// [1,2,3,4,5]
 typedef struct arrayLiteralNode {
 	node openBracket;
 	node* values;
 	u16 valueCount;
 	node closeBracket;
 } arrayLiteralNode;
+
+// x[1]
+typedef struct arrayAccessNode {
+	node identifier;
+	node openBracket;
+	node index;
+	node closeBracket;
+} arrayAccessNode;
 
 textspan textspan_create(u32 start, u16 length) {
 	textspan span = { start, length, };
@@ -683,6 +695,14 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 			print_syntaxtree_internal(text, &fn.arguments[i], indent, verbose, true);
 		}
 		print_syntaxtree_internal(text, &fn.closeParen, indent, verbose, false);
+		break;
+	}
+	case arrayAccessExpression: {
+		arrayAccessNode an = *(arrayAccessNode*)root->data;
+		print_syntaxtree_internal(text, &an.identifier, indent, verbose, true);
+		print_syntaxtree_internal(text, &an.openBracket, indent, verbose, true);
+		print_syntaxtree_internal(text, &an.index, indent, verbose, true);
+		print_syntaxtree_internal(text, &an.closeBracket, indent, verbose, false);
 		break;
 	}
 	case ifStatement: {
