@@ -36,6 +36,7 @@ scope* push_scope_and_get_reference(ast *tree, scope **outScope);
 void pop_scope(ast *tree, scope* parentScope);
 void declare_builtin_function(ast *tree, char* name);
 astSymbol* find_symbol_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope, u8 symbolKind, u8 flags);
+astType bind_type(node *n, ast *tree, scope *typeScope);
 astType resolve_type_reference(node *n, ast *tree, scope *typeScope, bool throw);
 astNode resolve_symbol_reference(node *n, ast *tree);
 astSymbol* declare_namespace(ast *tree, node *n, u8 flags);
@@ -813,7 +814,7 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 		flags |= VARIABLE_GLOBAL;
 
 	astType type =  {0};
-	if (vn.type.kind != 0) type = resolve_type_reference(&vn.type, tree, NULL, true);
+	if (vn.type.kind != 0) type = bind_type(&vn.type, tree, NULL);
 
 	if (hasInitializer) {
 		boundInitializer = type.kind != 0
@@ -1079,6 +1080,25 @@ astSymbol* find_real_namespace_of_symbol(astSymbol *s);
 astSymbol* find_real_namespace_of_symbol(astSymbol *s) {
 	if (s == NULL || s->symbolKind == SYMBOL_NAMESPACE) return s;
 	return find_real_namespace_of_symbol(s->parentNamespace);
+}
+
+astType bind_type(node *n, ast *tree, scope *typeScope) {
+	switch(n->kind) {
+		case identifierToken:
+		case symbolReferenceExpression:
+			return resolve_type_reference(n, tree, typeScope, true);
+		case arrayKind: {
+			arrayKindNode *an = (arrayKindNode*)n->data;
+			astType innerType = bind_type(&an->identifier, tree, typeScope);
+			astNode capacityNode = bind_expression_of_type(&an->capacity,tree,primitive_type_from_kind(intType), an->capacity.span);
+			if (capacityNode.kind != literalKind) {
+				printf("capacity should evaluate to a compile-time constant\n");
+				exit(1);
+			}
+
+			return create_array_type(innerType, capacityNode.numValue);
+		}
+	}
 }
 
 astType resolve_type_reference(node *n, ast *tree, scope *typeScope, bool throw) {

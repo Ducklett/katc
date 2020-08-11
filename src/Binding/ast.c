@@ -148,16 +148,47 @@ typedef struct arrayTypeInfo {
 #define CAST_EXPLICIT 2
 #define CAST_ILLEGAL  3
 u8 getCastInformation(astType from, astType to) {
-	if (from.kind == to.kind) {
-		if (from.declaration != to.declaration) return CAST_EXPLICIT;
-		return CAST_IDENTITY;
+	switch (from.kind) {
+		case enumType:
+			if (to.kind == arrayType) return CAST_ILLEGAL;
+			if (from.kind == to.kind) {
+				if (from.declaration != to.declaration) return CAST_EXPLICIT;
+				return CAST_IDENTITY;
+			}
+			return CAST_EXPLICIT;
+		case arrayType:
+			if (from.kind == to.kind && from.arrayInfo->capacity == to.arrayInfo->capacity && getCastInformation(from.arrayInfo->ofType, to.arrayInfo->ofType) == CAST_IDENTITY) return CAST_IDENTITY;
+			return CAST_ILLEGAL;
+
+		case voidType:
+			if (to.kind == voidType) return CAST_IDENTITY;
+			return CAST_ILLEGAL;
+		case intType:
+		case u8Type:
+		case u16Type:
+		case u32Type:
+		case u64Type:
+		case i8Type:
+		case i16Type:
+		case i32Type:
+		case i64Type:
+		case floatType:
+		case boolType:
+		case stringType:
+		case charType:
+			if (from.kind == to.kind) return CAST_IDENTITY;
+			if (to.kind == stringType || (from.kind == stringType && to.kind != boolType)) return CAST_ILLEGAL;
+			if (to.kind == arrayType) return CAST_ILLEGAL;
+
+			if (from.kind == intType && isIntType(to.kind)) return CAST_IMPLICIT;
+
+			return CAST_EXPLICIT;
+		
+		default:
+			printf("unhandled type %s in getCastInformation\n", astKindText[from.kind]);
+			exit(1);
 	}
 
-	if (to.kind == stringType || (from.kind == stringType && to.kind != boolType)) return CAST_ILLEGAL;
-
-	if (from.kind == intType && isIntType(to.kind)) return CAST_IMPLICIT;
-
-	return CAST_EXPLICIT;
 }
 
 enum astBinaryOperator {
