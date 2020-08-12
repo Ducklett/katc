@@ -397,7 +397,7 @@ node parser_parse_for_loop(parser *p, diagnosticContainer *d) {
 
 	node inToken = parser_match_token(p, d, inKeyword);
 
-	node range = parser_parse_range_expression(p, d, false);
+	node range = parser_parse_range_expression(p, d, true);
 
 	if (hasParens) closeParen = parser_match_token(p, d, closeParenthesisToken);
 

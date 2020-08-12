@@ -361,34 +361,37 @@ static inline void emit_c_whileLoop(astNode *n, ast *tree) {
 
 static inline void emit_c_forLoop(astNode *n, ast *tree) {
 	forLoopAst fn = *(forLoopAst*)n->data;
-	rangeExpressionAst rn = *(rangeExpressionAst*)fn.range.data;
 
 	enum astKind forKind = fn.value->type.kind;
 	if (forKind == enumType) forKind = intType;
 
-	if (fn.index == 0) {
-		char* compOp = rn.toInt > rn.fromInt ? "<=" : ">=";
-		char* incOp = rn.toInt > rn.fromInt ? "++" : "--";
+	if (fn.range.kind != rangeExpressionKind) {
+		char* indexName = fn.index == 0 ? "_kat__index" : fn.index->name;
 
-		fprintf(fp,"for (");
-		// int x = 1; 
-		fprintf(fp,"%s %s = %d; ", cTypeText[forKind], fn.value->name, rn.fromInt);
-		// x <= 100
-		fprintf(fp,"%s %s %d; ", fn.value->name, compOp, rn.toInt);
-		// x++
-		fprintf(fp,"%s%s", fn.value->name, incOp);
-		fprintf(fp,")\n");
-
-		if (fn.block.kind != blockStatementKind) fprintf(fp,"%*s", c_indent+4, "");
-		emit_c_node(&fn.block, tree);
-		if (needs_semicolon(fn.block.kind))fprintf(fp,";\n");
-	} else {
-		fprintf(fp,"for (int %s = 0; %s <= %d; %s++) {\n", fn.index->name, fn.index->name, abs(rn.fromInt - rn.toInt), fn.index->name);
+		fprintf(fp,"for (int %s = 0; %s <= ", indexName, indexName);
+		if (fn.range.type.kind == arrayType) {
+			fprintf(fp, "%d", fn.range.type.arrayInfo->capacity-1);
+		} else if (fn.range.type.kind == stringType) {
+			fprintf(fp, "strlen(");
+			emit_c_node(&fn.range, tree);
+			fprintf(fp, ")");
+		} else {
+			emit_c_node(&fn.range, tree);
+		}
+		fprintf(fp, "; %s++) {\n", indexName);
 		kindStack_push(blockStatementKind);
 
 		fprintf(fp,"%*s", c_indent, "");
-		if (rn.toInt > rn.fromInt) fprintf(fp,"%s %s = i + %d;\n", cTypeText[forKind], fn.value->name, rn.fromInt);
-		else fprintf(fp,"%s %s = %d - i;\n",cTypeText[forKind], fn.value->name, rn.fromInt);
+		// for x in nums
+		// x = nums[i]
+		// TODO: cache the "range" node so it doesn't get recalculated on every iteration
+		if (fn.range.type.kind == arrayType || fn.range.type.kind == stringType) {
+			fprintf(fp,"%s %s = ", cTypeText[forKind], fn.value->name);
+			emit_c_node(&fn.range, tree);
+			fprintf(fp,"[%s];\n", indexName );
+		}
+		else fprintf(fp,"%s %s = %s;\n", cTypeText[forKind], fn.value->name, indexName);
+		
 
 		if (fn.block.kind != blockStatementKind) fprintf(fp,"%*s", c_indent, "");
 		emit_c_node(&fn.block, tree);
@@ -396,6 +399,39 @@ static inline void emit_c_forLoop(astNode *n, ast *tree) {
 		kindStack_pop();
 		fprintf(fp,"%*s", c_indent, "");
 		fprintf(fp,"}\n");
+	} else {
+		rangeExpressionAst rn = *(rangeExpressionAst*)fn.range.data;
+		if (fn.index == 0) {
+			char* compOp = rn.toInt > rn.fromInt ? "<=" : ">=";
+			char* incOp = rn.toInt > rn.fromInt ? "++" : "--";
+
+			fprintf(fp,"for (");
+			// int x = 1; 
+			fprintf(fp,"%s %s = %d; ", cTypeText[forKind], fn.value->name, rn.fromInt);
+			// x <= 100
+			fprintf(fp,"%s %s %d; ", fn.value->name, compOp, rn.toInt);
+			// x++
+			fprintf(fp,"%s%s", fn.value->name, incOp);
+			fprintf(fp,")\n");
+
+			if (fn.block.kind != blockStatementKind) fprintf(fp,"%*s", c_indent+4, "");
+			emit_c_node(&fn.block, tree);
+			if (needs_semicolon(fn.block.kind))fprintf(fp,";\n");
+		} else {
+			fprintf(fp,"for (int %s = 0; %s <= %d; %s++) {\n", fn.index->name, fn.index->name, abs(rn.fromInt - rn.toInt), fn.index->name);
+			kindStack_push(blockStatementKind);
+
+			fprintf(fp,"%*s", c_indent, "");
+			if (rn.toInt > rn.fromInt) fprintf(fp,"%s %s = i + %d;\n", cTypeText[forKind], fn.value->name, rn.fromInt);
+			else fprintf(fp,"%s %s = %d - i;\n",cTypeText[forKind], fn.value->name, rn.fromInt);
+
+			if (fn.block.kind != blockStatementKind) fprintf(fp,"%*s", c_indent, "");
+			emit_c_node(&fn.block, tree);
+			if (needs_semicolon(fn.block.kind)) fprintf(fp,";\n");
+			kindStack_pop();
+			fprintf(fp,"%*s", c_indent, "");
+			fprintf(fp,"}\n");
+		}
 	}
 }
 
