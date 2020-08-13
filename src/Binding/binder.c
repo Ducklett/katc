@@ -845,6 +845,8 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 
 		if (type.kind == 0) type = boundInitializer.type;
 
+		if (boundInitializer.type.kind == arrayType) type = boundInitializer.type;
+
 		flags |= VARIABLE_INITIALIZED;
 	} else if (flags & VARIABLE_GLOBAL) {
 		flags |= VARIABLE_INITIALIZED;

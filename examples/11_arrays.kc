@@ -1,0 +1,14 @@
+fn printArray(xs:int[], len:int)  {
+	for i in len-1 print("%d\n", xs[i])
+}
+
+nums:int[] = [1,2,3,4]
+
+nums[1] = 40
+
+for x in nums print("%d, ", x) ; print("\n")
+printArray(nums, 4)
+
+names := ["foo", "bar", "baz", "quuux"]
+
+for name in names print("%s\n", name)
