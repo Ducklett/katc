@@ -159,7 +159,10 @@ u8 getCastInformation(astType from, astType to) {
 			}
 			return CAST_EXPLICIT;
 		case arrayType:
-			if (from.kind == to.kind && from.arrayInfo->capacity == to.arrayInfo->capacity && getCastInformation(from.arrayInfo->ofType, to.arrayInfo->ofType) == CAST_IDENTITY) return CAST_IDENTITY;
+			if (from.kind == to.kind ) {
+				bool capacityMatches = from.arrayInfo->capacity == to.arrayInfo->capacity || to.arrayInfo->capacity == 0;
+				if (capacityMatches && getCastInformation(from.arrayInfo->ofType, to.arrayInfo->ofType) == CAST_IDENTITY) return CAST_IDENTITY;
+			}
 			return CAST_ILLEGAL;
 
 		case voidType:

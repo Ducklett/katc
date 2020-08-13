@@ -484,7 +484,7 @@ astNode bind_function_declaration(node *n, ast *tree) {
 
 	for (int i=0;i<fn.parameterCount;i+=2) {
 		typedIdentifierNode id = *(typedIdentifierNode*)fn.parameters[i].data;
-		astSymbol *param = declare_variable(tree, id.identifier.span, resolve_type_reference(&id.type, tree, NULL, true), VARIABLE_INITIALIZED);
+		astSymbol *param = declare_variable(tree, id.identifier.span,  bind_type(&id.type, tree, NULL), VARIABLE_INITIALIZED);
 		if (param == NULL) {
 			hasErrors = true;
 			goto end;
@@ -1116,8 +1116,10 @@ astType bind_type(node *n, ast *tree, scope *typeScope) {
 		case arrayKind: {
 			arrayKindNode *an = (arrayKindNode*)n->data;
 			astType innerType = bind_type(&an->identifier, tree, typeScope);
-			astNode capacityNode = bind_expression_of_type(&an->capacity,tree,primitive_type_from_kind(intType), an->capacity.span);
-			if (capacityNode.kind != literalKind) {
+			astNode capacityNode = an->capacity.kind == emptyToken
+				? (astNode){0}
+				: bind_expression_of_type(&an->capacity,tree,primitive_type_from_kind(intType), an->capacity.span);
+			if (capacityNode.type.kind != 0 && capacityNode.kind != literalKind) {
 				printf("capacity should evaluate to a compile-time constant\n");
 				exit(1);
 			}

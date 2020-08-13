@@ -208,7 +208,7 @@ void emit_c_node(astNode *n, ast *tree) {
 }
 
 void emit_c_file(astNode *n, ast *tree) {
-	fprintf(fp,"#include <stdio.h>\n\n");
+	fprintf(fp,"#include <stdio.h>\n#include <string.h>\n\n");
 	emit_c_functions_in_block(n, tree, false);
 	fprintf(fp,"void main() ");
 	emit_c_node(n,tree);
@@ -249,21 +249,15 @@ static inline void emit_c_function(astNode *n, ast *tree) {
 		fprintf(fp,"\n");
 	}
 
-	fprintf(fp,"%*s%s ", c_indent, "", cTypeText[vn->type.kind]);
-	printfSymbolReference(fp, vn, "_");
+	print_c_type(vn->type, vn);
 	fprintf(fp,"(");
 	for (int i=0;i<fd->parameterCount;i++) {
 
 		astType t = fd->parameters[i]->type;
 
-		fprintf (fp, "%s ", cTypeText[t.kind]);
+		print_c_type(t, fd->parameters[i]);
 
-		if (t.kind == enumType || t.kind == structType) {
-			printfSymbolReference(fp, t.declaration, "_");
-			fprintf (fp, " ");
-		}
-
-		fprintf (fp, "%s%s", fd->parameters[i]->name, i == fd->parameterCount-1?"":", ");
+		fprintf (fp, "%s", i == fd->parameterCount-1?"":", ");
 	}
 	fprintf(fp, ") ");
 

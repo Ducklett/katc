@@ -120,7 +120,10 @@ node parser_parse_type(parser *p, diagnosticContainer *d) {
 
 		node openBracket = parser_match_token(p,d,openBracketToken);
 		// TODO: make capacity optional and infer capacity from assignment
-		node capacity = parser_parse_expression(p,d);
+		node capacity = {0};
+		if (parser_current(p,d).kind != closeBracketToken) {
+			capacity = parser_parse_expression(p,d);
+		}
 		node closeBracket = parser_match_token(p,d,closeBracketToken);
 
 		arrayKindNode *ar = arena_malloc(parser_arena, sizeof(arrayKindNode));
