@@ -1047,7 +1047,7 @@ astSymbol* declare_struct(ast *tree, textspan nameSpan, u8 flags) {
 	structDeclaration->symbolKind = SYMBOL_STRUCT;
 	structDeclaration->name = ast_substring(tree->text, nameSpan, string_arena);
 	structDeclaration->parentNamespace = tree->currentNamespace;
-	structDeclaration->type = (astType){ structType, structDeclaration };
+	structDeclaration->type = (astType){ structType, .declaration = structDeclaration };
 	structDeclaration->flags = flags;
 	structDeclaration->namespaceScope = create_scope(tree);
 
@@ -1147,7 +1147,7 @@ astType resolve_type_reference(node *n, ast *tree, scope *typeScope, bool throw)
 		sb_push(scopesToSearch, typeScope);
 	} else {
 		if (currentNamespace != NULL) sb_push(scopesToSearch, currentNamespace->namespaceScope);
-
+		
 		sb_push(scopesToSearch, tree->scopes[0]);
 	}
 
@@ -1334,7 +1334,7 @@ astSymbol* declare_enum(ast *tree, textspan nameSpan, node *enums, int enumCount
 	enumSymbol->symbolKind = SYMBOL_ENUM;
 	enumSymbol->name = ast_substring(tree->text, nameSpan, string_arena);
 	enumSymbol->parentNamespace = tree->currentNamespace;
-	enumSymbol->type = (astType){ enumType, enumSymbol };
+	enumSymbol->type = (astType){ enumType, .declaration = enumSymbol };
 	enumSymbol->flags = flags;
 	enumSymbol->namespaceScope = create_scope(tree);
 
@@ -1361,7 +1361,7 @@ astSymbol* declare_enum_member(ast *tree, textspan nameSpan, astSymbol *enumSymb
 	member->symbolKind = SYMBOL_ENUM_MEMBER;
 	member->name = ast_substring(tree->text, nameSpan, string_arena);
 	member->parentNamespace = enumSymbol;
-	member->type = (astType){ enumType, enumSymbol };
+	member->type = (astType){ enumType, .declaration = enumSymbol };
 	member->flags = 0;
 	member->numValue = value;
 

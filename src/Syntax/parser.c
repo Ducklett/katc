@@ -179,6 +179,9 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 		case namespaceDeclaration:
 			if (res.kind != functionDeclaration && res.kind != variableDeclaration && res.kind != enumDeclaration && res.kind != structDeclaration && res.kind != typedefDeclaration)
 				report_diagnostic(d, notAllowedInContextDiagnostic, res.span, res.kind, p->parentKind, 0); break;
+		case structDeclaration:
+			if (res.kind != variableDeclaration) report_diagnostic(d, notAllowedInContextDiagnostic, res.span, res.kind, p->parentKind, 0);
+			break;
 		case fileStatement:
 			if (res.kind == breakKeyword || res.kind == continueKeyword)
 					report_diagnostic(d, notAllowedInContextDiagnostic, res.span, res.kind, p->parentKind, 0); break;

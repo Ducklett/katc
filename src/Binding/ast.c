@@ -151,6 +151,9 @@ typedef struct arrayTypeInfo {
 #define CAST_ILLEGAL  3
 u8 getCastInformation(astType from, astType to) {
 	switch (from.kind) {
+		case structType:
+			if (from.kind == to.kind && from.declaration == to.declaration) return CAST_IDENTITY;
+			return CAST_ILLEGAL;
 		case enumType:
 			if (to.kind == arrayType) return CAST_ILLEGAL;
 			if (from.kind == to.kind) {
@@ -611,6 +614,8 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 				case stringType: printf ("\"%s\"", root->stringValue); break;
 				case charType: printf ("'%c'", root->charValue); break;
 				case enumType: printfSymbolReference(stdout, root->type.declaration->namespaceScope->symbols[root->numValue], "."); break;
+				case arrayType: printf("%s[]",astKindText[root->type.arrayInfo->ofType.kind]); break;
+				case structType: printf("{}"); break;
 				default:
 					fprintf(stderr, "%sUnhandled type '%s' in print_ast%s", TERMRED, astKindText[root->type.kind], TERMRESET);
 					exit(1);

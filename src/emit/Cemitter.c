@@ -124,7 +124,7 @@ void print_c_type(astType t, astSymbol *identifier) {
 			printfSymbolReference(fp, t.declaration, "_");
 			break;
 		case structType:
-			fprintf(fp, "%s", cTypeText[t.kind]);
+			fprintf(fp, "%s ", cTypeText[t.kind]);
 			printfSymbolReference(fp, t.declaration, "_");
 			break;
 		case arrayType:
@@ -442,6 +442,7 @@ static inline void emit_c_literal(astNode *n, ast *tree) {
 	}
 	case charType: fprintf(fp,"'%c'", n->charValue); break;
 	case enumType: printfSymbolReference(fp, n->type.declaration->namespaceScope->symbols[n->numValue], "_"); break;
+	case structType: fprintf(fp,"{0}", n->charValue); break;
 	default:
 		fprintf(stderr,"%sUnhandled type %s in Cemitter -> emit_c_literal %s", TERMRED, astKindText[n->type.kind], TERMRESET);
 		exit(1);
@@ -605,7 +606,7 @@ static inline void emit_c_structDeclaration(astNode *n, ast *tree) {
 
 	structAst *sn = (structAst*)n->data;
 
-	print_c_type(sn->structSymbol->type, sn->structSymbol);
+	print_c_type(sn->structSymbol->type, NULL);
 	fprintf (fp, " {\n");
 
 	blockStatementAst bn = *(blockStatementAst*)sn->block.data;
