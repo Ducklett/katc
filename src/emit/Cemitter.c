@@ -3,6 +3,7 @@ static inline void emit_c_file(astNode *n, ast *tree);
 static inline void emit_c_functions_in_block(astNode *n, ast *tree, bool isNamespace);
 static inline void emit_c_function(astNode *n, ast *tree);
 static inline void emit_c_blockStatement(astNode *n, ast *tree);
+static inline void emit_c_returnStatement(astNode *n, ast *tree);
 static inline void emit_c_ifStatement(astNode *n, ast *tree);
 static inline void emit_c_caseStatement(astNode *n, ast *tree);
 static inline void emit_c_switchStatement(astNode *n, ast *tree);
@@ -178,6 +179,7 @@ void emit_c_node(astNode *n, ast *tree) {
 	switch(n->kind) {
 	case fileStatementKind:
 	case blockStatementKind: emit_c_blockStatement(n, tree); break;
+	case returnStatementKind: emit_c_returnStatement(n, tree); break;
 	case ifStatementKind: emit_c_ifStatement(n, tree); break;
 	case caseStatementKind: emit_c_caseStatement(n, tree); break;
 	case switchStatementKind: emit_c_switchStatement(n, tree); break;
@@ -249,7 +251,7 @@ static inline void emit_c_function(astNode *n, ast *tree) {
 		fprintf(fp,"\n");
 	}
 
-	print_c_type(vn->type, vn);
+	print_c_type(vn->functionData->returnType, vn);
 	fprintf(fp,"(");
 	for (int i=0;i<fd->parameterCount;i++) {
 
@@ -275,6 +277,11 @@ static inline void emit_c_blockStatement(astNode *n, ast *tree) {
 		if(needs_semicolon(bn.statements[i].kind)) fprintf(fp,";\n");
 	}
 	fprintf(fp,"%*s}\n", c_indent-4, "");
+}
+
+static inline void emit_c_returnStatement(astNode *n, ast *tree) {
+	fprintf(fp,"return ");
+	emit_c_node((astNode*)n->data, tree);
 }
 
 static inline void emit_c_ifStatement(astNode *n, ast *tree) {
@@ -442,7 +449,8 @@ static inline void emit_c_literal(astNode *n, ast *tree) {
 	}
 	case charType: fprintf(fp,"'%c'", n->charValue); break;
 	case enumType: printfSymbolReference(fp, n->type.declaration->namespaceScope->symbols[n->numValue], "_"); break;
-	case structType: fprintf(fp,"{0}", n->charValue); break;
+	case arrayType:
+	case structType: fprintf(fp,"{0}"); break;
 	default:
 		fprintf(stderr,"%sUnhandled type %s in Cemitter -> emit_c_literal %s", TERMRED, astKindText[n->type.kind], TERMRESET);
 		exit(1);

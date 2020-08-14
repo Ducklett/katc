@@ -28,6 +28,7 @@ node parser_parse_function_call(parser *p, diagnosticContainer *d);
 node parser_parse_namespace_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_enum_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_typedef_declaration(parser *p, diagnosticContainer *d);
+node parser_parse_return_statement(parser *p, diagnosticContainer *d);
 node parser_parse_struct_declaration(parser *p, diagnosticContainer *d);
 
 node parser_parse_expression(parser *p, diagnosticContainer *d);
@@ -157,6 +158,7 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	case structKeyword: res = parser_parse_struct_declaration(p, d); break;
 	case enumKeyword: res = parser_parse_enum_declaration(p, d); break;
 	case typedefKeyword: res = parser_parse_typedef_declaration(p, d); break;
+	case returnKeyword: res = parser_parse_return_statement(p, d); break;
 	case identifierToken:
 		if  (l2kind == colonToken) {
 			res = parser_parse_variable_declaration(p, d);
@@ -517,12 +519,33 @@ node parser_parse_function_declaration(parser *p, diagnosticContainer *d) {
 	node* parameters = parse_function_parameters(p, d, &paramCount);
 	node closeParen = parser_match_token(p, d, closeParenthesisToken);
 
-	enum syntaxKind prevKind = parser_push_context(p, functionDeclaration);
-	node block = parser_parse_block_statement(p, d, false);
-	parser_pop_context(p,prevKind);
+	node thickArrow = {0};
+	node thinArrow = {0};
+	node returnType = {0};
+	node block = {0};
+	if (parser_current(p,d).kind == equalsGreaterToken) {
+		// arrow function
+		thickArrow = parser_match_token(p, d, equalsGreaterToken);
+		enum syntaxKind prevKind = parser_push_context(p, functionDeclaration);
+		block = parser_parse_expression(p, d);
+		parser_pop_context(p,prevKind);
+	} else {
+		if (parser_current(p,d).kind == minusGreaterToken) {
+			thinArrow = parser_match_token(p, d, minusGreaterToken);
+			returnType = parser_parse_type(p, d);
+		}
+		// block function
+		enum syntaxKind prevKind = parser_push_context(p, functionDeclaration);
+		block = parser_parse_block_statement(p, d, false);
+		parser_pop_context(p,prevKind);
+	}
 
 	functionDeclarationNode *fnode = arena_malloc(parser_arena, sizeof(functionDeclarationNode));
-	*fnode = (functionDeclarationNode){ fnToken, identifier, openParen, parameters, paramCount, closeParen, block };
+	*fnode = (functionDeclarationNode){
+			fnToken, identifier, openParen,
+			parameters, paramCount, closeParen,
+			thinArrow, returnType, thickArrow,
+			block };
 
 	return (node) { functionDeclaration, textspan_from_bounds(&fnToken, &block), .data = fnode, };
 }
@@ -657,6 +680,16 @@ node parser_parse_typedef_declaration(parser *p, diagnosticContainer *d) {
 	*tnode = (typedefDeclarationNode){ typedefToken, identifier, colon1, colon2, type};
 
 	return (node) { typedefDeclaration, textspan_from_bounds(&typedefToken, &type), .data = tnode, };
+}
+
+node parser_parse_return_statement(parser *p, diagnosticContainer *d) {
+	node returnNode = parser_match_token(p,d,returnKeyword);
+	node expression = parser_parse_expression(p,d);
+
+	returnStatementNode *rnode = arena_malloc(parser_arena, sizeof(returnStatementNode));
+	*rnode = (returnStatementNode){ returnNode, expression };
+
+	return (node) { returnStatement, textspan_from_bounds(&returnNode, &expression), .data = rnode, };
 }
 
 node parser_parse_expression(parser *p, diagnosticContainer *d) { return parser_parse_binary_expression(p, d,-2); }

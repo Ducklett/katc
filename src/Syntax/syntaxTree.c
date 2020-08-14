@@ -48,6 +48,8 @@ enum syntaxKind {
 	commaToken,
 	dotToken,
 	dotDotToken,
+	minusGreaterToken,
+	equalsGreaterToken,
 
 	plusEqualsToken,
 	minusEqualsToken,
@@ -84,6 +86,7 @@ enum syntaxKind {
 	enumKeyword,
 	structKeyword,
 	typedefKeyword,
+	returnKeyword,
 
 	unaryExpression,
 	binaryExpression,
@@ -105,6 +108,7 @@ enum syntaxKind {
 	structDeclaration,
 	variableAssignment,
 	blockStatement,
+	returnStatement,
 	ifStatement,
 	caseStatement,
 	caseBranch,
@@ -161,6 +165,8 @@ static const char *syntaxKindText[] = {
 	",",
 	".",
 	"..",
+	"->",
+	"=>",
 	"+=",
 	"-=",
 	"*=",
@@ -194,6 +200,7 @@ static const char *syntaxKindText[] = {
 	"enum",
 	"struct",
 	"typedef",
+	"return",
 	"unaryExpression",
 	"binaryExpression",
 	"ternaryExpression",
@@ -214,6 +221,7 @@ static const char *syntaxKindText[] = {
 	"structDeclaration",
 	"variableAssignment",
 	"blockStatement",
+	"returnStatement",
 	"ifStatement",
 	"caseStatement",
 	"caseBranch",
@@ -360,6 +368,11 @@ typedef struct blockStatementNode {
 	node closeCurly;
 } blockStatementNode;
 
+// return x + y
+typedef struct returnStatementNode {
+	node returnKeyword;
+	node expression;
+} returnStatementNode;
 
 // enum Color { Red, Green, Blue, White, Black }
 typedef struct enumDeclarationNode {
@@ -486,7 +499,11 @@ typedef struct typedIdentifierNode {
 	node type;
 } typedIdentifierNode;
 
+// fn greet() { print("hello world\n") }
+// with parameters and return value:
 // fn max(x:int, y:int) -> int { return x > y ? x : y }
+// or:
+// fn max(x:int, y:int) => x > y ? x : y
 typedef struct functionDeclarationNode {
 	node fnKeyword;
 	node identifier;
@@ -494,6 +511,9 @@ typedef struct functionDeclarationNode {
 	node* parameters;
 	u16 parameterCount;
 	node closeParen;
+	node thinArrow;
+	node returnType;
+	node thickArrow;
 	node body;
 } functionDeclarationNode;
 
@@ -810,6 +830,14 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 			print_syntaxtree_internal(text, &fn.parameters[i], indent, verbose, true);
 		}
 		print_syntaxtree_internal(text, &fn.closeParen, indent, verbose, true);
+
+		if (fn.thickArrow.kind != 0) {
+			print_syntaxtree_internal(text, &fn.thickArrow, indent, verbose, true);
+		} else if (fn.thinArrow.kind != 0) {
+			print_syntaxtree_internal(text, &fn.thinArrow, indent, verbose, true);
+			print_syntaxtree_internal(text, &fn.returnType, indent, verbose, true);
+		}
+
 		print_syntaxtree_internal(text, &fn.body, indent, verbose, false);
 		break;
 	}
@@ -835,6 +863,12 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 			print_syntaxtree_internal(text, &bn.statements[i], indent, verbose, true);
 		}
 		print_syntaxtree_internal(text, &bn.closeCurly, indent, verbose, false);
+		break;
+	}
+	case returnStatement: {
+		returnStatementNode rn = *(returnStatementNode*)root->data;
+		print_syntaxtree_internal(text, &rn.returnKeyword, indent, verbose, true);
+		print_syntaxtree_internal(text, &rn.expression, indent, verbose, false);
 		break;
 	}
 	case unaryExpression: {

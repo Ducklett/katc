@@ -9,6 +9,7 @@ astNode bind_expression_of_type(node *n, ast *tree, astType expectedType, textsp
 astNode bind_variable_reference(node *n, ast *tree, scope *variableScope);
 astNode bind_array_literal(node *n, ast *tree);
 astNode bind_block_statement(node *n, ast *tree, scope *withScope);
+astNode bind_return_statement(node *n, ast *tree);
 astNode bind_if_statement(node *n, ast *tree);
 astNode bind_case_branch(node *n, ast *tree);
 astNode bind_case_statement(node *n, ast *tree);
@@ -42,7 +43,7 @@ astType resolve_type_reference(node *n, ast *tree, scope *typeScope, bool throw)
 astNode resolve_symbol_reference(node *n, ast *tree);
 astSymbol* declare_namespace(ast *tree, node *n, u8 flags);
 astSymbol* declare_struct(ast *tree, textspan nameSpan, u8 flags);
-astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, node *body, astSymbol **parameters, u16 parameterCount, scope *functionScope);
+astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, astSymbol **parameters, u16 parameterCount, scope *functionScope);
 astSymbol* declare_variable(ast *tree, textspan nameSpan, astType variableType, u8 flags);
 astSymbol* declare_type(ast *tree, textspan nameSpan, astType type, u8 flags);
 astSymbol* declare_enum(ast *tree, textspan nameSpan, node *enums, int enumCount, u8 flags);
@@ -83,6 +84,7 @@ astNode bind_expression_internal(node *n, ast* tree) {
 	switch(n->kind) {
 		case fileStatement:
 		case blockStatement: return bind_block_statement(n, tree, NULL);
+		case returnStatement: return bind_return_statement(n, tree);
 		case ifStatement: return bind_if_statement(n, tree);
 		case caseStatement: return bind_case_statement(n, tree);
 		case switchStatement: return bind_switch_statement(n, tree);
@@ -237,6 +239,19 @@ astNode bind_block_statement(node *n, ast *tree, scope *withScope) {
 	sb_free(boundStatements);
 
 	return (astNode){ n->kind == blockStatement ? blockStatementKind : fileStatementKind, primitive_type_from_kind(voidType), .data = blockNode };
+}
+
+astNode bind_return_statement(node *n, ast *tree) {
+
+	returnStatementNode rn = *(returnStatementNode*)n->data;
+
+	//astNode boundExpression = bind_expression_of_type(&in.condition, tree, primitive_type_from_kind(boolType), in.condition.span);
+	astNode boundExpression = bind_expression(&rn.expression, tree);
+
+	astNode *nodeStore = arena_malloc(binder_arena, sizeof(astNode));
+	*nodeStore = boundExpression;
+
+	return (astNode){ returnStatementKind, boundExpression.type, .data = nodeStore };
 }
 
 astNode bind_if_statement(node *n, ast *tree) {
@@ -467,6 +482,24 @@ astNode bind_for_loop(node *n, ast *tree) {
 	return (astNode){ forLoopKind, primitive_type_from_kind(voidType), .data = forNode };
 }
 
+astNode bind_arrow_function_expression(node *n, ast *tree, scope *functionscope) {
+
+	scope *parentScope = set_current_scope(tree, functionscope);
+	astNode boundExpression = bind_expression(n, tree);
+	pop_scope(tree, parentScope);
+
+	astNode *exprStore = arena_malloc(binder_arena, sizeof(astNode));
+	*exprStore = boundExpression;
+
+	astNode *returnStore = arena_malloc(binder_arena, sizeof(astNode));
+	*returnStore = (astNode){ returnStatementKind, boundExpression.type, .data = exprStore };
+
+	blockStatementAst *blockNode = arena_malloc(binder_arena, sizeof(blockStatementAst));
+	*blockNode = (blockStatementAst){ returnStore, 1 };
+
+	return (astNode){ blockStatementKind, boundExpression.type, .data = blockNode };
+}
+
 astNode bind_function_declaration(node *n, ast *tree) {
 	functionDeclarationNode fn = *(functionDeclarationNode*)n->data;
 
@@ -500,7 +533,29 @@ astNode bind_function_declaration(node *n, ast *tree) {
 	sb_free(params);
 	pop_scope(tree, parentScope);
 
-	astSymbol *function = declare_function(tree, fn.identifier.span, flags, hasErrors?NULL:&fn.body, nodesStorage, nodesCount, functionScope);
+	astSymbol *function = declare_function(tree, fn.identifier.span, flags, nodesStorage, nodesCount, functionScope);
+
+	astNode boundBody = {0};
+	astType returnType = primitive_type_from_kind(hasErrors ? errorType : voidType);
+
+	if (!hasErrors) {
+		astSymbol *parentNamespace = tree->currentNamespace;
+		tree->currentNamespace = function;
+		if (fn.thickArrow.kind != NULL) {
+			boundBody = bind_arrow_function_expression(&fn.body, tree, functionScope);
+			returnType = boundBody.type;
+		} else {
+			if (fn.thinArrow.kind != NULL)	{
+				returnType = bind_type(&fn.returnType, tree, NULL);
+			}
+			boundBody = bind_block_statement(&fn.body, tree, functionScope);
+		}
+		function->functionData->body = boundBody;
+		tree->currentNamespace = parentNamespace;
+	}
+
+	function->functionData->returnType = returnType;
+	function->type = (astType){ functionType, .declaration = function };
 
 	return (astNode){ functionDeclarationKind , primitive_type_from_kind(voidType), .data = function };
 }
@@ -693,8 +748,7 @@ astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 		return bind_struct_constructor(n, tree, castType.declaration);
 	}
 
-	// TODO: add function kind and add !functionKind to the condition
-	if (castType.kind > 2) {
+	if (castType.kind > 2 && castType.kind != functionType) {
 		if (cn.argumentCount != 1) {
 			textspan errSpan = cn.argumentCount == 0
 				?  textspan_from_bounds(&cn.openParen, &cn.closeParen)
@@ -764,7 +818,7 @@ astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 
 	end:;
 
-	return (astNode){ callExpressionKind , primitive_type_from_kind(voidType), .data = callNode };
+	return (astNode){ callExpressionKind , function->functionData->returnType, .data = callNode };
 }
 
 astNode bind_array_access_expression(node *n, ast *tree, scope *symbolScope) {
@@ -993,7 +1047,7 @@ void declare_builtin_function(ast *tree, char* name) {
 	function->functionData = fd;
 }
 
-astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, node *body, astSymbol **parameters, u16 parameterCount, scope *functionScope) {
+astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, astSymbol **parameters, u16 parameterCount, scope *functionScope) {
 
 	scope *currentScope = tree->currentScope;
 
@@ -1016,17 +1070,8 @@ astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, node *body, 
 	function->name = ast_substring(tree->text, nameSpan, string_arena);
 	function->parentNamespace = tree->currentNamespace;
 
-	function->type = primitive_type_from_kind(body == NULL ? errorType : voidType);
 	function->flags = flags;
 	function->functionData = fd;
-
-	if (body != NULL) {
-		astSymbol *parentNamespace = tree->currentNamespace;
-		tree->currentNamespace = function;
-		astNode boundBody = bind_block_statement(body, tree, functionScope);
-		fd->body = boundBody;
-		tree->currentNamespace = parentNamespace;
-	}
 
 	return function;
 }

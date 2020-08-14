@@ -130,6 +130,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			  else return lex_basic_token(l, plusOperator, 1);
 	case '-': if (lexer_peek(l,1) == '-') return lex_basic_token(l, minusMinusOperator, 2);
 			  else if (lexer_peek(l,1) == '=') return lex_basic_token(l, minusEqualsToken, 2);
+			  else if (lexer_peek(l,1) == '>') return lex_basic_token(l, minusGreaterToken, 2);
 			  return lex_basic_token(l, minusOperator, 1);
 
 	case '*': if (lexer_peek(l,1) == '=') return lex_basic_token(l, starEqualsToken, 2);
@@ -140,6 +141,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 	case '!': if (lexer_peek(l,1) == '=') return lex_basic_token(l, bangEqualsOperator, 2);
 			  else return lex_basic_token(l, bangOperator, 1);
 	case '=': if (lexer_peek(l,1) == '=') return lex_basic_token(l, euqualsEqualsOperator, 2);
+			  else if (lexer_peek(l,1) == '>') return lex_basic_token(l, equalsGreaterToken, 2);
 			  else return lex_basic_token(l, equalsToken, 1);
 	case '<': if (lexer_peek(l,1) == '=') return lex_basic_token(l, lessEqualsOperator, 2);
 			  else if (lexer_peek(l,1) == '<' && lexer_peek(l,2) == '=') return lex_basic_token(l, lessLessEqualsToken, 3);
@@ -351,6 +353,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			else if (span_compare(l->text, t.span, "enum")) t.kind = enumKeyword;
 			else if (span_compare(l->text, t.span, "struct")) t.kind = structKeyword;
 			else if (span_compare(l->text, t.span, "typedef")) t.kind = typedefKeyword;
+			else if (span_compare(l->text, t.span, "return")) t.kind = returnKeyword;
 			break;
 		}
 		t.kind = badToken;

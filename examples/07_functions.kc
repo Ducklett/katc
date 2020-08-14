@@ -12,3 +12,14 @@ helloworld()
 greet("bob", 20)
 // functions can optionally be called with the parameter names in front
 greet(name: "bob", age: 20)
+
+// arrow functions: can only hold expressions and infer their return type
+fn add(x:int,y:int) => x + y
+
+// block functions that return values must specify a return type
+fn multiply(x:int,y:int) -> int {
+	return x * y
+}
+
+print("1 + 1 = %d\n", add(1,1))
+print("3 + 1234 = %d\n", add(3,1234))

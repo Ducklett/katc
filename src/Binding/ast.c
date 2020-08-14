@@ -25,6 +25,7 @@ enum astSyntaxKind {
 	typeDeclarationKind,
 	fileStatementKind,
 	blockStatementKind,
+	returnStatementKind,
 	ifStatementKind,
 	caseStatementKind,
 	caseBranchKind,
@@ -61,6 +62,7 @@ static const char *astSyntaxKindText[] = {
 	"typeDeclaration",
 	"fileStatement",
 	"blockStatement",
+	"returnStatement",
 	"ifStatement",
 	"caseStatement",
 	"caseBranch",
@@ -93,6 +95,7 @@ enum astKind {
 	enumType,
 	structType,
 	arrayType,
+	functionType,
 };
 
 static const char *astKindText[] = {
@@ -115,6 +118,7 @@ static const char *astKindText[] = {
 	"enum",
 	"struct",
 	"array",
+	"function",
 };
 
 bool isIntType(enum astKind t) {
@@ -767,13 +771,13 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 	}
 	case constructorExpressionKind:
 	case callExpressionKind: {
-		callExpressionAst cn = *(callExpressionAst*)root->data;
+		callExpressionAst *cn = (callExpressionAst*)root->data;
 
 		printf ("%*s%s", indent, "", TERMMAGENTA);
-		printfSymbolReference(stdout, cn.function, ".");
+		printfSymbolReference(stdout, cn->function, ".");
 		printf ("%s\n", TERMRESET);
-		for(int i=0;i<cn.argumentCount;i++) {
-			print_ast_internal(text, &cn.arguments[i], indent, verbose, i!=cn.argumentCount-1);
+		for(int i=0;i<cn->argumentCount;i++) {
+			print_ast_internal(text, &cn->arguments[i], indent, verbose, i!=cn->argumentCount-1);
 		}
 		break;
 	}
@@ -809,6 +813,12 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		printf ("%s\n", TERMRESET);
 
 		print_ast_internal(text, &ns->block, indent, verbose, false);
+		break;
+	}
+	case returnStatementKind: {
+		astNode *en = (astNode*)root->data;
+
+		print_ast_internal(text, en, indent, verbose, false);
 		break;
 	}
 	case functionDeclarationKind: {
