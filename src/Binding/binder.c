@@ -469,12 +469,17 @@ astNode bind_for_loop(node *n, ast *tree) {
 
 	forLoopNode fn = *(forLoopNode*)n->data;
 
+	scope *forScope;
+	scope *parentScope = push_scope_and_get_reference(tree, &forScope);
+
 	astNode range = bind_expression(&fn.range, tree);
 
 	u8 flags = VARIABLE_MUTABLE | VARIABLE_INITIALIZED;
 	astSymbol *valueVar = declare_variable(tree, fn.value.span, range.type.kind == arrayType ? range.type.arrayInfo->ofType : range.type, flags);
 	astSymbol *keyVar = fn.key.kind == 0 ? NULL : declare_variable(tree, fn.key.span, primitive_type_from_kind(intType), flags);
 	astNode boundBlock = bind_expression(&fn.block, tree);
+
+	pop_scope(tree, parentScope);
 
 	forLoopAst *forNode = arena_malloc(binder_arena, sizeof(forLoopAst));
 	*forNode = (forLoopAst){ valueVar, keyVar, range, boundBlock };
