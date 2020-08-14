@@ -87,6 +87,7 @@ enum syntaxKind {
 	structKeyword,
 	typedefKeyword,
 	returnKeyword,
+	refKeyword,
 
 	unaryExpression,
 	binaryExpression,
@@ -492,8 +493,10 @@ typedef struct forLoopNode {
 } forLoopNode;
 
 // used in function declarations
-// x: int
+// `refKeyword` is optional and used to pass values by reference
+// ref x: int
 typedef struct typedIdentifierNode {
+	node refKeyword;
 	node identifier;
 	node colon;
 	node type;

@@ -119,6 +119,9 @@ static const char *cUnaryText[] = {
 FILE *fp;
 
 void print_c_type(astType t, astSymbol *identifier) {
+
+	bool isReference = identifier != NULL && (identifier->flags & VARIABLE_REFERENCE);
+
 	switch(t.kind) {
 		case enumType:
 			fprintf(fp, "%s", cTypeText[t.kind]);
@@ -132,6 +135,7 @@ void print_c_type(astType t, astSymbol *identifier) {
 			print_c_type(t.arrayInfo->ofType, NULL);
 			if (identifier != NULL) {
 				fprintf(fp, " ");
+				if (isReference) fprintf(fp, "*");
 				printfSymbolReference(fp, identifier, "_");
 			}
 			fprintf(fp, "[");
@@ -152,6 +156,7 @@ void print_c_type(astType t, astSymbol *identifier) {
 
 	if (identifier != NULL) {
 		fprintf(fp, " ");
+		if (isReference) fprintf(fp, "*");
 		printfSymbolReference(fp, identifier, "_");
 	}
 }
@@ -511,9 +516,13 @@ static inline void emit_c_callExpression(astNode *n, ast *tree) {
 
 	char* name = cn->function->name;
 
+	functionSymbolData *fd = NULL;
 	bool isPrint = (!strcmp(name, "print"));
 	if (isPrint) fprintf(fp, "printf");
-	else printfSymbolReference(fp, cn->function, "_");
+	else {
+		printfSymbolReference(fp, cn->function, "_");
+		fd = cn->function->functionData;
+	}
 	fprintf(fp,"(");
 
 	for (int i= 0; i < cn->argumentCount; i++) {
@@ -527,8 +536,11 @@ static inline void emit_c_callExpression(astNode *n, ast *tree) {
 				emit_c_node(cn->arguments + i, tree);
 			}
 		} else {
+			bool isReference = fd != NULL && fd->parameters[i]->flags & VARIABLE_REFERENCE;
+			if (isReference) fprintf(fp, "&(");
 			emit_c_node(cn->arguments + i, tree);
 			if (cn->arguments[i].type.kind == boolType) fprintf(fp, " ? \"true\" : \"false\"");
+			if (isReference) fprintf(fp, ")");
 		}
 		if (i != cn->argumentCount-1) fprintf(fp,", ");
 	}
@@ -636,7 +648,12 @@ static inline void emit_c_variableAssignment(astNode *n, ast *tree) {
 }
 
 static inline void emit_c_variableReference(astNode *n, ast *tree) {
-	printfSymbolReference(fp, (astSymbol*)n->data, "_");
+	astSymbol *varSymbol = (astSymbol*)n->data;
+	bool isReference = varSymbol->flags & VARIABLE_REFERENCE;
+
+	if (isReference) fprintf(fp, "(*");
+	printfSymbolReference(fp, varSymbol, "_");
+	if (isReference) fprintf(fp, ")");
 }
 
 static inline void emit_c_structReference(astNode *n, ast *tree) {

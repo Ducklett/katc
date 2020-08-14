@@ -491,8 +491,12 @@ astNode bind_arrow_function_expression(node *n, ast *tree, scope *functionscope)
 	astNode *exprStore = arena_malloc(binder_arena, sizeof(astNode));
 	*exprStore = boundExpression;
 
-	astNode *returnStore = arena_malloc(binder_arena, sizeof(astNode));
-	*returnStore = (astNode){ returnStatementKind, boundExpression.type, .data = exprStore };
+	astNode *returnStore = exprStore;
+
+	if (boundExpression.type.kind != voidType) {
+		returnStore = arena_malloc(binder_arena, sizeof(astNode));
+		*returnStore = (astNode){ returnStatementKind, boundExpression.type, .data = exprStore };
+	}
 
 	blockStatementAst *blockNode = arena_malloc(binder_arena, sizeof(blockStatementAst));
 	*blockNode = (blockStatementAst){ returnStore, 1 };
@@ -517,7 +521,7 @@ astNode bind_function_declaration(node *n, ast *tree) {
 
 	for (int i=0;i<fn.parameterCount;i+=2) {
 		typedIdentifierNode id = *(typedIdentifierNode*)fn.parameters[i].data;
-		astSymbol *param = declare_variable(tree, id.identifier.span,  bind_type(&id.type, tree, NULL), VARIABLE_INITIALIZED);
+		astSymbol *param = declare_variable(tree, id.identifier.span,  bind_type(&id.type, tree, NULL), VARIABLE_INITIALIZED | (id.refKeyword.kind != 0 ? VARIABLE_REFERENCE : 0));
 		if (param == NULL) {
 			hasErrors = true;
 			goto end;
@@ -1038,7 +1042,7 @@ void declare_builtin_function(ast *tree, char* name) {
 	sb_push(currentScope->symbols, function);
 
 	functionSymbolData *fd = arena_malloc(binder_arena, sizeof(functionSymbolData));
-	*fd = (functionSymbolData){ 0, 0, voidType, 0 };
+	*fd = (functionSymbolData){ 0, 0, primitive_type_from_kind(voidType), 0 };
 
 	function->symbolKind = SYMBOL_FUNCTION;
 	function->name = aName;

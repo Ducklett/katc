@@ -476,12 +476,14 @@ node parser_parse_variable_assignment(parser *p, diagnosticContainer *d, node id
 }
 
 node parse_typed_identifier(parser *p, diagnosticContainer *d) {
+	node refNode = {0};
+	if (parser_current(p,d).kind == refKeyword) refNode = parser_match_token(p, d, refKeyword);
 	node identifier = parser_match_token(p, d, identifierToken);
 	node colon = parser_match_token(p, d, colonToken);
 	node type = parser_parse_type(p, d);
 
 	typedIdentifierNode *id = arena_malloc(parser_arena, sizeof(typedIdentifierNode));
-	*id = (typedIdentifierNode){ identifier, colon, type };
+	*id = (typedIdentifierNode){ refNode, identifier, colon, type };
 
 	return (node) { typedIdentifier, textspan_from_bounds(&identifier, &type), .data = id, };
 }

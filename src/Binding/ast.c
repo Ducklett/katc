@@ -395,6 +395,7 @@ typedef struct astNode {
 #define VARIABLE_INITIALIZED 2
 #define VARIABLE_VALUE_KNOWN 4
 #define VARIABLE_GLOBAL 8
+#define VARIABLE_REFERENCE 16 
 
 #define SYMBOL_VARIABLE 1
 #define SYMBOL_FUNCTION 2

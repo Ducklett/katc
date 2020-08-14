@@ -354,6 +354,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			else if (span_compare(l->text, t.span, "struct")) t.kind = structKeyword;
 			else if (span_compare(l->text, t.span, "typedef")) t.kind = typedefKeyword;
 			else if (span_compare(l->text, t.span, "return")) t.kind = returnKeyword;
+			else if (span_compare(l->text, t.span, "ref")) t.kind = refKeyword;
 			break;
 		}
 		t.kind = badToken;
