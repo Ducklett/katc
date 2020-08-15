@@ -5,6 +5,8 @@
 
 astNode bind_expression(node *n, ast *tree);
 astNode bind_expression_internal(node *n, ast* tree);
+astNode cast_expression(astNode *n, textspan nodeSpan, ast *tree, astType toType, bool isExplicit);
+astNode bind_and_cast_expression(node *n, ast *tree, astType toType, bool isExplicit);
 astNode bind_expression_of_type(node *n, ast *tree, astType expectedType, textspan errorSpan);
 astNode bind_variable_reference(node *n, ast *tree, scope *variableScope);
 astNode bind_array_literal(node *n, ast *tree);
@@ -56,7 +58,6 @@ astNode fold_binary_expression(typedOperator *op, astNode *leftNode, astNode *ri
 astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand);
 astNode fold_cast_expression(astType from, astType to, astNode *literal);
 bool check_bounds(astNode n, diagnosticContainer *d, textspan span);
-astNode cast_expression(node *n, ast *tree, astType toType, bool isExplicit);
 
 int bind_tree(ast* tree, node *root) {
 
@@ -68,7 +69,7 @@ int bind_tree(ast* tree, node *root) {
 
 astNode bind_expression_of_type(node *n, ast* tree, astType expectedType, textspan errorSpan) {
 
-	astNode outNode = cast_expression(n, tree, expectedType, /*isExplicit:*/ false);
+	astNode outNode = bind_and_cast_expression(n, tree, expectedType, /*isExplicit:*/ false);
 
 	if (outNode.type.kind != errorType && outNode.kind == literalKind) {
 		if (!check_bounds(outNode, &tree->diagnostics, n->span)) {
@@ -767,7 +768,7 @@ astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 			return (astNode){ castExpressionKind, primitive_type_from_kind(errorType), .data = 0 };
 		}
 
-		return cast_expression(&cn.arguments[0], tree, castType, true);
+		return bind_and_cast_expression(&cn.arguments[0], tree, castType, true);
 	}
 
 	astSymbol *function = functionScope == NULL
@@ -848,38 +849,57 @@ astNode bind_array_access_expression(node *n, ast *tree, scope *symbolScope) {
 	return (astNode){ arrayAccessKind, left.type.arrayInfo->ofType, .data = aNode };
 }
 
-astNode cast_expression(node *n, ast *tree, astType toType, bool isExplicit) {
+astNode bind_and_cast_expression(node *n, ast *tree, astType toType, bool isExplicit) {
 	astNode bn = bind_expression_internal(n, tree);
+	return cast_expression(&bn, n->span, tree, toType, isExplicit);
+}
 
-	bool hasErrors = bn.type.kind == errorType;
+astNode cast_expression(astNode *n, textspan nodeSpan, ast *tree, astType toType, bool isExplicit) {
 
-	if (hasErrors || toType.kind <= 2) return bn;
+	bool hasErrors = n->type.kind == errorType;
 
-	u8 castKind =  getCastInformation(bn.type, toType);
+	if (hasErrors || toType.kind <= 2) return *n;
 
-	if (castKind == CAST_IDENTITY) return bn;
+	u8 castKind =  getCastInformation(n->type, toType);
+
+	if (castKind == CAST_IDENTITY) return *n;
 
 	if (!hasErrors && castKind == CAST_ILLEGAL) {
 		hasErrors = true;
-		report_diagnostic(&tree->diagnostics, illegalCastDiagnostic, n->span, bn.type.kind, toType.kind, 0);
+		report_diagnostic(&tree->diagnostics, illegalCastDiagnostic, nodeSpan, n->type.kind, toType.kind, 0);
 	}
 
 	if (!hasErrors && castKind == CAST_EXPLICIT && !isExplicit) {
 		hasErrors = true;
-		report_diagnostic(&tree->diagnostics, illegalImplicitCastDiagnostic, n->span, bn.type.kind, toType.kind, 0);
+		report_diagnostic(&tree->diagnostics, illegalImplicitCastDiagnostic, nodeSpan, n->type.kind, toType.kind, 0);
 	}
 
 	if (hasErrors) return (astNode){ castExpressionKind, primitive_type_from_kind(errorType), .data = 0 };
 
-	if (feature_constantfolding && bn.kind == literalKind) {
-		if (isExplicit) return fold_cast_expression(bn.type, toType, &bn);
+	if (n->type.kind == arrayType) {
+		toType = toType.arrayInfo->ofType;
+		astNode* nodes = n->arrayValues;
+		u16 capacity = n->type.arrayInfo->capacity;
+
+		n->type.arrayInfo->ofType = toType;
+
+		for(int i=0;i<capacity;i++) {
+			nodes[i] = cast_expression(&nodes[i], (textspan){0}, tree, toType, isExplicit);
+			if (nodes[i].type.kind == errorType) break;
+		}
+
+		return *n;
+	}
+
+	if (feature_constantfolding && n->kind == literalKind) {
+		if (isExplicit) return fold_cast_expression(n->type, toType, n);
 		// implicit casts should keep their literal value so they can be bounds checked
-		bn.type = toType;
-		return bn;
+		n->type = toType;
+		return *n;
 	}
 
 	astNode *bNode = arena_malloc(binder_arena, sizeof(astNode));
-	*bNode = bn;
+	*bNode = *n;
 
 	return (astNode){ castExpressionKind, toType, .data = bNode };
 }
