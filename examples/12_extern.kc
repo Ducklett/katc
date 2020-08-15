@@ -1,0 +1,15 @@
+// imports the declared functions from the c `math` library
+// and places them in the `CMath` namespace
+extern CMath :: "math" {
+	fn sin(x:float) -> float
+}
+
+H :: 15
+W :: 127
+
+for y in H for x in W {
+	v := (CMath.sin(x*0.1)*0.5+0.5) * H
+	if (v >= y) print(" ")
+	else print("%c", 219)
+	if (x == W) print("\n")
+}
