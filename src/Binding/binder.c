@@ -546,26 +546,23 @@ astNode bind_function_declaration(node *n, ast *tree) {
 	astSymbol *function = declare_function(tree, fn.identifier.span, flags, nodesStorage, nodesCount, functionScope);
 
 	astNode boundBody = {0};
-	astType returnType = primitive_type_from_kind(hasErrors ? errorType : voidType);
 
 	if (!hasErrors) {
 		astSymbol *parentNamespace = tree->currentNamespace;
 		tree->currentNamespace = function;
 		if (fn.thickArrow.kind != NULL) {
 			boundBody = bind_arrow_function_expression(&fn.body, tree, functionScope);
-			returnType = boundBody.type;
+			function->functionData->returnType = boundBody.type;
 		} else {
-			if (fn.thinArrow.kind != NULL)	{
-				returnType = bind_type(&fn.returnType, tree, NULL);
-			}
+			function->functionData->returnType = fn.thinArrow.kind != NULL
+				? bind_type(&fn.returnType, tree, NULL)
+				: primitive_type_from_kind(hasErrors ? errorType : voidType);
+
 			boundBody = bind_block_statement(&fn.body, tree, functionScope);
 		}
 		function->functionData->body = boundBody;
 		tree->currentNamespace = parentNamespace;
 	}
-
-	function->functionData->returnType = returnType;
-	function->type = (astType){ functionType, .declaration = function };
 
 	return (astNode){ functionDeclarationKind , primitive_type_from_kind(voidType), .data = function };
 }
@@ -828,7 +825,7 @@ astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 
 	end:;
 
-	return (astNode){ callExpressionKind , function->functionData->returnType, .data = callNode };
+	return (astNode){ callExpressionKind , hasErrors ? primitive_type_from_kind(errorType) : function->functionData->returnType, .data = callNode };
 }
 
 astNode bind_array_access_expression(node *n, ast *tree, scope *symbolScope) {
@@ -1099,6 +1096,7 @@ astSymbol* declare_function(ast *tree, textspan nameSpan, u8 flags, astSymbol **
 	function->name = ast_substring(tree->text, nameSpan, string_arena);
 	function->parentNamespace = tree->currentNamespace;
 
+	function->type = (astType){ functionType, .declaration = function };
 	function->flags = flags;
 	function->functionData = fd;
 
