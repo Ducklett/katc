@@ -431,7 +431,7 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 	enum syntaxKind mutKind = parser_current(p, d).kind;
 	bool hasInitializer = mutKind == colonToken || mutKind == equalsToken;
 
-	if (type.kind == NULL && (p->parentKind == namespaceDeclaration || !hasInitializer) ) {
+	if (type.kind == NULL && ((p->parentKind == namespaceDeclaration && mutKind == equalsToken) || !hasInitializer) ) {
 		report_diagnostic(d, variableMustHaveTypeInCurrentContextDiagnostic, identifier.span, 0,0, 0);
 	}
 

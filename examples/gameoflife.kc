@@ -1,0 +1,67 @@
+
+// https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
+namespace GameOfLife {
+	GRIDSIZE   :: 10
+	CELL_DEAD  :: u8(0)
+	CELL_ALIVE :: u8(1)
+
+	cells: u8[GRIDSIZE*GRIDSIZE] 
+
+	cellsBackBuffer: u8[GRIDSIZE*GRIDSIZE] = [
+		1,1,0,0,0,0,0,0,0,0,
+		1,1,0,0,0,0,0,1,0,0,
+		0,0,0,0,0,0,0,0,1,0,
+		0,0,0,0,0,0,1,1,1,0,
+		1,1,1,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,
+	]
+
+	fn getIndex(x:int, y:int) => x + y * GRIDSIZE
+
+	fn remapAxis(x:int) -> int { case {
+		x < 0 			: return GRIDSIZE + x
+		x >= GRIDSIZE	: return x % GRIDSIZE
+		default			: return x
+	} }
+
+	fn render() {
+		for y in GRIDSIZE-1 for x in GRIDSIZE-1 {
+			index := getIndex(x,y)
+			cells[index] = cellsBackBuffer[index]
+			print("%s", cells[index] == CELL_ALIVE ? "##" : "  ")
+			if x == GRIDSIZE-1 print("\n")
+		}
+	}
+
+	fn update() {
+		for y in GRIDSIZE-1 for x in GRIDSIZE-1 {
+			neighbourCount := 0
+			for yOff in (-1)..1 for xOff in (-1)..1 {
+				if (yOff == 0 && xOff == 0) continue
+				index := getIndex(remapAxis(x+xOff), remapAxis(y+yOff))
+				neighbourCount += cells[index]
+			}
+
+			index := getIndex(x, y)
+			isAlive := cells[index] == CELL_ALIVE
+			case {
+				isAlive && neighbourCount == 2	: cellsBackBuffer[index] = CELL_ALIVE
+				isAlive && neighbourCount == 3	: cellsBackBuffer[index] = CELL_ALIVE
+				!isAlive && neighbourCount == 3	: cellsBackBuffer[index] = CELL_ALIVE
+				default							: cellsBackBuffer[index] = CELL_DEAD
+			}
+		}
+	}
+
+	fn tick() {
+		update()
+		render()
+	}
+}
+
+GameOfLife.render()
+for t in 10 GameOfLife.tick()
