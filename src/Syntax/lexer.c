@@ -355,6 +355,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			else if (span_compare(l->text, t.span, "typedef")) t.kind = typedefKeyword;
 			else if (span_compare(l->text, t.span, "return")) t.kind = returnKeyword;
 			else if (span_compare(l->text, t.span, "ref")) t.kind = refKeyword;
+			else if (span_compare(l->text, t.span, "extern")) t.kind = externKeyword;
 			break;
 		}
 		t.kind = badToken;

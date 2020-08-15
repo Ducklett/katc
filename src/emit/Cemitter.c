@@ -182,6 +182,7 @@ void emit_c_from_ast(ast *tree, const char* outputName, bool run, bool emitSourc
 void emit_c_node(astNode *n, ast *tree) {
 	kindStack_push(n->kind);
 	switch(n->kind) {
+	case externDeclarationKind: break;
 	case fileStatementKind:
 	case blockStatementKind: emit_c_blockStatement(n, tree); break;
 	case returnStatementKind: emit_c_returnStatement(n, tree); break;
@@ -215,7 +216,12 @@ void emit_c_node(astNode *n, ast *tree) {
 }
 
 void emit_c_file(astNode *n, ast *tree) {
-	fprintf(fp,"#include <stdio.h>\n#include <string.h>\n\n");
+	fprintf(fp,"#include <stdio.h>\n#include <string.h>\n");
+	for (int i = 0;i<sb_count(tree->externalLibraries);i++) {
+		fprintf(fp, "#include <%s.h>\n", tree->externalLibraries[i]);
+	}
+	fprintf(fp, "\n");
+
 	emit_c_functions_in_block(n, tree, false);
 	fprintf(fp,"void main() ");
 	emit_c_node(n,tree);
@@ -268,7 +274,7 @@ static inline void emit_c_function(astNode *n, ast *tree) {
 	}
 	fprintf(fp, ") ");
 
-	emit_c_node(&fd->body,tree);
+	if (fd->body.kind) emit_c_node(&fd->body,tree);
 }
 
 static inline void emit_c_blockStatement(astNode *n, ast *tree) {

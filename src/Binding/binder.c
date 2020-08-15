@@ -22,6 +22,7 @@ astNode bind_while_loop(node *n, ast *tree);
 astNode bind_for_loop(node *n, ast *tree);
 astNode bind_function_declaration(node *n, ast *tree);
 astNode bind_namespace_declaration(node *n, ast *tree);
+astNode bind_extern_declaration(node *n, ast *tree);
 astNode bind_struct_declaration(node *n, ast *tree);
 astNode bind_enum_declaration(node *n, ast *tree);
 astNode bind_unary_expression(node *n, ast *tree);
@@ -94,6 +95,7 @@ astNode bind_expression_internal(node *n, ast* tree) {
 		case forLoop: return bind_for_loop(n, tree);
 		case functionDeclaration: return bind_function_declaration(n, tree);
 		case namespaceDeclaration: return bind_namespace_declaration(n, tree);
+		case externDeclaration: return bind_extern_declaration(n, tree);
 		case structDeclaration: return bind_struct_declaration(n, tree);
 		case enumDeclaration: return bind_enum_declaration(n, tree);
 
@@ -558,7 +560,7 @@ astNode bind_function_declaration(node *n, ast *tree) {
 				? bind_type(&fn.returnType, tree, NULL)
 				: primitive_type_from_kind(hasErrors ? errorType : voidType);
 
-			boundBody = bind_block_statement(&fn.body, tree, functionScope);
+			if (fn.body.kind) boundBody = bind_block_statement(&fn.body, tree, functionScope);
 		}
 		function->functionData->body = boundBody;
 		tree->currentNamespace = parentNamespace;
@@ -583,6 +585,26 @@ astNode bind_namespace_declaration(node *n, ast *tree) {
 	tree->currentNamespace = parentNamespace;
 
 	return (astNode){ namespaceDeclarationKind , primitive_type_from_kind(voidType), .data = ns };
+}
+
+astNode bind_extern_declaration(node *n, ast *tree) {
+
+	externDeclarationNode fn = *(externDeclarationNode*)n->data;
+
+	u8 flags = 0;
+	astSymbol *namespace = declare_namespace(tree, &fn.identifier, flags);
+	namespace->symbolKind = SYMBOL_EXTERN;
+	sb_push(tree->externalLibraries, fn.libraryName.stringValue);
+
+	astSymbol *parentNamespace = tree->currentNamespace;
+	tree->currentNamespace = namespace;
+
+	namespaceAst *ns = arena_malloc(binder_arena, sizeof(namespaceAst));
+	*ns = (namespaceAst){ namespace, bind_block_statement(&fn.body, tree, namespace->namespaceScope) };
+
+	tree->currentNamespace = parentNamespace;
+
+	return (astNode){ externDeclarationKind , primitive_type_from_kind(voidType), .data = ns };
 }
 
 astNode bind_struct_declaration(node *n, ast *tree) {

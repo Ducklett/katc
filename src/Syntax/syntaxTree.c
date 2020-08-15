@@ -88,6 +88,7 @@ enum syntaxKind {
 	typedefKeyword,
 	returnKeyword,
 	refKeyword,
+	externKeyword,
 
 	unaryExpression,
 	binaryExpression,
@@ -106,6 +107,7 @@ enum syntaxKind {
 	namespaceDeclaration,
 	enumDeclaration,
 	typedefDeclaration,
+	externDeclaration,
 	structDeclaration,
 	variableAssignment,
 	blockStatement,
@@ -202,6 +204,8 @@ static const char *syntaxKindText[] = {
 	"struct",
 	"typedef",
 	"return",
+	"ref",
+	"extern",
 	"unaryExpression",
 	"binaryExpression",
 	"ternaryExpression",
@@ -219,6 +223,7 @@ static const char *syntaxKindText[] = {
 	"namespaceDeclaration",
 	"enumDeclaration",
 	"typedefDeclaration",
+	"externDeclaration",
 	"structDeclaration",
 	"variableAssignment",
 	"blockStatement",
@@ -393,6 +398,19 @@ typedef struct typedefDeclarationNode {
 	node colon2;
 	node type;
 } typedefDeclarationNode;
+
+// extern CMath :: "math" {
+// 	fn sin(float x) -> float
+//  M_PI: float
+// }
+typedef struct externDeclarationNode {
+	node externKeyword;
+	node identifier;
+	node colon1;
+	node colon2;
+	node libraryName;
+	node body;
+} externDeclarationNode;
 
 // the else clause of if statements is optional
 // then `thenExpression` and `elseExpression` can be any statment
@@ -816,6 +834,16 @@ void print_syntaxtree_internal(char *text, node *root, int indent, bool verbose,
 		print_syntaxtree_internal(text, &tn.colon1, indent, verbose, true);
 		print_syntaxtree_internal(text, &tn.colon2, indent, verbose, true);
 		print_syntaxtree_internal(text, &tn.type, indent, verbose, false);
+		break;
+	}
+	case externDeclaration: {
+		externDeclarationNode en = *(externDeclarationNode*)root->data;
+		print_syntaxtree_internal(text, &en.externKeyword, indent, verbose, true);
+		print_syntaxtree_internal(text, &en.identifier, indent, verbose, true);
+		print_syntaxtree_internal(text, &en.colon1, indent, verbose, true);
+		print_syntaxtree_internal(text, &en.colon2, indent, verbose, true);
+		print_syntaxtree_internal(text, &en.libraryName, indent, verbose, true);
+		print_syntaxtree_internal(text, &en.body, indent, verbose, false);
 		break;
 	}
 	case typedIdentifier: {

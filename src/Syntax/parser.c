@@ -28,6 +28,7 @@ node parser_parse_function_call(parser *p, diagnosticContainer *d);
 node parser_parse_namespace_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_enum_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_typedef_declaration(parser *p, diagnosticContainer *d);
+node parser_parse_extern_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_return_statement(parser *p, diagnosticContainer *d);
 node parser_parse_struct_declaration(parser *p, diagnosticContainer *d);
 
@@ -158,6 +159,7 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	case structKeyword: res = parser_parse_struct_declaration(p, d); break;
 	case enumKeyword: res = parser_parse_enum_declaration(p, d); break;
 	case typedefKeyword: res = parser_parse_typedef_declaration(p, d); break;
+	case externKeyword: res = parser_parse_extern_declaration(p, d); break;
 	case returnKeyword: res = parser_parse_return_statement(p, d); break;
 	case identifierToken:
 		if  (l2kind == colonToken) {
@@ -183,6 +185,9 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 				report_diagnostic(d, notAllowedInContextDiagnostic, res.span, res.kind, p->parentKind, 0); break;
 		case structDeclaration:
 			if (res.kind != variableDeclaration) report_diagnostic(d, notAllowedInContextDiagnostic, res.span, res.kind, p->parentKind, 0);
+			break;
+		case externDeclaration:
+			if (res.kind != variableDeclaration && res.kind != functionDeclaration && res.kind != structDeclaration) report_diagnostic(d, notAllowedInContextDiagnostic, res.span, res.kind, p->parentKind, 0);
 			break;
 		case fileStatement:
 			if (res.kind == breakKeyword || res.kind == continueKeyword)
@@ -537,9 +542,12 @@ node parser_parse_function_declaration(parser *p, diagnosticContainer *d) {
 			returnType = parser_parse_type(p, d);
 		}
 		// block function
-		enum syntaxKind prevKind = parser_push_context(p, functionDeclaration);
-		block = parser_parse_block_statement(p, d, false);
-		parser_pop_context(p,prevKind);
+		// if no block is provided it is a forward declaration
+		if (parser_current(p,d).kind == openCurlyToken) {
+			enum syntaxKind prevKind = parser_push_context(p, functionDeclaration);
+			block = parser_parse_block_statement(p, d, false);
+			parser_pop_context(p,prevKind);
+		}
 	}
 
 	functionDeclarationNode *fnode = arena_malloc(parser_arena, sizeof(functionDeclarationNode));
@@ -682,6 +690,23 @@ node parser_parse_typedef_declaration(parser *p, diagnosticContainer *d) {
 	*tnode = (typedefDeclarationNode){ typedefToken, identifier, colon1, colon2, type};
 
 	return (node) { typedefDeclaration, textspan_from_bounds(&typedefToken, &type), .data = tnode, };
+}
+
+node parser_parse_extern_declaration(parser *p, diagnosticContainer *d) {
+	node externToken = parser_match_token(p, d, externKeyword);
+	node identifier = parser_match_token(p,d,identifierToken);
+	node colon1 = parser_match_token(p,d,colonToken);
+	node colon2 = parser_match_token(p,d,colonToken);
+	node libraryName = parser_match_token(p, d, stringLiteral);
+
+	enum syntaxKind prevKind = parser_push_context(p, externDeclaration);
+	node body = parser_parse_block_statement(p,d, false);
+	parser_pop_context(p,prevKind);
+
+	externDeclarationNode *enode = arena_malloc(parser_arena, sizeof(externDeclarationNode));
+	*enode = (externDeclarationNode){ externToken, identifier, colon1, colon2, libraryName, body };
+
+	return (node) { externDeclaration, textspan_from_bounds(&externToken, &body), .data = enode, };
 }
 
 node parser_parse_return_statement(parser *p, diagnosticContainer *d) {

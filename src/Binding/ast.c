@@ -15,6 +15,7 @@ enum astSyntaxKind {
 	constructorExpressionKind,
 	castExpressionKind,
 	namespaceDeclarationKind,
+	externDeclarationKind,
 	enumDeclarationKind,
 	structDeclarationKind,
 	structReferenceKind,
@@ -52,6 +53,7 @@ static const char *astSyntaxKindText[] = {
 	"constructorExpressionKind",
 	"castExpression",
 	"namespaceDeclaration",
+	"externDeclaration",
 	"enumDeclarationKind",
 	"structDeclarationKind",
 	"structReferenceKind",
@@ -403,6 +405,7 @@ typedef struct astNode {
 #define SYMBOL_ENUM_MEMBER 5
 #define SYMBOL_STRUCT 6
 #define SYMBOL_TYPEDEF 7
+#define SYMBOL_EXTERN 8
 #define SYMBOL_ANY 0xFF
 
 typedef struct functionSymbolData {
@@ -556,6 +559,7 @@ typedef struct ast {
 	scope **scopes;
 	scope *currentScope;
 	astSymbol *currentNamespace;
+	char **externalLibraries;
 } ast;
 
 enum astKind resolve_primitive_type_from_span(ast *tree, textspan span) {
@@ -596,7 +600,7 @@ void printfSymbolReference_internal(FILE *f, astSymbol *s, char* separator, bool
 void printfSymbolReference(FILE *f, astSymbol *s, char* separator) { return printfSymbolReference_internal(f, s, separator, true); }
 void printfSymbolReference_internal(FILE *f, astSymbol *s, char* separator, bool entry) {
 
-	if (s->parentNamespace != NULL &&  s->parentNamespace->symbolKind != SYMBOL_STRUCT && (s->symbolKind != SYMBOL_VARIABLE || s->flags & VARIABLE_GLOBAL)) {
+	if (s->parentNamespace != NULL &&  s->parentNamespace->symbolKind != SYMBOL_EXTERN && s->parentNamespace->symbolKind != SYMBOL_STRUCT && (s->symbolKind != SYMBOL_VARIABLE || s->flags & VARIABLE_GLOBAL)) {
 		printfSymbolReference_internal(f, s->parentNamespace, separator, false);
 	}
 	fprintf(f, "%s%s", s->name, entry ? "" : separator);
@@ -833,7 +837,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 			printf (" %s: %s", fd.parameters[i]->name, astKindText[fd.parameters[i]->type.kind]);
 		}
 		printf(")%s\n", TERMRESET);
-		print_ast_internal(text, &vn.functionData->body, indent, verbose, false);
+		if (vn.functionData->body.kind) print_ast_internal(text, &vn.functionData->body, indent, verbose, false);
 		break;
 	}
 	case enumDeclarationKind: {
