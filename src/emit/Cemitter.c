@@ -149,9 +149,7 @@ void print_c_type(astType t, astSymbol *identifier) {
 		case i8Type: case i16Type: case i32Type: case i64Type:
 		case floatType: case boolType: case stringType: case charType:
 			fprintf(fp, "%s", cTypeText[t.kind]); break;
-		default:
-			printf("unhandled type %s in print_c_type", astKindText[t.kind]);
-			exit(1); break;
+		default: panic("Unhandled type %s in Cemitter -> print_c_type", astKindText[t.kind]);
 	}
 
 	if (identifier != NULL) {
@@ -208,9 +206,7 @@ void emit_c_node(astNode *n, ast *tree) {
 	case variableAssignmentKind: emit_c_variableAssignment(n, tree); break;
 	case variableReferenceKind: emit_c_variableReference(n, tree); break;
 	case structReferenceKind: emit_c_structReference(n, tree); break;
-	default:
-		fprintf(stderr, "%sUnhandled node of type %s in c emitter%s", TERMRED, astSyntaxKindText[n->kind], TERMRESET);
-		exit(1);
+	default: panic("Unhandled node of type %s in Cemitter -> emit_c_node", astSyntaxKindText[n->kind]);
 	}
 	kindStack_pop();
 }
@@ -462,9 +458,7 @@ static inline void emit_c_literal(astNode *n, ast *tree) {
 	case enumType: printfSymbolReference(fp, n->type.declaration->namespaceScope->symbols[n->numValue], "_"); break;
 	case arrayType:
 	case structType: fprintf(fp,"{0}"); break;
-	default:
-		fprintf(stderr,"%sUnhandled type %s in Cemitter -> emit_c_literal %s", TERMRED, astKindText[n->type.kind], TERMRESET);
-		exit(1);
+	default: panic("Unhandled type %s in Cemitter -> emit_c_literal", astKindText[n->type.kind]);
 	}
 }
 

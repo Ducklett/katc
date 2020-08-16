@@ -192,9 +192,7 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 		case fileStatement:
 			if (res.kind == breakKeyword || res.kind == continueKeyword)
 					report_diagnostic(d, notAllowedInContextDiagnostic, res.span, res.kind, p->parentKind, 0); break;
-		default:
-			printf("unexpected parent kind %s\n", syntaxKindText[p->parentKind]);
-			exit(1);
+		default: panic("Unhandled parent kind %s in parser_parse_statement", syntaxKindText[p->parentKind]);
 	}
 	return res;
 }

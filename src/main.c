@@ -32,15 +32,10 @@ int main(int argc, const char **argv) {
 	argparse_describe(&argparse, "\nThe kat language compiler","");
 	argc = argparse_parse(&argparse, argc, argv);
 
-	if (argc == 0) {
-		fprintf(stderr, "%sMust supply a file as entrypoint.%s\n", TERMRED, TERMRESET);
-		exit(1);
-	}
+	if (argc == 0) panic("Must supply a file as entrypoint.");
 
-	if (argc > 1) {
-		fprintf(stderr, "%sMust supply only one file as entrypoint.%s\n", TERMRED, TERMRESET);
-		exit(1);
-	}
+	if (argc > 1) panic("Must supply only one file as entrypoint.");
+	
 
 	feature_constantfolding = !disableConstantFolding;
 
@@ -50,10 +45,8 @@ int main(int argc, const char **argv) {
 	bool isC = outputType != NULL && !strcmp(outputType, "c");
 	bool isBinary = outputType != NULL && !strcmp(outputType, "bin");
 
-	if (outputType != NULL && !parseOnly && !isAst && !isAstGraph && !isC && !isBinary) {
-		fprintf(stderr, "%sInvalid output type '%s', options are %s.%s\n", TERMRED, outputType, outputTypes, TERMRESET);
-		exit(1);
-	}
+	if (outputType != NULL && !parseOnly && !isAst && !isAstGraph && !isC && !isBinary)
+		panic("Invalid output type '%s', options are %s.", outputType, outputTypes);
 
 	const char* entrypoint = argv[0];
 

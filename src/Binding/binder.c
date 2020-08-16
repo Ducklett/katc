@@ -126,10 +126,7 @@ astNode bind_expression_internal(node *n, ast* tree) {
 		case variableAssignment: return bind_variable_assignment(n, tree);
 		case typedefDeclaration: return bind_typedef_declaration(n, tree);
 
-		default: {
-			fprintf(stderr, "%sUnhandled node of type %s in binder%s", TERMRED, syntaxKindText[n->kind], TERMRESET);
-			exit(1);
-		}
+		default: panic("Unhandled node of type %s in binder", syntaxKindText[n->kind]);
 	}
 }
 
@@ -1369,10 +1366,7 @@ astNode bind_expression_in_scope(node *n, ast *tree, scope *expressionScope) {
 		case enumReferenceExpression: return bind_enum_reference(n, tree, expressionScope, true);
 		case callExpression: return bind_call_expression(n, tree, expressionScope);
 		case identifierToken: return bind_variable_reference(n, tree, expressionScope);
-		default: {
-			fprintf(stderr, "%sUnhandled node of type %s in binder.c -> bind_expression_in_scope%s", TERMRED, syntaxKindText[n->kind], TERMRESET);
-			exit(1);
-		}
+		default: panic("Unhandled node of type %s in binder.c -> bind_expression_in_scope", syntaxKindText[n->kind]);
 	}
 }
 
@@ -1528,9 +1522,7 @@ astNode fold_binary_expression(typedOperator *op, astNode *leftNode, astNode *ri
 
 			case logicalAndOp:     v = left && right; break;
 			case logicalOrOp:      v = left || right; break;
-			default:
-				fprintf(stderr, "%sUnhandled binary operator of type %s in binder%s", TERMRED, astBinaryText[op->operator], TERMRESET);
-				exit(1);
+			default: panic("Unhandled binary operator of type %s in binder -> fold_binary_expression", astBinaryText[op->operator]);
 		}
 
 		return (astNode){ literalKind, op->type, .floatValue = v };
@@ -1561,8 +1553,7 @@ astNode fold_binary_expression(typedOperator *op, astNode *leftNode, astNode *ri
 			case logicalAndOp:     v = left && right; break;
 			case logicalOrOp:      v = left || right; break;
 			default:
-				fprintf(stderr, "%sUnhandled binary operator of type %s in binder%s", TERMRED, astBinaryText[op->operator], TERMRESET);
-				exit(1);
+				panic("Unhandled binary operator of type %s in binder -> fold_binary_expression", astBinaryText[op->operator]);
 		}
 
 		return (astNode){ literalKind, op->type, .numValue = v };
@@ -1576,9 +1567,7 @@ astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand) {
 		switch(op) {
 		case negationOp:        v = -operand; break;
 		case identityOp:        v =  operand; break;
-		default:
-			fprintf(stderr, "%sUnhandled unary operator of type %s in binder%s", TERMRED, astUnaryText[op], TERMRESET);
-			exit(1);
+		default: panic("Unhandled unary operator of type %s in binder -> fold_unary_expression", astUnaryText[op]);
 		}
 
 		return (astNode){ literalKind , boundOperand->type, .floatValue = v };
@@ -1591,8 +1580,7 @@ astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand) {
 		case negationOp:        v = -operand; break;
 		case identityOp:        v =  operand; break;
 		default:
-			fprintf(stderr, "%sUnhandled unary operator of type %s in binder%s", TERMRED, astUnaryText[op], TERMRESET);
-			exit(1);
+			panic("Unhandled unary operator of type %s in binder -> fold_unary_expression", astUnaryText[op]);
 		}
 
 		return (astNode){ literalKind , boundOperand->type, .numValue = v };
@@ -1619,9 +1607,7 @@ astNode fold_cast_expression(astType from, astType to, astNode *literal) {
 		case charType: resultNode.charValue = (char)fvalue; break;
 		case floatType: resultNode.floatValue = (float)value; break;
 		case enumType: break;
-		default:
-			fprintf(stderr, "%sUnhandled type %s in fold_cast_expression%s", TERMRED, astKindText[to.kind], TERMRESET);
-			exit(1);
+		default: panic("Unhandled type %s in binder -> fold_cast_expression", astKindText[to.kind]);
 		}
 	} else {
 		switch (to.kind) {
@@ -1638,9 +1624,7 @@ astNode fold_cast_expression(astType from, astType to, astNode *literal) {
 		case charType: resultNode.charValue = (char)value; break;
 		case floatType: resultNode.floatValue = (float)value; break;
 		case enumType: break;
-		default:
-			fprintf(stderr, "%sUnhandled type %s in fold_cast_expression%s", TERMRED, astKindText[to.kind], TERMRESET);
-			exit(1);
+		default: panic("Unhandled type %s in binder -> fold_cast_expression", astKindText[to.kind]);
 		}
 	}
 
@@ -1650,8 +1634,7 @@ astNode fold_cast_expression(astType from, astType to, astNode *literal) {
 
 bool check_bounds(astNode n, diagnosticContainer *d, textspan span) {
 	if (n.kind != literalKind) {
-		fprintf(stderr, "%scheck_bounds called on non-literal%s\n", TERMRED, TERMRESET);
-		exit(1);
+		panic("check_bounds called on non-literal");
 	}
 
 	i64 value = n.numValue;
@@ -1693,9 +1676,7 @@ bool check_bounds(astNode n, diagnosticContainer *d, textspan span) {
 		case stringType:
 		case boolType: break;
 
-		default:
-			fprintf(stderr, "%sUnhandled type %s in check_bounds%s", TERMRED, astKindText[n.type.kind], TERMRESET);
-			exit(1);
+		default: panic("Unhandled type %s in check_bounds", astKindText[n.type.kind]);
 	}
 
 	if (errored) {

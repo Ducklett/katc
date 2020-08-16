@@ -128,10 +128,7 @@ void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText) {
 		case duplicateSwitchValueDiagnostic: fprintf(stderr, diagnosticText[d.kind], d.span.start, d.span.length); break;
 		case argCountDoensntMatchDiagnostic: fprintf(stderr, diagnosticText[d.kind], d.param1, d.span.start, d.span.length); break;
 		case ternaryTypesMustBeEqualDiagnostic: fprintf(stderr, diagnosticText[d.kind], astKindText[d.param1], astKindText[d.param2], d.span.start, d.span.length); break;
-		default: {
-			fprintf(stderr, "Unhandled case %s in print_diagnostics%s\n", diagnosticMetaText[d.kind], TERMRESET);
-			exit(1);
-		}
+		default: panic("Unhandled case %s in print_diagnostics", diagnosticMetaText[d.kind]);
 		}
 		fprintf(stderr, TERMRESET);
 

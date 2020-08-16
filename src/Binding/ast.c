@@ -198,8 +198,7 @@ u8 getCastInformation(astType from, astType to) {
 			return CAST_EXPLICIT;
 		
 		default:
-			printf("unhandled type %s in getCastInformation\n", astKindText[from.kind]);
-			exit(1);
+			panic("Unhandled type %s in ast -> getCastInformation", astKindText[from.kind]);
 	}
 
 }
@@ -624,9 +623,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 				case enumType: printfSymbolReference(stdout, root->type.declaration->namespaceScope->symbols[root->numValue], "."); break;
 				case arrayType: printf("%s[]",astKindText[root->type.arrayInfo->ofType.kind]); break;
 				case structType: printf("{}"); break;
-				default:
-					fprintf(stderr, "%sUnhandled type '%s' in print_ast%s", TERMRED, astKindText[root->type.kind], TERMRESET);
-					exit(1);
+				default: panic("Unhandled type '%s' in ast -> print_ast", astKindText[root->type.kind]);
 			}
 			printf ("%s :: %s%s%s)%s", TERMRESET, TERMYELLOW, astKindText[root->type.kind], TERMRESET, newline?"\n":"");
 		} else {
@@ -638,9 +635,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 				case boolType: printf ("%*s%s%s", indent, "", root->boolValue?"true":"false", newline?"\n":""); break;
 				case stringType: printf ("%*s\"%s\"%s", indent, "", root->stringValue, newline?"\n":""); break;
 				case charType: printf ("%*s%c%s", indent, "", root->charValue, newline?"\n":""); break;
-				default:
-					fprintf(stderr, "%sUnhandled type '%s' in print_ast%s", TERMRED, astKindText[root->type.kind], TERMRESET);
-					exit(1);
+				default: panic("Unhandled type '%s' in ast -> print_ast", astKindText[root->type.kind]);
 			}
 			printf(TERMRESET);
 		}
@@ -877,11 +872,7 @@ void print_ast_internal(char *text, astNode *root, int indent, bool verbose, boo
 		printf (" %s%s", astKindText[vs->type.kind], TERMRESET);
 		break;
 	}
-	default: {
-		fprintf(stderr, "%sERROR: Unhandled case in print_ast for kind %s%s", TERMRED, astSyntaxKindText[root->kind], TERMRESET);
-		exit(1);
-		break;
-	}
+	default: panic("Unhandled case in ast -> print_ast for kind %s", astSyntaxKindText[root->kind]);
 	}
 
 	printf (" )%s", newline?"\n":"");
@@ -916,9 +907,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 				printfSymbolReference(stdout, root->type.declaration->namespaceScope->symbols[root->numValue], ".");
 				fprintf (fp, "\"]\n");
 				break;
-			default:
-				fprintf(stderr, "%sUnhandled type '%s' in print_ast_graph%s", TERMRED, astKindText[root->type.kind], TERMRESET);
-				exit(1);
+			default: panic("Unhandled type '%s' in print_ast_graph", astKindText[root->type.kind]);
 		}
 		return;
 	}
@@ -1159,11 +1148,7 @@ void print_ast_graph_internal(char *text, astNode *root, FILE* fp, bool isRoot) 
 		ENDLABEL
 		break;
 	}
-	default: {
-		fprintf(stderr, "%sERROR: Unhandled case in print_ast for kind %s%s", TERMRED, astSyntaxKindText[root->kind], TERMRESET);
-		exit(1);
-		break;
-	}
+	default: panic("Unhandled case in print_ast_graph for kind %s", astSyntaxKindText[root->kind]);
 	}
 
 	if (isRoot) fprintf(fp, "}\n");

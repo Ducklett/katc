@@ -58,8 +58,15 @@ typedef unsigned long u64;
 #define benchmark_end(name) {}
 #endif
 
-void panic(char* message) {
-	fprintf(stderr, "%sFatal error: %s%s\n", TERMRED, message, TERMRESET);
+void panic(const char *message, ...) {
+	fprintf(stderr, "%s", TERMRED);
+
+    va_list args;
+    va_start(args, message);
+    vfprintf(stderr, message, args);
+    va_end(args);
+
+	fprintf(stderr, "%s\n", TERMRESET);
 	exit(1);
 }
 
@@ -81,7 +88,7 @@ char* read_file(const char* filename, u64* length) {
 		*length = ftell (f);
 		fseek (f, 0, SEEK_SET);
 		buffer = malloc (*length+1);
-		if (buffer == NULL) panic("memory allocation failed\n");
+		if (buffer == NULL) panic("memory allocation failed");
 		if (buffer) {
 			fread (buffer, 1, *length, f);
 		}
@@ -89,10 +96,8 @@ char* read_file(const char* filename, u64* length) {
 		buffer[*length] = '\0';
 	}
 
-	if (!buffer) {
-		fprintf(stderr, "%sFailed to read file: %s%s\n", TERMRED, filename, TERMRESET);
-		exit(1);
-	}
+	if (!buffer) panic("Failed to read file: %s", filename);
+
 	return buffer;
 }
 
@@ -118,7 +123,7 @@ char* escape_string_c(char *str) {
 	int oldlength = i;
 
 	char *allocatedText = (char*)malloc(sizeof(char) * length);
-	if (allocatedText == NULL) panic("memory allocation failed\n");
+	if (allocatedText == NULL) panic("memory allocation failed");
 
 	int index = 0;
 	for (int j=0; j < oldlength; j++) {
