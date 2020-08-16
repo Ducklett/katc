@@ -335,32 +335,13 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			while (isIdentifier(lexer_current(l))) lexer_move_next(l);
 			t.span = textspan_create(start, l->index - start);
 
-			if (span_compare(l->text, t.span, "true")) {
-				t.kind = trueKeyword;
-				t.boolValue = true;
+			for (int i = trueKeyword; i <= externKeyword; i++) {
+				if (span_compare(l->text, t.span, syntaxKindText[i])) {
+					t.kind = i;
+					if (i == trueKeyword) t.boolValue = true;
+					break;
+				}
 			}
-			else if (span_compare(l->text, t.span, "false")) {
-				t.kind = falseKeyword;
-				t.boolValue = false;
-			}
-			else if (span_compare(l->text, t.span, "if")) t.kind = ifKeyword;
-			else if (span_compare(l->text, t.span, "else")) t.kind = elseKeyword;
-			else if (span_compare(l->text, t.span, "switch")) t.kind = switchKeyword;
-			else if (span_compare(l->text, t.span, "case")) t.kind = caseKeyword;
-			else if (span_compare(l->text, t.span, "default")) t.kind = defaultKeyword;
-			else if (span_compare(l->text, t.span, "while")) t.kind = whileKeyword;
-			else if (span_compare(l->text, t.span, "for")) t.kind = forKeyword;
-			else if (span_compare(l->text, t.span, "in")) t.kind = inKeyword;
-			else if (span_compare(l->text, t.span, "break")) t.kind = breakKeyword;
-			else if (span_compare(l->text, t.span, "continue")) t.kind = continueKeyword;
-			else if (span_compare(l->text, t.span, "fn")) t.kind = fnKeyword;
-			else if (span_compare(l->text, t.span, "namespace")) t.kind = namespaceKeyword;
-			else if (span_compare(l->text, t.span, "enum")) t.kind = enumKeyword;
-			else if (span_compare(l->text, t.span, "struct")) t.kind = structKeyword;
-			else if (span_compare(l->text, t.span, "typedef")) t.kind = typedefKeyword;
-			else if (span_compare(l->text, t.span, "return")) t.kind = returnKeyword;
-			else if (span_compare(l->text, t.span, "ref")) t.kind = refKeyword;
-			else if (span_compare(l->text, t.span, "extern")) t.kind = externKeyword;
 			break;
 		}
 		t.kind = badToken;
