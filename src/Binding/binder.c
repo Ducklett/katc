@@ -1599,21 +1599,22 @@ astNode fold_unary_expression(enum astUnaryOperator op, astNode *boundOperand) {
 astNode fold_cast_expression(astType from, astType to, astNode *literal) {
 	i64 value = literal->numValue;
 	float fvalue = literal->floatValue;
+	astNode resultNode = { literalKind, to, .data = 0 };
 
 	if (from.kind == floatType) {
 		switch (to.kind) {
-		case intType : value = (int )fvalue; break;
-		case u8Type  : value = (u8  )fvalue; break;
-		case u16Type : value = (u16 )fvalue; break;
-		case u32Type : value = (u32 )fvalue; break;
-		case u64Type : value = (u64 )fvalue; break;
-		case i8Type  : value = (i8  )fvalue; break;
-		case i16Type : value = (i16 )fvalue; break;
-		case i32Type : value = (i32 )fvalue; break;
-		case i64Type : value = (i64 )fvalue; break;
-		case boolType: value = (bool)fvalue; break;
-		case charType: value = (char)fvalue; break;
-		case floatType: fvalue = (float)value; break;
+		case intType : resultNode.numValue = (int )fvalue; break;
+		case u8Type  : resultNode.numValue = (u8  )fvalue; break;
+		case u16Type : resultNode.numValue = (u16 )fvalue; break;
+		case u32Type : resultNode.numValue = (u32 )fvalue; break;
+		case u64Type : resultNode.numValue = (u64 )fvalue; break;
+		case i8Type  : resultNode.numValue = (i8  )fvalue; break;
+		case i16Type : resultNode.numValue = (i16 )fvalue; break;
+		case i32Type : resultNode.numValue = (i32 )fvalue; break;
+		case i64Type : resultNode.numValue = (i64 )fvalue; break;
+		case boolType: resultNode.boolValue = (bool)fvalue; break;
+		case charType: resultNode.charValue = (char)fvalue; break;
+		case floatType: resultNode.floatValue = (float)value; break;
 		case enumType: break;
 		default:
 			fprintf(stderr, "%sUnhandled type %s in fold_cast_expression%s", TERMRED, astKindText[to.kind], TERMRESET);
@@ -1621,18 +1622,18 @@ astNode fold_cast_expression(astType from, astType to, astNode *literal) {
 		}
 	} else {
 		switch (to.kind) {
-		case intType : value = (int )value; break;
-		case u8Type  : value = (u8  )value; break;
-		case u16Type : value = (u16 )value; break;
-		case u32Type : value = (u32 )value; break;
-		case u64Type : value = (u64 )value; break;
-		case i8Type  : value = (i8  )value; break;
-		case i16Type : value = (i16 )value; break;
-		case i32Type : value = (i32 )value; break;
-		case i64Type : value = (i64 )value; break;
-		case boolType: value = (bool)value; break;
-		case charType: value = (char)value; break;
-		case floatType: fvalue = (float)value; break;
+		case intType : resultNode.numValue = (int )value; break;
+		case u8Type  : resultNode.numValue = (u8  )value; break;
+		case u16Type : resultNode.numValue = (u16 )value; break;
+		case u32Type : resultNode.numValue = (u32 )value; break;
+		case u64Type : resultNode.numValue = (u64 )value; break;
+		case i8Type  : resultNode.numValue = (i8  )value; break;
+		case i16Type : resultNode.numValue = (i16 )value; break;
+		case i32Type : resultNode.numValue = (i32 )value; break;
+		case i64Type : resultNode.numValue = (i64 )value; break;
+		case boolType: resultNode.boolValue = (bool)value; break;
+		case charType: resultNode.charValue = (char)value; break;
+		case floatType: resultNode.floatValue = (float)value; break;
 		case enumType: break;
 		default:
 			fprintf(stderr, "%sUnhandled type %s in fold_cast_expression%s", TERMRED, astKindText[to.kind], TERMRESET);
