@@ -99,7 +99,12 @@ node lexer_lex_number_token(lexer *l, diagnosticContainer *d) {
 	}
 
 	bool foundIllegalCharacter=false;
+
 	while (isNumber(lexer_current(l)) || lexer_current(l) == '_' || lexer_current(l) == '.' || (radix == BASE16 && isLetter(lexer_current(l)) )) {
+
+		// 10..20 should lex as 10 .. 20 ; not as 10. . 20
+		if (lexer_current(l) == '.' && lexer_peek(l,1) == '.') break;
+
 		char nextNum = lexer_move_next(l);
 		if (nextNum == '_') continue;
 		if (nextNum == '.') {

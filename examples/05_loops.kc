@@ -18,3 +18,7 @@ for n in 10 print("%d\n", n)
 
 print("\nlooping over string: prints all the characters\n")
 for c in "hello" print("%c\n", c)
+
+print("\nlooping over array: prints all the entries\n")
+values := [1,4,6,32,88]
+for n in values print("%d\n", n)

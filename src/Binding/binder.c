@@ -478,7 +478,10 @@ astNode bind_for_loop(node *n, ast *tree) {
 	astNode range = bind_expression(&fn.range, tree);
 
 	u8 flags = VARIABLE_MUTABLE | VARIABLE_INITIALIZED;
-	astSymbol *valueVar = declare_variable(tree, fn.value.span, range.type.kind == arrayType ? range.type.arrayInfo->ofType : range.type, flags);
+	astType valueKind = range.type.kind == arrayType ? range.type.arrayInfo->ofType
+					  : range.type.kind == stringType ? primitive_type_from_kind(charType)
+					  : range.type;
+	astSymbol *valueVar = declare_variable(tree, fn.value.span, valueKind, flags);
 	astSymbol *keyVar = fn.key.kind == 0 ? NULL : declare_variable(tree, fn.key.span, primitive_type_from_kind(intType), flags);
 	astNode boundBlock = bind_expression(&fn.block, tree);
 
