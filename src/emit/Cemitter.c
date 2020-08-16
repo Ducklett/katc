@@ -124,7 +124,7 @@ void print_c_type(astType t, astSymbol *identifier) {
 
 	switch(t.kind) {
 		case enumType:
-			fprintf(fp, "%s", cTypeText[t.kind]);
+			fprintf(fp, "%s ", cTypeText[t.kind]);
 			printfSymbolReference(fp, t.declaration, "_");
 			break;
 		case structType:
@@ -605,7 +605,7 @@ static inline void emit_c_enumDeclaration(astNode *n, ast *tree) {
 
 	astSymbol *en = (astSymbol*)n->data;
 
-	print_c_type(en->type, en);
+	print_c_type(en->type, NULL);
 
 	fprintf (fp, " { ");
 	int count = sb_count(en->namespaceScope->symbols);
