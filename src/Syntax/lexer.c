@@ -72,6 +72,85 @@ static inline node lex_basic_token(lexer *l, enum syntaxKind kind, u8 length) {
 	return t;
 }
 
+node lexer_lex_number_token(lexer *l, diagnosticContainer *d) {
+	node t = {0};
+	int value = 0;
+	int decimalDivisor = -1;
+	t.kind = numberLiteral;
+	int start =  l->index;
+
+	#define BASE10 0
+	#define BASE16 1
+	#define BASE2 2
+	u8 radix = BASE10;
+	if (lexer_peek(l,1) == 'x') radix = BASE16;
+	if (lexer_peek(l,1) == 'b') radix = BASE2;
+
+	if (radix != BASE10) {
+		// skip the 0x and 0b prefix
+		lexer_move_next(l);
+		lexer_move_next(l);
+	} else if (lexer_current(l) == '0' && isNumber(lexer_peek(l,1))) {
+		int leadingZeroCount=1;
+		while(lexer_peek(l,leadingZeroCount) == '0') leadingZeroCount++;
+
+		report_diagnostic(d, leadingZerosOnBase10NumberDiagnostic, textspan_create(l->index,leadingZeroCount), 0, 0, 0);
+		t.kind=badToken;
+	}
+
+	bool foundIllegalCharacter=false;
+	while (isNumber(lexer_current(l)) || lexer_current(l) == '_' || lexer_current(l) == '.' || (radix == BASE16 && isLetter(lexer_current(l)) )) {
+		char nextNum = lexer_move_next(l);
+		if (nextNum == '_') continue;
+		if (nextNum == '.') {
+
+			if (radix != BASE10) {
+				printf("floats should only be base 10\n"); exit(1);
+			}
+
+			if (decimalDivisor != -1) {
+				printf("invalid . in number literal\n"); exit(1);
+			}
+
+			decimalDivisor = 1;
+			continue;
+		}
+
+		if (decimalDivisor != -1) decimalDivisor *= 10;
+
+		switch(radix) {
+			case BASE10: value = value * 10 + parse_numeric_char(nextNum); break;
+			case BASE16: {
+				u8 v = parse_hexadecimal_char(nextNum);
+				if (!foundIllegalCharacter && nextNum != '0' && v == 0) {
+					foundIllegalCharacter=true;
+					report_diagnostic(d, invalidHexadecimalNumberDiagnostic, textspan_create(l->index-1,1), 0, 0, 0);
+					t.kind=badToken;
+				}
+				value = (value << 4) + v; 
+			} break;
+			case BASE2: {
+				if (!foundIllegalCharacter && nextNum != '0' && nextNum != '1') {
+					foundIllegalCharacter=true;
+					report_diagnostic(d, invalidBinaryNumberDiagnostic, textspan_create(l->index-1,1), 0, 0, 0);
+					t.kind=badToken;
+				}
+				value = (value << 1) + parse_binary_char(nextNum); 
+			} break;
+		}
+	}
+	t.span = textspan_create(start, l->index - start);
+
+	if (decimalDivisor != -1) {
+		t.kind = floatLiteral;
+		t.floatValue = (float)value / (float)decimalDivisor;
+	} else {
+		t.numValue = value;
+	}
+
+	return t;
+}
+
 node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 	node t = {0};
 	char current = lexer_current(l);
@@ -167,7 +246,8 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 	case ':': return lex_basic_token(l, colonToken, 1);
 	case ';': return lex_basic_token(l, semicolonToken, 1);
 	case ',': return lex_basic_token(l, commaToken, 1);
-	case '.': if (lexer_peek(l,1) == '.') return lex_basic_token(l, dotDotToken, 2);
+	case '.': if (isNumber(lexer_peek(l,1))) return lexer_lex_number_token(l,d);
+			  else if (lexer_peek(l,1) == '.') return lex_basic_token(l, dotDotToken, 2);
 			  else return lex_basic_token(l, dotToken, 1);
 
 	case '(': return lex_basic_token(l, openParenthesisToken, 1);
@@ -232,83 +312,8 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 		sb_free(sb);
 	} break;
 
-	case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': {
-		int value = 0;
-		int decimalDivisor = -1;
-		t.kind = numberLiteral;
-		start =  l->index;
-
-		#define BASE10 0
-		#define BASE16 1
-		#define BASE2 2
-		u8 radix = BASE10;
-		if (lexer_peek(l,1) == 'x') radix = BASE16;
-		if (lexer_peek(l,1) == 'b') radix = BASE2;
-
-		if (radix != BASE10) {
-			// skip the 0x and 0b prefix
-			lexer_move_next(l);
-			lexer_move_next(l);
-		} else if (lexer_current(l) == '0' && isNumber(lexer_peek(l,1))) {
-			int leadingZeroCount=1;
-			while(lexer_peek(l,leadingZeroCount) == '0') leadingZeroCount++;
-
-			report_diagnostic(d, leadingZerosOnBase10NumberDiagnostic, textspan_create(l->index,leadingZeroCount), 0, 0, 0);
-			t.kind=badToken;
-		}
-
-		bool foundIllegalCharacter=false;
-		while (isNumber(lexer_current(l)) || lexer_current(l) == '_' || lexer_current(l) == '.' || (radix == BASE16 && isLetter(lexer_current(l)) )) {
-			char nextNum = lexer_move_next(l);
-			if (nextNum == '_') continue;
-			if (nextNum == '.') {
-
-				if (radix != BASE10) {
-					printf("floats should only be base 10\n"); exit(1);
-				}
-
-				if (decimalDivisor != -1) {
-					printf("invalid . in number literal\n"); exit(1);
-				}
-
-				decimalDivisor = 1;
-				continue;
-			}
-
-			if (decimalDivisor != -1) decimalDivisor *= 10;
-
-			switch(radix) {
-				case BASE10: value = value * 10 + parse_numeric_char(nextNum); break;
-				case BASE16: {
-					u8 v = parse_hexadecimal_char(nextNum);
-					if (!foundIllegalCharacter && nextNum != '0' && v == 0) {
-						foundIllegalCharacter=true;
-						report_diagnostic(d, invalidHexadecimalNumberDiagnostic, textspan_create(l->index-1,1), 0, 0, 0);
-						t.kind=badToken;
-					}
-					value = (value << 4) + v; 
-				} break;
-				case BASE2: {
-					if (!foundIllegalCharacter && nextNum != '0' && nextNum != '1') {
-						foundIllegalCharacter=true;
-						report_diagnostic(d, invalidBinaryNumberDiagnostic, textspan_create(l->index-1,1), 0, 0, 0);
-						t.kind=badToken;
-					}
-					value = (value << 1) + parse_binary_char(nextNum); 
-				} break;
-			}
-		}
-		t.span = textspan_create(start, l->index - start);
-
-		if (decimalDivisor != -1) {
-			t.kind = floatLiteral;
-			t.floatValue = (float)value / (float)decimalDivisor;
-		} else {
-			t.numValue = value;
-		}
-		break;
-	}
-
+	case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': 
+		return lexer_lex_number_token(l,d);
 	case ' ': case '\t':
 		t.kind = whitespaceToken;
 		start =  l->index;
