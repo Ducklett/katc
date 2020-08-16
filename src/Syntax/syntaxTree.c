@@ -512,12 +512,16 @@ typedef struct forLoopNode {
 
 // used in function declarations
 // `refKeyword` is optional and used to pass values by reference
+// `initializer` is optional and used for optional parameters
 // ref x: int
+// print: bool = true
 typedef struct typedIdentifierNode {
 	node refKeyword;
 	node identifier;
 	node colon;
 	node type;
+	node equalsToken;
+	node initializer;
 } typedIdentifierNode;
 
 // fn greet() { print("hello world\n") }

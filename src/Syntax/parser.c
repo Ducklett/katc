@@ -478,17 +478,25 @@ node parser_parse_variable_assignment(parser *p, diagnosticContainer *d, node id
 	return (node) { variableAssignment, textspan_from_bounds(&identifier, &expression), .data = assignment };
 }
 
-node parse_typed_identifier(parser *p, diagnosticContainer *d) {
+node parse_function_parameter(parser *p, diagnosticContainer *d) {
 	node refNode = {0};
 	if (parser_current(p,d).kind == refKeyword) refNode = parser_match_token(p, d, refKeyword);
 	node identifier = parser_match_token(p, d, identifierToken);
 	node colon = parser_match_token(p, d, colonToken);
 	node type = parser_parse_type(p, d);
 
-	typedIdentifierNode *id = arena_malloc(parser_arena, sizeof(typedIdentifierNode));
-	*id = (typedIdentifierNode){ refNode, identifier, colon, type };
+	node equalsNode = {0};
+	node initializer = {0};
 
-	return (node) { typedIdentifier, textspan_from_bounds(&identifier, &type), .data = id, };
+	if (parser_current(p,d).kind == equalsToken) {
+		equalsNode = parser_match_token(p,d,equalsToken);
+		initializer = parser_parse_expression(p,d);
+	}
+
+	typedIdentifierNode *id = arena_malloc(parser_arena, sizeof(typedIdentifierNode));
+	*id = (typedIdentifierNode){ refNode, identifier, colon, type, equalsNode, initializer };
+
+	return (node) { typedIdentifier, textspan_from_bounds(&identifier, &(initializer.kind ? initializer : type)), .data = id, };
 }
 
 node* parse_function_parameters(parser *p, diagnosticContainer *d, u16 *paramCount) {
@@ -497,7 +505,7 @@ node* parse_function_parameters(parser *p, diagnosticContainer *d, u16 *paramCou
 	if (parser_current(p,d).kind == closeParenthesisToken) goto end;
 	while (true) {
 
-		sb_push(parameters, parse_typed_identifier(p, d));
+		sb_push(parameters, parse_function_parameter(p, d));
 
 		node cur = parser_current(p,d);
 		if (cur.kind == closeParenthesisToken || cur.kind == endOfFileToken) break;

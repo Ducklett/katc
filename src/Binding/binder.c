@@ -534,6 +534,14 @@ astNode bind_function_declaration(node *n, ast *tree) {
 			hasErrors = true;
 			goto end;
 		}
+
+		if (id.initializer.kind) {
+			param->flags |= PARAMETER_OPTIONAL;
+			astNode *initStore = arena_malloc(binder_arena, sizeof(astNode));
+			*initStore = bind_expression_of_type(&id.initializer,tree,param->type, id.initializer.span);
+			param->data = initStore;
+		}
+
 		sb_push(params, param);
 	}
 
@@ -808,7 +816,8 @@ astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 
 	functionSymbolData *fd = function->functionData;
 
-	if (fd->parameterCount != nodesCount && !isPrint) {
+	bool hasOptionals = nodesCount < fd->parameterCount && (fd->parameters[nodesCount]->flags & PARAMETER_OPTIONAL);
+	if (fd->parameterCount != nodesCount && !isPrint && !hasOptionals) {
 		report_diagnostic(&tree->diagnostics, argCountDoensntMatchDiagnostic, cn.identifier.span, (u64)function->name, 0, 0);
 		hasErrors = true;
 		goto end;
@@ -833,6 +842,14 @@ astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 			} 
 			sb_push(arguments, bind_expression_of_type(&expr, tree, fd->parameters[i/2]->type, cn.arguments[i].span));
 		}
+	}
+
+	if (hasOptionals) {
+		for (int i = nodesCount; i < fd->parameterCount; i++) {
+			sb_push(arguments, *(astNode*)fd->parameters[i]->data);
+		}
+
+		nodesCount = fd->parameterCount;
 	}
 
 
