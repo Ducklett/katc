@@ -1685,8 +1685,7 @@ astNode fold_cast_expression(astType from, astType to, astNode *literal) {
 		}
 	}
 
-	if (to.kind == floatType) return (astNode){ literalKind, to, .floatValue = fvalue };
-	return (astNode){ literalKind, to, .numValue = value };
+	return resultNode;
 }
 
 bool check_bounds(astNode n, diagnosticContainer *d, textspan span) {

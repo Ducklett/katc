@@ -576,7 +576,7 @@ static inline void emit_c_constructorExpression(astNode *n, ast *tree) {
 
 static inline void emit_c_castExpression(astNode *n, ast *tree) {
 	astNode cn = *(astNode*)n->data;
-	fprintf(fp,"((%s)", cTypeText[n->type.kind]);
+	fprintf(fp,"(%s)(", cTypeText[n->type.kind]);
 	emit_c_node(&cn, tree);
 	fprintf(fp,")");
 }

@@ -1,0 +1,78 @@
+
+// translation of raytracing in one weekend
+// https://raytracing.github.io/books/RayTracingInOneWeekend.html
+
+extern Math :: "math" {
+	fn sqrt(x:float) -> float
+}
+
+struct vec2{ x:float ; y:float }
+struct vec3{ x:float ; y:float ; z:float }
+
+fn vec3_add(a:vec3, b:vec3) => vec3(a.x + b.x, a.y + b.y, a.z + b.z)
+fn vec3_subtract(a:vec3, b:vec3) => vec3(a.x - b.x, a.y - b.y, a.z - b.z)
+fn vec3_divide(a:vec3, b:vec3) => vec3(a.x / b.x, a.y / b.y, a.z / b.z)
+fn vec3_multiply(a:vec3, b:vec3) => vec3(a.x * b.x, a.y * b.y, a.z * b.z)
+
+fn vec3_dividef(a:vec3, b:float) => vec3(a.x / b, a.y / b, a.z / b)
+fn vec3_multiplyf(a:vec3, b:float) => vec3(a.x * b, a.y * b, a.z * b)
+
+fn vec3_length_squared(v:vec3) => v.x * v.x + v.y * v.y + v.z * v.z
+fn vec3_length(v:vec3) => Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
+fn vec3_lerp(a: vec3, b:vec3, t:float) => vec3_add(vec3_multiplyf(a, 1-t), vec3_multiplyf(b,t)) 
+
+fn vec3_dot(a:vec3, b:vec3) => a.x * b.x + a.y * b.y + a.z * b.z
+fn cross(a:vec3, b:vec3) => vec3(
+	a.y * b.z - a.z * b.y,
+    a.z * b.x - a.x * b.z,
+    a.x * b.y - a.y * b.x);
+fn unit_vector(v: vec3) => vec3_dividef(v, vec3_length(v)) 
+
+typedef color :: vec3
+
+fn write_color(c:color) =>
+	print("%d %d %d\n", int(c.x*255), int(c.y*255), int(c.z*255))
+
+struct ray { origin: vec3 ; direction: vec3 }
+
+fn ray_at(r:ray, t:float) => vec3_add(r.origin, vec3_multiplyf(r.direction, t))
+
+fn hit_sphere(ref p: vec3, radius: float, ref r: ray) -> bool {
+	oc := vec3_subtract(r.origin, p);
+	a := vec3_dot(r.direction, r.direction)
+	b := 2. * vec3_dot(oc, r.direction)
+	c := vec3_dot(oc, oc) - radius*radius
+	discriminant := b*b - 4*a*c
+	return (discriminant > 0)
+}
+
+fn ray_color(ref r: ray) -> color {
+	if hit_sphere(vec3(0.,0.,-1.), .5, r) return color(1., 0., 0.)
+
+	unit_direction := unit_vector(r.direction)
+	t := unit_direction.y*.5+.5
+	return vec3_lerp(color(1.,1.,1.), color(.5,.7,1.), t)
+}
+
+// Image
+ASPECT_RATIO :: 16. / 9.
+WIDTH :: 400
+HEIGHT :: int(WIDTH / ASPECT_RATIO)
+
+// Camera
+VIEWPORT_HEIGHT :: 2.
+VIEWPORT_WIDTH :: ASPECT_RATIO * VIEWPORT_HEIGHT
+FOCAL_LENGTH :: 1.
+
+ORIGIN :: vec3(0., 0., 0.)
+LOWER_LEFT_CORNER :: vec3_subtract(ORIGIN, vec3(VIEWPORT_WIDTH/2, VIEWPORT_HEIGHT/2, FOCAL_LENGTH)) 
+
+// Render
+print("P3 %d %d 255\n", WIDTH, HEIGHT)
+for y in HEIGHT-1 for x in WIDTH-1 {
+	u := float(x) / (WIDTH-1)
+	v := 1 - float(y) / (HEIGHT-1)
+	direction := vec3_add(LOWER_LEFT_CORNER, vec3_subtract(vec3(u * VIEWPORT_WIDTH, v * VIEWPORT_HEIGHT, 0.), ORIGIN)) 
+	r := ray(ORIGIN, direction)
+	write_color(ray_color(r))
+}
