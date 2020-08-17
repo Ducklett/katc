@@ -527,6 +527,8 @@ astNode bind_function_declaration(node *n, ast *tree) {
 	bool hasErrors = false;
 	astSymbol** nodesStorage = NULL;
 
+	bool optionalsStarted = false;
+
 	for (int i=0;i<fn.parameterCount;i+=2) {
 		typedIdentifierNode id = *(typedIdentifierNode*)fn.parameters[i].data;
 		astSymbol *param = declare_variable(tree, id.identifier.span,  bind_type(&id.type, tree, NULL), VARIABLE_INITIALIZED | (id.refKeyword.kind != 0 ? VARIABLE_REFERENCE : 0));
@@ -536,10 +538,13 @@ astNode bind_function_declaration(node *n, ast *tree) {
 		}
 
 		if (id.initializer.kind) {
+			optionalsStarted = true;
 			param->flags |= PARAMETER_OPTIONAL;
 			astNode *initStore = arena_malloc(binder_arena, sizeof(astNode));
 			*initStore = bind_expression_of_type(&id.initializer,tree,param->type, id.initializer.span);
 			param->data = initStore;
+		} else if (optionalsStarted) {
+			panic("requires parameters must come before optional ones");
 		}
 
 		sb_push(params, param);
@@ -823,6 +828,8 @@ astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 		goto end;
 	}
 
+	int optionalArgsStart = 0;
+
 	// skip the comma tokens
 	for (int i=0;i<cn.argumentCount;i+=2) {
 		if (isPrint) {
@@ -833,6 +840,13 @@ astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 			}
 		} else {
 			node expr = cn.arguments[i];
+
+			if (fd->parameters[i/2]->flags & PARAMETER_OPTIONAL) {
+				hasOptionals = true;
+				optionalArgsStart = i;
+				break;
+			}
+
 			if (cn.arguments[i].kind == namedArgument) {
 				namedArgumentNode nn = *(namedArgumentNode*)expr.data;
 				expr = nn.value;
@@ -845,8 +859,34 @@ astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 	}
 
 	if (hasOptionals) {
-		for (int i = nodesCount; i < fd->parameterCount; i++) {
-			sb_push(arguments, *(astNode*)fd->parameters[i]->data);
+		for (int i = optionalArgsStart/2; i < fd->parameterCount; i++) {
+			bool argumentProvided = false;
+
+			if (cn.argumentCount > i*2 && cn.arguments[i*2].kind != namedArgument && cn.arguments[i*2].kind != 0) {
+				argumentProvided = true;
+				sb_push(arguments, bind_expression_of_type(&cn.arguments[i*2], tree, fd->parameters[i]->type, cn.arguments[i*2].span));
+				cn.arguments[i*2].kind = 0;
+			}
+
+			for (int j = optionalArgsStart; j < cn.argumentCount; j+=2) {
+				node expr = cn.arguments[j];
+				if (!expr.kind) continue;
+				namedArgumentNode nn = *(namedArgumentNode*)expr.data;
+				expr = nn.value;
+				if (span_compare(tree->text, nn.name.span, fd->parameters[i]->name)) {
+					argumentProvided = true;
+					sb_push(arguments, bind_expression_of_type(&expr, tree, fd->parameters[i]->type, cn.arguments[j].span));
+					cn.arguments[j].kind = 0;
+					break;
+				}
+			}
+			if (!argumentProvided) sb_push(arguments, *(astNode*)fd->parameters[i]->data);
+		}
+
+		for (int i = optionalArgsStart; i < cn.argumentCount; i+=2) {
+			if (cn.arguments[i].kind) {
+				panic("No match was found for argument %d in call to %s", i/2, function->name);
+			}
 		}
 
 		nodesCount = fd->parameterCount;
