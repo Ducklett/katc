@@ -7,6 +7,20 @@ extern Math :: "math" {
 	INFINITY:float
 }
 
+extern Std :: "stdlib" {
+	fn rand() -> int
+	RAND_MAX:int
+}
+
+fn rand01() => float(Std.rand()) / Std.RAND_MAX
+fn random_range(min: float, max:float) => min + (max - min) * rand01()
+
+fn clamp(v: float, min: float, max:float) -> float { case {
+	v > max: return max
+	v < min: return min
+	default: return v
+}}
+
 struct vec2{ x:float ; y:float }
 struct vec3{ x:float ; y:float ; z:float }
 
@@ -34,8 +48,10 @@ fn unit_vector(v: vec3) => vec3_dividef(v, vec3_length(v))
 
 typedef color :: vec3
 
-fn write_color(c:color) =>
-	print("%d %d %d\n", int(c.x*255), int(c.y*255), int(c.z*255))
+fn write_color(c:color) => print("%d %d %d\n",
+	int(clamp(c.x, 0., .999) * 256),
+	int(clamp(c.y, 0., .999) * 256),
+	int(clamp(c.z, 0., .999) * 256))
 
 struct ray { origin: vec3 ; direction: vec3 }
 
@@ -86,7 +102,7 @@ fn ray_color(ref r: ray) -> color {
 
 	spheres := [
 		sphere(vec3(0.,0.,-1.), .5),
-		sphere(vec3(0.,-5.,-1.), 10.), ]
+		sphere(vec3(0.,-101.0,-1.), 100.), ]
 
 	temp_rec:hit_record
 	hit_anything := false
@@ -111,21 +127,31 @@ fn ray_color(ref r: ray) -> color {
 ASPECT_RATIO :: 16. / 9.
 WIDTH :: 400
 HEIGHT :: int(WIDTH / ASPECT_RATIO)
+SAMPLES_PER_PIXEL :: 100
 
 // Camera
-VIEWPORT_HEIGHT :: 2.
-VIEWPORT_WIDTH :: ASPECT_RATIO * VIEWPORT_HEIGHT
-FOCAL_LENGTH :: 1.
+fn get_ray(u: float, v:float) -> ray {
+	VIEWPORT_HEIGHT :: 2.
+	VIEWPORT_WIDTH :: ASPECT_RATIO * VIEWPORT_HEIGHT
+	FOCAL_LENGTH :: 1.
 
-ORIGIN :: vec3(0., 0., 0.)
-LOWER_LEFT_CORNER :: vec3_subtract(ORIGIN, vec3(VIEWPORT_WIDTH/2, VIEWPORT_HEIGHT/2, FOCAL_LENGTH)) 
+	ORIGIN :: vec3(0., 0., 0.)
+	LOWER_LEFT_CORNER :: vec3_subtract(ORIGIN, vec3(VIEWPORT_WIDTH/2, VIEWPORT_HEIGHT/2, FOCAL_LENGTH)) 
+
+	return ray(ORIGIN, direction: vec3_add(LOWER_LEFT_CORNER, vec3_subtract(vec3(u * VIEWPORT_WIDTH, v * VIEWPORT_HEIGHT, 0.), ORIGIN)) )
+}
 
 // Render
 print("P3 %d %d 255\n", WIDTH, HEIGHT)
 for y in HEIGHT-1 for x in WIDTH-1 {
-	u := float(x) / (WIDTH-1)
-	v := 1 - float(y) / (HEIGHT-1)
-	direction := vec3_add(LOWER_LEFT_CORNER, vec3_subtract(vec3(u * VIEWPORT_WIDTH, v * VIEWPORT_HEIGHT, 0.), ORIGIN)) 
-	r := ray(ORIGIN, direction)
-	write_color(ray_color(r))
+
+	c:color
+    for s in SAMPLES_PER_PIXEL-1 {
+		u := float(x + rand01()) / (WIDTH-1) 
+		v := 1 - float(y + rand01()) / (HEIGHT-1) 
+		r := get_ray(u, v)
+		c = vec3_add(c, ray_color(r))
+    }
+
+	write_color(vec3_dividef(c, float(SAMPLES_PER_PIXEL)))
 }

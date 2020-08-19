@@ -566,7 +566,6 @@ astNode bind_function_declaration(node *n, ast *tree) {
 	pop_scope(tree, parentScope);
 
 	astSymbol *function = declare_function(tree, fn.identifier.span, flags, nodesStorage, nodesCount, functionScope);
-	printf("doing %s\n", function->name);
 
 	astNode boundBody = {0};
 

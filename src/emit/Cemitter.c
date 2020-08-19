@@ -212,15 +212,19 @@ void emit_c_node(astNode *n, ast *tree) {
 }
 
 void emit_c_file(astNode *n, ast *tree) {
-	fprintf(fp,"#include <stdio.h>\n#include <string.h>\n");
+	fprintf(fp,"#include <stdio.h>\n#include <string.h>\n#include<time.h>\n");
 	for (int i = 0;i<sb_count(tree->externalLibraries);i++) {
 		fprintf(fp, "#include <%s.h>\n", tree->externalLibraries[i]);
 	}
 	fprintf(fp, "\n");
 
 	emit_c_functions_in_block(n, tree, false);
-	fprintf(fp,"void main() ");
+	fprintf(fp,"void main() {");
+
+	// how about just seeding random so the user doens't have to?
+	fprintf(fp, "time_t t; srand((unsigned) time(&t));");
 	emit_c_node(n,tree);
+	fprintf(fp, "}");
 }
 
 static inline void emit_c_functions_in_block(astNode *n, ast *tree, bool isNamespace) {
@@ -394,7 +398,9 @@ static inline void emit_c_forLoop(astNode *n, ast *tree) {
 		// x = nums[i]
 		// TODO: cache the "range" node so it doesn't get recalculated on every iteration
 		if (fn.range.type.kind == arrayType || fn.range.type.kind == stringType) {
-			fprintf(fp,"%s %s = ", cTypeText[forKind], fn.value->name);
+			print_c_type(fn.value->type, fn.value);
+			//fprintf(fp,"%s %s = ", cTypeText[forKind], fn.value->name);
+			fprintf(fp," = ");
 			emit_c_node(&fn.range, tree);
 			fprintf(fp,"[%s];\n", indexName );
 		}
@@ -539,7 +545,7 @@ static inline void emit_c_callExpression(astNode *n, ast *tree) {
 			bool isReference = fd != NULL && fd->parameters[i]->flags & VARIABLE_REFERENCE;
 			if (isReference) fprintf(fp, "&(");
 			emit_c_node(cn->arguments + i, tree);
-			if (cn->arguments[i].type.kind == boolType) fprintf(fp, " ? \"true\" : \"false\"");
+			if (cn->arguments[i].type.kind == boolType && isPrint) fprintf(fp, " ? \"true\" : \"false\"");
 			if (isReference) fprintf(fp, ")");
 		}
 		if (i != cn->argumentCount-1) fprintf(fp,", ");
@@ -568,7 +574,6 @@ static inline void emit_c_constructorExpression(astNode *n, ast *tree) {
 
 	for (int i= 0; i < cn->argumentCount; i++) {
 		emit_c_node(cn->arguments + i, tree);
-		if (cn->arguments[i].type.kind == boolType) fprintf(fp, " ? \"true\" : \"false\"");
 		if (i != cn->argumentCount-1) fprintf(fp,", ");
 	}
 	fprintf(fp,"})");
