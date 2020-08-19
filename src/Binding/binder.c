@@ -40,7 +40,7 @@ scope* push_scope(ast *tree);
 scope* push_scope_and_get_reference(ast *tree, scope **outScope);
 void pop_scope(ast *tree, scope* parentScope);
 void declare_builtin_function(ast *tree, char* name);
-astSymbol* find_symbol_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope, u8 symbolKind, u8 flags);
+astSymbol* find_symbol_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope, u8 symbolKind, u8 flags, scope **outScope);
 astType bind_type(node *n, ast *tree, scope *typeScope);
 astType resolve_type_reference(node *n, ast *tree, scope *typeScope, bool throw);
 astNode resolve_symbol_reference(node *n, ast *tree);
@@ -202,17 +202,24 @@ astNode bind_struct_reference(node *n, ast *tree, scope *targetScope) {
 	binaryExpressionNode *bn = (binaryExpressionNode*)n->data;
 
 	astNode boundLeft = bind_expression_in_scope(&bn->left, tree, targetScope);
+	astNode boundRight;
+	structReferenceAst *refNode;
+
+	bool hasErrors = boundLeft.type.kind == errorType;
+
+	if (hasErrors) goto end;
 
 	if (boundLeft.type.kind != structType) {
-		printf("expected left to be a struct");
-		exit(1);
+		panic("expected left to be a struct but it is %s", astKindText[boundLeft.type.kind]);
 	}
-	astNode boundRight = bind_expression_in_scope(&bn->right, tree, boundLeft.type.declaration->namespaceScope);
+	boundRight = bind_expression_in_scope(&bn->right, tree, boundLeft.type.declaration->namespaceScope);
 
-	structReferenceAst *refNode = arena_malloc(binder_arena, sizeof(structReferenceAst));
+	refNode = arena_malloc(binder_arena, sizeof(structReferenceAst));
 	*refNode = (structReferenceAst){ boundLeft, boundRight };
 
-	return (astNode){ structReferenceKind, /*hasErrors ? primitive_type_from_kind(errorType) :*/ boundRight.type, .data = refNode };
+	end:;
+
+	return (astNode){ structReferenceKind, hasErrors ? primitive_type_from_kind(errorType) : boundRight.type, .data = refNode };
 }
 
 astNode bind_block_statement(node *n, ast *tree, scope *withScope) {
@@ -559,6 +566,7 @@ astNode bind_function_declaration(node *n, ast *tree) {
 	pop_scope(tree, parentScope);
 
 	astSymbol *function = declare_function(tree, fn.identifier.span, flags, nodesStorage, nodesCount, functionScope);
+	printf("doing %s\n", function->name);
 
 	astNode boundBody = {0};
 
@@ -991,11 +999,16 @@ astNode bind_variable_declaration(node *n, ast *tree) {
 		? VARIABLE_MUTABLE
 		: 0;
 
-	if (tree->currentNamespace == NULL || tree->currentNamespace->symbolKind == SYMBOL_NAMESPACE | tree->currentNamespace->symbolKind == SYMBOL_STRUCT)
+	if (tree->currentNamespace == NULL ||
+		tree->currentNamespace->symbolKind == SYMBOL_NAMESPACE ||
+		tree->currentNamespace->symbolKind == SYMBOL_STRUCT || 
+		tree->currentNamespace->symbolKind == SYMBOL_EXTERN)
 		flags |= VARIABLE_GLOBAL;
 
 	astType type =  {0};
 	if (vn.type.kind != 0) type = bind_type(&vn.type, tree, NULL);
+
+	if (type.kind == structType) flags |= VARIABLE_INITIALIZED;
 
 	if (hasInitializer) {
 		boundInitializer = type.kind != 0
@@ -1317,7 +1330,7 @@ astType resolve_type_reference(node *n, ast *tree, scope *typeScope, bool throw)
 			node namespace = bn->left;
 			textspan namespan = namespace.span;
 
-			astSymbol *symbol  = find_symbol_in_scope_internal(namespan, tree, outScope, SYMBOL_NAMESPACE, throw?FLAG_THROW:0);
+			astSymbol *symbol  = find_symbol_in_scope_internal(namespan, tree, outScope, SYMBOL_NAMESPACE, throw?FLAG_THROW:0, NULL);
 
 			if (symbol == NULL) {
 				foundInScope = false;
@@ -1346,7 +1359,7 @@ astType resolve_type_reference(node *n, ast *tree, scope *typeScope, bool throw)
 
 	textspan symbolName = n->span;
 
-	if (outScope != NULL) foundSymbol = find_symbol_in_scope_internal(symbolName, tree, outScope, SYMBOL_ANY, throw?FLAG_THROW:0);
+	if (outScope != NULL) foundSymbol = find_symbol_in_scope_internal(symbolName, tree, outScope, SYMBOL_ANY, throw?FLAG_THROW:0, NULL);
 
 	if (foundSymbol == NULL) return (astType){0};
 
@@ -1379,7 +1392,7 @@ astNode resolve_symbol_reference(node *n, ast *tree) {
 			node namespace = bn->left;
 			textspan namespan = namespace.span;
 
-			astSymbol *symbol = find_symbol_in_scope_internal(namespan, tree, outScope, SYMBOL_ANY, FLAG_NONE);
+			astSymbol *symbol = find_symbol_in_scope_internal(namespan, tree, outScope, SYMBOL_ANY, i==0?FLAG_RECURSE:FLAG_NONE, &outScope);
 
 			if (symbol == NULL) {
 				foundInScope = false;
@@ -1443,7 +1456,7 @@ astSymbol* declare_namespace(ast *tree, node *n, u8 flags) {
 			n = NULL;
 		}
 
-		astSymbol *newSymbol  = find_symbol_in_scope_internal(namespan, tree, currentScope, SYMBOL_NAMESPACE, FLAG_NONE);
+		astSymbol *newSymbol  = find_symbol_in_scope_internal(namespan, tree, currentScope, SYMBOL_NAMESPACE, FLAG_NONE, NULL);
 		if (newSymbol != NULL) {
 			symbol = newSymbol;
 		} else {
@@ -1517,32 +1530,33 @@ astSymbol* declare_enum_member(ast *tree, textspan nameSpan, astSymbol *enumSymb
 }
 
 astSymbol* find_variable_in_scope(textspan nameSpan, ast *tree, scope *currentScope) {
-	return find_symbol_in_scope_internal(nameSpan, tree, currentScope == NULL ? tree->currentScope : currentScope, SYMBOL_VARIABLE, (currentScope == NULL ? FLAG_RECURSE : FLAG_NONE) | FLAG_THROW);
+	return find_symbol_in_scope_internal(nameSpan, tree, currentScope == NULL ? tree->currentScope : currentScope, SYMBOL_VARIABLE, (currentScope == NULL ? FLAG_RECURSE : FLAG_NONE) | FLAG_THROW, NULL);
 }
 
 astSymbol* find_enum_in_scope(node *n, ast *tree, scope *currentScope, bool prefix) {
 	if (prefix) {
 		binaryExpressionNode bn = *(binaryExpressionNode*)n->data;
-		astSymbol *enumSymbol = find_symbol_in_scope_internal(bn.left.span, tree, currentScope, SYMBOL_ENUM, FLAG_NONE | FLAG_THROW);
+		astSymbol *enumSymbol = find_symbol_in_scope_internal(bn.left.span, tree, currentScope, SYMBOL_ENUM, FLAG_NONE | FLAG_THROW, NULL);
 		if (enumSymbol == NULL) return NULL;
-		return find_symbol_in_scope_internal(bn.right.span, tree, enumSymbol->namespaceScope, SYMBOL_ENUM_MEMBER, FLAG_NONE | FLAG_THROW);
+		return find_symbol_in_scope_internal(bn.right.span, tree, enumSymbol->namespaceScope, SYMBOL_ENUM_MEMBER, FLAG_NONE | FLAG_THROW, NULL);
 	} else {
-		return find_symbol_in_scope_internal(n->span, tree, currentScope, SYMBOL_ENUM_MEMBER, FLAG_NONE | FLAG_THROW);
+		return find_symbol_in_scope_internal(n->span, tree, currentScope, SYMBOL_ENUM_MEMBER, FLAG_NONE | FLAG_THROW, NULL);
 	}
 }
 
 astSymbol* find_enum_type_in_scope(textspan nameSpan, ast *tree, scope *currentScope) {
-	return find_symbol_in_scope_internal(nameSpan, tree, currentScope, SYMBOL_ENUM, FLAG_NONE);
+	return find_symbol_in_scope_internal(nameSpan, tree, currentScope, SYMBOL_ENUM, FLAG_NONE, NULL);
 }
 
 astSymbol* find_function_in_scope(textspan nameSpan, ast *tree, scope *currentScope, bool recurse) {
-	return find_symbol_in_scope_internal(nameSpan, tree, currentScope, SYMBOL_FUNCTION, recurse | FLAG_THROW);
+	return find_symbol_in_scope_internal(nameSpan, tree, currentScope, SYMBOL_FUNCTION, recurse | FLAG_THROW, NULL);
 }
 
-astSymbol* find_symbol_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope, u8 symbolKind, u8 flags) {
+astSymbol* find_symbol_in_scope_internal(textspan nameSpan, ast *tree, scope *currentScope, u8 symbolKind, u8 flags, scope **outScope) {
 	for (int i = 0; i < sb_count(currentScope->symbols); i++) {
 		if (span_compare(tree->text, nameSpan, currentScope->symbols[i]->name)) {
 			if (currentScope->symbols[i]->symbolKind == symbolKind || symbolKind == SYMBOL_ANY) {
+				if (outScope != NULL) *outScope = currentScope;
 				return currentScope->symbols[i];
 			} else {
 				printf("%s is of kind %d, expected %d\n", currentScope->symbols[i]->name, currentScope->symbols[i]->symbolKind, symbolKind);
@@ -1556,7 +1570,7 @@ astSymbol* find_symbol_in_scope_internal(textspan nameSpan, ast *tree, scope *cu
 		return 0;
 	}
 
-	return find_symbol_in_scope_internal(nameSpan, tree, currentScope->parentScope, symbolKind, flags);
+	return find_symbol_in_scope_internal(nameSpan, tree, currentScope->parentScope, symbolKind, flags, outScope);
 }
 
 astNode fold_binary_expression(typedOperator *op, astNode *leftNode, astNode *rightNode) {

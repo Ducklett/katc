@@ -4,6 +4,7 @@
 
 extern Math :: "math" {
 	fn sqrt(x:float) -> float
+	INFINITY:float
 }
 
 struct vec2{ x:float ; y:float }
@@ -14,12 +15,15 @@ fn vec3_subtract(a:vec3, b:vec3) => vec3(a.x - b.x, a.y - b.y, a.z - b.z)
 fn vec3_divide(a:vec3, b:vec3) => vec3(a.x / b.x, a.y / b.y, a.z / b.z)
 fn vec3_multiply(a:vec3, b:vec3) => vec3(a.x * b.x, a.y * b.y, a.z * b.z)
 
+fn vec3_addf(a:vec3, b:float) => vec3(a.x + b, a.y + b, a.z + b)
+fn vec3_subtractf(a:vec3, b:float) => vec3(a.x - b, a.y - b, a.z - b)
 fn vec3_dividef(a:vec3, b:float) => vec3(a.x / b, a.y / b, a.z / b)
 fn vec3_multiplyf(a:vec3, b:float) => vec3(a.x * b, a.y * b, a.z * b)
 
 fn vec3_length_squared(v:vec3) => v.x * v.x + v.y * v.y + v.z * v.z
 fn vec3_length(v:vec3) => Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
 fn vec3_lerp(a: vec3, b:vec3, t:float) => vec3_add(vec3_multiplyf(a, 1-t), vec3_multiplyf(b,t)) 
+fn vec3_invert(v:vec3) => vec3_subtract(vec3(0.,0.,0.), v)
 
 fn vec3_dot(a:vec3, b:vec3) => a.x * b.x + a.y * b.y + a.z * b.z
 fn cross(a:vec3, b:vec3) => vec3(
@@ -37,17 +41,66 @@ struct ray { origin: vec3 ; direction: vec3 }
 
 fn ray_at(r:ray, t:float) => vec3_add(r.origin, vec3_multiplyf(r.direction, t))
 
-fn hit_sphere(ref p: vec3, radius: float, ref r: ray) -> bool {
-	oc := vec3_subtract(r.origin, p);
-	a := vec3_dot(r.direction, r.direction)
-	b := 2. * vec3_dot(oc, r.direction)
-	c := vec3_dot(oc, oc) - radius*radius
-	discriminant := b*b - 4*a*c
-	return (discriminant > 0)
+struct hit_record { p: vec3 ; normal: vec3 ; t: float ; front_face: bool }
+
+fn set_face_normal(ref h:hit_record, ref r:ray, ref outward_normal:vec3) {
+	h.front_face = vec3_dot(r.direction, outward_normal) < 0
+	h.normal = h.front_face ? outward_normal : vec3_invert(outward_normal)
+}
+
+struct sphere { position: vec3 ; radius: float }
+
+fn sphere_hit(ref s: sphere, ref r: ray, t_min: float, t_max: float, ref rec: hit_record) -> bool {
+	oc:vec3 = vec3_subtract(r.origin, s.position);
+	a := vec3_length_squared(r.direction)
+	half_b := vec3_dot(oc, r.direction)
+	c := vec3_length_squared(oc) - s.radius*s.radius
+	discriminant:float = half_b*half_b - a*c
+
+	if (discriminant <= 0.) return false
+	
+	root := Math.sqrt(discriminant)
+
+	temp := (-half_b - root) / a
+	if (temp < t_max && temp > t_min) {
+		rec.t = temp
+		rec.p = ray_at(r, temp)
+		outward_normal := vec3_dividef(vec3_subtract(rec.p, s.position), s.radius)
+		set_face_normal(rec, r, outward_normal)
+		return true
+	}
+
+	temp = (-half_b + root) / a
+	if (temp < t_max && temp > t_min) {
+		rec.t = temp
+		rec.p = ray_at(r, temp)
+		outward_normal := vec3_dividef(vec3_subtract(rec.p, s.position), s.radius)
+		set_face_normal(rec, r, outward_normal)
+		return true
+	}
+	
+	return false
 }
 
 fn ray_color(ref r: ray) -> color {
-	if hit_sphere(vec3(0.,0.,-1.), .5, r) return color(1., 0., 0.)
+
+	spheres := [
+		sphere(vec3(0.,0.,-1.), .5),
+		sphere(vec3(0.,-5.,-1.), 10.), ]
+
+	temp_rec:hit_record
+	hit_anything := false
+	closest_so_far := Math.INFINITY
+	for s in  spheres {
+		if (sphere_hit(s, r, 0., closest_so_far, temp_rec)) {
+			hit_anything = true
+			closest_so_far = temp_rec.t
+		}
+	}
+
+	if (hit_anything) {
+		return vec3_addf(vec3_multiplyf(temp_rec.normal, .5), .5) 
+	}
 
 	unit_direction := unit_vector(r.direction)
 	t := unit_direction.y*.5+.5
