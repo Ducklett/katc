@@ -2,9 +2,20 @@
 // translation of raytracing in one weekend
 // https://raytracing.github.io/books/RayTracingInOneWeekend.html
 
+// Image
+ASPECT_RATIO :: 16. / 9.
+WIDTH :: 400
+HEIGHT :: int(WIDTH / ASPECT_RATIO)
+SAMPLES_PER_PIXEL :: 100
+
+MAX_DEPTH :: 50
+
 extern Math :: "math" {
 	fn sqrt(x:float) -> float
+	fn sin(a:float) -> float
+	fn cos(a:float) -> float
 	INFINITY:float
+	M_PI:float
 }
 
 extern Std :: "stdlib" {
@@ -13,7 +24,7 @@ extern Std :: "stdlib" {
 }
 
 fn rand01() => float(Std.rand()) / Std.RAND_MAX
-fn random_range(min: float, max:float) => min + (max - min) * rand01()
+fn random_range(min: float = 0., max:float = 1.) => min + (max - min) * rand01()
 
 fn clamp(v: float, min: float, max:float) -> float { case {
 	v > max: return max
@@ -21,8 +32,8 @@ fn clamp(v: float, min: float, max:float) -> float { case {
 	default: return v
 }}
 
-struct vec2{ x:float ; y:float }
-struct vec3{ x:float ; y:float ; z:float }
+struct vec2 { x:float ; y:float }
+struct vec3 { x:float ; y:float ; z:float }
 
 fn vec3_add(a:vec3, b:vec3) => vec3(a.x + b.x, a.y + b.y, a.z + b.z)
 fn vec3_subtract(a:vec3, b:vec3) => vec3(a.x - b.x, a.y - b.y, a.z - b.z)
@@ -46,12 +57,27 @@ fn cross(a:vec3, b:vec3) => vec3(
     a.x * b.y - a.y * b.x);
 fn unit_vector(v: vec3) => vec3_dividef(v, vec3_length(v)) 
 
+fn random_unit_vector() -> vec3 {
+	a := random_range(0., 2 * Math.M_PI);
+	z := random_range(-1., 1.);
+	r := Math.sqrt(1. - z*z)
+	return vec3(r * Math.cos(a), r * Math.sin(a), z)
+}
+
 typedef color :: vec3
 
-fn write_color(c:color) => print("%d %d %d\n",
-	int(clamp(c.x, 0., .999) * 256),
-	int(clamp(c.y, 0., .999) * 256),
-	int(clamp(c.z, 0., .999) * 256))
+fn write_color(c:color) {
+    // Divide the color by the number of samples and gamma-correct for gamma=2.0.
+    scale := 1.0 / SAMPLES_PER_PIXEL;
+    c.x = Math.sqrt(scale * c.x);
+    c.y = Math.sqrt(scale * c.y);
+    c.z = Math.sqrt(scale * c.z);
+
+	print("%d %d %d\n",
+		int(256 * clamp(c.x, 0., .999)),
+		int(256 * clamp(c.y, 0., .999)),
+		int(256 * clamp(c.z, 0., .999)))
+}
 
 struct ray { origin: vec3 ; direction: vec3 }
 
@@ -98,36 +124,33 @@ fn sphere_hit(ref s: sphere, ref r: ray, t_min: float, t_max: float, ref rec: hi
 	return false
 }
 
-fn ray_color(ref r: ray) -> color {
+fn ray_color(ref r: ray, depth:int = MAX_DEPTH) -> color {
+	if (depth <= 0) return color(0.,0.,0.)
 
 	spheres := [
 		sphere(vec3(0.,0.,-1.), .5),
-		sphere(vec3(0.,-101.0,-1.), 100.), ]
+		sphere(vec3(0.,-100.5,-1.), 100.), ]
 
 	temp_rec:hit_record
 	hit_anything := false
 	closest_so_far := Math.INFINITY
 	for s in  spheres {
-		if (sphere_hit(s, r, 0., closest_so_far, temp_rec)) {
+		if (sphere_hit(s, r, 0.001, closest_so_far, temp_rec)) {
 			hit_anything = true
 			closest_so_far = temp_rec.t
 		}
 	}
 
 	if (hit_anything) {
-		return vec3_addf(vec3_multiplyf(temp_rec.normal, .5), .5) 
+		target:vec3 = vec3_add(vec3_add(temp_rec.p, temp_rec.normal), random_unit_vector())
+		bounceRay := ray(temp_rec.p, vec3_subtract(target, temp_rec.p))
+		return vec3_multiplyf(ray_color(bounceRay, depth-1), .5)
 	}
 
 	unit_direction := unit_vector(r.direction)
 	t := unit_direction.y*.5+.5
 	return vec3_lerp(color(1.,1.,1.), color(.5,.7,1.), t)
 }
-
-// Image
-ASPECT_RATIO :: 16. / 9.
-WIDTH :: 400
-HEIGHT :: int(WIDTH / ASPECT_RATIO)
-SAMPLES_PER_PIXEL :: 100
 
 // Camera
 fn get_ray(u: float, v:float) -> ray {
@@ -153,5 +176,5 @@ for y in HEIGHT-1 for x in WIDTH-1 {
 		c = vec3_add(c, ray_color(r))
     }
 
-	write_color(vec3_dividef(c, float(SAMPLES_PER_PIXEL)))
+	write_color(c)
 }
