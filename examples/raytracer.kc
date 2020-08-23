@@ -24,7 +24,7 @@ extern Std :: "stdlib" {
 }
 
 fn rand01() => float(Std.rand()) / Std.RAND_MAX
-fn random_range(min: float = 0., max:float = 1.) => min + (max - min) * rand01()
+fn random_range(min: float = 0, max:float = 1) => min + (max - min) * rand01()
 
 fn clamp(v: float, min: float, max:float) -> float { case {
 	v > max: return max
@@ -59,8 +59,8 @@ fn unit_vector(v: vec3) => vec3_dividef(v, vec3_length(v))
 
 fn random_unit_vector() -> vec3 {
 	a := random_range(0., 2 * Math.M_PI);
-	z := random_range(-1., 1.);
-	r := Math.sqrt(1. - z*z)
+	z := random_range(-1, 1);
+	r := Math.sqrt(1 - z*z)
 	return vec3(r * Math.cos(a), r * Math.sin(a), z)
 }
 
@@ -74,9 +74,9 @@ fn write_color(c:color) {
     c.z = Math.sqrt(scale * c.z);
 
 	print("%d %d %d\n",
-		int(256 * clamp(c.x, 0., .999)),
-		int(256 * clamp(c.y, 0., .999)),
-		int(256 * clamp(c.z, 0., .999)))
+		int(256 * clamp(c.x, 0, .999)),
+		int(256 * clamp(c.y, 0, .999)),
+		int(256 * clamp(c.z, 0, .999)))
 }
 
 struct ray { origin: vec3 ; direction: vec3 }
@@ -99,7 +99,7 @@ fn sphere_hit(ref s: sphere, ref r: ray, t_min: float, t_max: float, ref rec: hi
 	c := vec3_length_squared(oc) - s.radius*s.radius
 	discriminant:float = half_b*half_b - a*c
 
-	if (discriminant <= 0.) return false
+	if (discriminant <= 0) return false
 	
 	root := Math.sqrt(discriminant)
 
@@ -125,11 +125,11 @@ fn sphere_hit(ref s: sphere, ref r: ray, t_min: float, t_max: float, ref rec: hi
 }
 
 fn ray_color(ref r: ray, depth:int = MAX_DEPTH) -> color {
-	if (depth <= 0) return color(0.,0.,0.)
+	if (depth <= 0) return color(0,0,0)
 
 	spheres := [
-		sphere(vec3(0.,0.,-1.), .5),
-		sphere(vec3(0.,-100.5,-1.), 100.), ]
+		sphere(vec3(0,0,-1), .5),
+		sphere(vec3(0,-100.5,-1), 100), ]
 
 	temp_rec:hit_record
 	hit_anything := false
@@ -149,7 +149,7 @@ fn ray_color(ref r: ray, depth:int = MAX_DEPTH) -> color {
 
 	unit_direction := unit_vector(r.direction)
 	t := unit_direction.y*.5+.5
-	return vec3_lerp(color(1.,1.,1.), color(.5,.7,1.), t)
+	return vec3_lerp(color(1,1,1), color(.5,.7,1), t)
 }
 
 // Camera
@@ -158,10 +158,10 @@ fn get_ray(u: float, v:float) -> ray {
 	VIEWPORT_WIDTH :: ASPECT_RATIO * VIEWPORT_HEIGHT
 	FOCAL_LENGTH :: 1.
 
-	ORIGIN :: vec3(0., 0., 0.)
+	ORIGIN :: vec3(0, 0, 0)
 	LOWER_LEFT_CORNER :: vec3_subtract(ORIGIN, vec3(VIEWPORT_WIDTH/2, VIEWPORT_HEIGHT/2, FOCAL_LENGTH)) 
 
-	return ray(ORIGIN, direction: vec3_add(LOWER_LEFT_CORNER, vec3_subtract(vec3(u * VIEWPORT_WIDTH, v * VIEWPORT_HEIGHT, 0.), ORIGIN)) )
+	return ray(ORIGIN, direction: vec3_add(LOWER_LEFT_CORNER, vec3_subtract(vec3(u * VIEWPORT_WIDTH, v * VIEWPORT_HEIGHT, 0), ORIGIN)) )
 }
 
 // Render

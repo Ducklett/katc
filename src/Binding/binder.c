@@ -942,7 +942,17 @@ astNode bind_array_access_expression(node *n, ast *tree, scope *symbolScope) {
 astNode bind_and_cast_expression(node *n, ast *tree, astType toType, bool isExplicit) {
 	astNode bn = bind_expression_internal(n, tree);
 
-	if (n->kind == numberLiteral && toType.kind == floatType) {
+	// the binder folds complex expressions into literals
+	// these expressions should be explicitly cast to floats
+	// so check the incoming node if it is really a literal
+	// instead of checking the bound node
+	// 
+	// basic unary expressions (-1) should also be treated as literals
+	bool isLiteral = n->kind == numberLiteral ||
+		(n->kind == unaryExpression &&
+		 ((unaryExpressionNode*)n->data)->operand.kind == numberLiteral);
+
+	if (isLiteral && toType.kind == floatType) {
 		return fold_cast_expression(bn.type, toType, &bn);
 	}
 
