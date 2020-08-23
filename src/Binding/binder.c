@@ -941,6 +941,11 @@ astNode bind_array_access_expression(node *n, ast *tree, scope *symbolScope) {
 
 astNode bind_and_cast_expression(node *n, ast *tree, astType toType, bool isExplicit) {
 	astNode bn = bind_expression_internal(n, tree);
+
+	if (n->kind == numberLiteral && toType.kind == floatType) {
+		return fold_cast_expression(bn.type, toType, &bn);
+	}
+
 	return cast_expression(&bn, n->span, tree, toType, isExplicit);
 }
 

@@ -212,7 +212,7 @@ void emit_c_node(astNode *n, ast *tree) {
 }
 
 void emit_c_file(astNode *n, ast *tree) {
-	fprintf(fp,"#include <stdio.h>\n#include <string.h>\n#include<time.h>\n");
+	fprintf(fp,"#include <stdio.h>\n#include <string.h>\n#include<time.h>\n#include<stdlib.h>\n");
 	for (int i = 0;i<sb_count(tree->externalLibraries);i++) {
 		fprintf(fp, "#include <%s.h>\n", tree->externalLibraries[i]);
 	}
