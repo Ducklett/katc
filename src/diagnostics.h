@@ -88,4 +88,4 @@ static const char *diagnosticMetaText[] = {
 };
 
 void report_diagnostic(diagnosticContainer *d, enum diagnosticKind kind, textspan span, u64 param1, u64 param2, u64 param3);
-void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText);
+void print_diagnostics(diagnosticContainer *diagnostics, char* sourceText, lineInfo *lines, int lineCount);

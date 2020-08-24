@@ -69,9 +69,9 @@ typedef color :: vec3
 fn write_color(c:color) {
     // Divide the color by the number of samples and gamma-correct for gamma=2.0.
     scale := 1.0 / SAMPLES_PER_PIXEL;
-    c.x = Math.sqrt(scale * c.x);
-    c.y = Math.sqrt(scale * c.y);
-    c.z = Math.sqrt(scale * c.z);
+    c.x = Math.sqrt(scale * c.x)
+    c.y = Math.sqrt(scale * c.y)
+    c.z = Math.sqrt(scale * c.z)
 
 	print("%d %d %d\n",
 		int(256 * clamp(c.x, 0, .999)),

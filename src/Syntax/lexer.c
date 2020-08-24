@@ -325,13 +325,13 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 		while (isWhitespace(lexer_current(l))) lexer_move_next(l);
 		t.span = textspan_create(start, l->index - start);
 		break;
-
-	case '\n': case '\r':
-		t.kind = newlineToken;
-		start =  l->index;
-		while (isNewline(lexer_current(l))) lexer_move_next(l);
-		t.span = textspan_create(start, l->index - start);
-		break;
+	case '\r':
+		if (lexer_peek(l,1) == '\n') {
+			return lex_basic_token(l, newlineToken, 2);
+		}
+		/* FALLTHROUGH */
+	case '\n': 
+		return lex_basic_token(l, newlineToken, 1);
 
 	default:
 		if (isIdentifierStart(current)) {

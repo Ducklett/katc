@@ -6,6 +6,10 @@ typedef struct parser {
 	node root;
 	u8 tokenBufferIndex;
 	enum syntaxKind parentKind;
+
+	int current_line_number;
+	int current_line_start;
+	lineInfo* lines;
 } parser;
 
 node parser_next_token(parser *p, diagnosticContainer *d);
@@ -37,13 +41,38 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 node parser_parse_primary_expression(parser *p, diagnosticContainer *d);
 node parser_parse_range_expression(parser *p, diagnosticContainer *d, bool allowEarlyExit);
 
+void parser_register_line(parser *p, textspan last_token_of_line) {
+
+	textspan lineSpan = { p->current_line_start, 
+		(last_token_of_line.start - p->current_line_start) +
+			last_token_of_line.length };
+
+	lineInfo line = {  p->current_line_number++,  lineSpan };
+
+	sb_push(p->lines, line);
+	p->current_line_start = last_token_of_line.start + last_token_of_line.length;
+}
+
 node parser_parse_token(parser *p, diagnosticContainer *d) {
 	while(true) {
 		node t = lexer_lex_token(&p->lexer, d);
+
 		if (t.kind == whitespaceToken
-			|| t.kind == newlineToken
 			|| t.kind == singleLineComment
 			|| t.kind == multiLineComment) continue;
+
+		if (t.kind == newlineToken) {
+			parser_register_line(p, t.span);
+			continue;
+		}
+
+
+		if (t.kind == endOfFileToken) {
+			parser_register_line(p, t.span);
+			// no continue:
+			// the current context needs to know if an unexpected en of file occured
+		}
+
 		return t;
 	}
 }

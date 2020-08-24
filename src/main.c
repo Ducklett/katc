@@ -59,7 +59,7 @@ int main(int argc, const char **argv) {
 	benchmark_end("Total");
 
 	if (!success) {
-		print_diagnostics(&astResult.diagnostics, astResult.text);
+		print_diagnostics(&astResult.diagnostics, astResult.text, parseResult.lines, sb_count(parseResult.lines));
 		return 1;
 	} 
 

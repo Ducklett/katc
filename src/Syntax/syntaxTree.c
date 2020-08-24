@@ -249,6 +249,13 @@ typedef struct textspan {
 	u16 length;
 } textspan;
 
+// during parsing the span of every line is stored
+// this is later used when printing diagnostics
+typedef struct lineInfo {
+	int line_number;
+	textspan line_span;
+} lineInfo;
+
 // the base struct for every syntax node,
 // tokens produced by the lexer are also nodes
 // literals will store their value in the data section
