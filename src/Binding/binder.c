@@ -800,8 +800,8 @@ astNode bind_call_expression(node *n, ast *tree, scope *functionScope) {
 	if (castType.kind > 2 && castType.kind != functionType) {
 		if (cn.argumentCount != 1) {
 			textspan errSpan = cn.argumentCount == 0
-				?  textspan_from_bounds(&cn.openParen, &cn.closeParen)
-				:  textspan_from_bounds(&cn.arguments[1], &cn.arguments[cn.argumentCount-1]);
+				?  textspan_from_bounds(&cn.openParen, &cn.closeParen, n->span.filename)
+				:  textspan_from_bounds(&cn.arguments[1], &cn.arguments[cn.argumentCount-1], n->span.filename);
 
 			report_diagnostic(&tree->diagnostics, oneArgumentCastDiagnostic, errSpan, 0, 0, 0);
 			return (astNode){ castExpressionKind, primitive_type_from_kind(errorType), .data = 0 };

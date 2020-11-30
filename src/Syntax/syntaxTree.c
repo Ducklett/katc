@@ -89,6 +89,7 @@ enum syntaxKind {
 	returnKeyword,
 	refKeyword,
 	externKeyword,
+	importKeyword,
 
 	unaryExpression,
 	binaryExpression,
@@ -108,6 +109,7 @@ enum syntaxKind {
 	enumDeclaration,
 	typedefDeclaration,
 	externDeclaration,
+	importDeclaration,
 	structDeclaration,
 	variableAssignment,
 	blockStatement,
@@ -206,6 +208,7 @@ static const char *syntaxKindText[] = {
 	"return",
 	"ref",
 	"extern",
+	"import",
 	"unaryExpression",
 	"binaryExpression",
 	"ternaryExpression",
@@ -224,6 +227,7 @@ static const char *syntaxKindText[] = {
 	"enumDeclaration",
 	"typedefDeclaration",
 	"externDeclaration",
+	"importDeclaration",
 	"structDeclaration",
 	"variableAssignment",
 	"blockStatement",
@@ -247,6 +251,7 @@ static const char *syntaxKindText[] = {
 typedef struct textspan {
 	u32 start;
 	u16 length;
+	char* filename;
 } textspan;
 
 // during parsing the span of every line is stored
@@ -418,6 +423,14 @@ typedef struct externDeclarationNode {
 	node libraryName;
 	node body;
 } externDeclarationNode;
+
+// imports the contents of a different file
+// import "foo"
+typedef struct importDeclarationNode {
+	node externKeyword;
+	node libraryName;
+	node content;
+} importDeclarationNode;
 
 // the else clause of if statements is optional
 // then `thenExpression` and `elseExpression` can be any statment
@@ -594,15 +607,16 @@ typedef struct arrayAccessNode {
 	node closeBracket;
 } arrayAccessNode;
 
-textspan textspan_create(u32 start, u16 length) {
-	textspan span = { start, length, };
+textspan textspan_create(u32 start, u16 length, char* filename) {
+	textspan span = { start, length, filename };
 	return span;
 }
 
-textspan textspan_from_bounds(node *start, node *end) {
+textspan textspan_from_bounds(node *start, node *end, char *filename) {
 	textspan span = {
 		.start = start->span.start,
 		.length = (end->span.start - start->span.start) + end->span.length,
+		.filename = filename,
 	};
 	return span;
 }

@@ -10,6 +10,7 @@ typedef struct parser {
 	int current_line_number;
 	int current_line_start;
 	lineInfo* lines;
+	char* filename;
 } parser;
 
 node parser_next_token(parser *p, diagnosticContainer *d);
@@ -33,6 +34,7 @@ node parser_parse_namespace_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_enum_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_typedef_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_extern_declaration(parser *p, diagnosticContainer *d);
+node parser_parse_import_declaration(parser *p, diagnosticContainer *d);
 node parser_parse_return_statement(parser *p, diagnosticContainer *d);
 node parser_parse_struct_declaration(parser *p, diagnosticContainer *d);
 
@@ -160,7 +162,7 @@ node parser_parse_type(parser *p, diagnosticContainer *d) {
 		arrayKindNode *ar = arena_malloc(parser_arena, sizeof(arrayKindNode));
 		*ar = (arrayKindNode){ identifier, openBracket, capacity, closeBracket };
 
-		identifier = (node) { arrayKind, textspan_from_bounds(&identifier, &closeBracket), .data = ar, };
+		identifier = (node) { arrayKind, textspan_from_bounds(&identifier, &closeBracket, p->filename), .data = ar, };
 		// reverse_array_capacity(&identifier);
 	}
 	return identifier;
@@ -189,6 +191,7 @@ node parser_parse_statement(parser *p, diagnosticContainer *d) {
 	case enumKeyword: res = parser_parse_enum_declaration(p, d); break;
 	case typedefKeyword: res = parser_parse_typedef_declaration(p, d); break;
 	case externKeyword: res = parser_parse_extern_declaration(p, d); break;
+	case importKeyword: res = parser_parse_import_declaration(p, d); break;
 	case returnKeyword: res = parser_parse_return_statement(p, d); break;
 	case identifierToken:
 		if  (l2kind == colonToken) {
@@ -289,7 +292,7 @@ node parser_parse_block_statement(parser *p, diagnosticContainer *d, bool isFile
 	blockStatementNode *block = arena_malloc(parser_arena, sizeof(blockStatementNode));
 	*block = (blockStatementNode){ openCurly, nodeStorage, statementCount, closeCurly, };
 
-	return (node) { blockStatement, textspan_from_bounds(&openCurly, &closeCurly), .data = block, };
+	return (node) { blockStatement, textspan_from_bounds(&openCurly, &closeCurly, p->filename), .data = block, };
 }
 
 node parser_parse_if_statement(parser *p, diagnosticContainer *d) {
@@ -309,7 +312,7 @@ node parser_parse_if_statement(parser *p, diagnosticContainer *d) {
 
 	node lastToken = elseToken.kind == emptyToken ? thenStatement : elseStatement;
 
-	return (node) { ifStatement, textspan_from_bounds(&ifToken, &lastToken), .data = ifNode, };
+	return (node) { ifStatement, textspan_from_bounds(&ifToken, &lastToken, p->filename), .data = ifNode, };
 }
 
 node parser_parse_case_branch(parser *p, diagnosticContainer *d) {
@@ -323,7 +326,7 @@ node parser_parse_case_branch(parser *p, diagnosticContainer *d) {
 	caseBranchNode *cbNode = arena_malloc(parser_arena, sizeof(caseBranchNode));
 	*cbNode = (caseBranchNode){ condition, colon, thenStatement };
 
-	return (node) { caseBranch, textspan_from_bounds(&condition, &thenStatement), .data = cbNode, };
+	return (node) { caseBranch, textspan_from_bounds(&condition, &thenStatement, p->filename), .data = cbNode, };
 }
 
 node parser_parse_case_statement(parser *p, diagnosticContainer *d) {
@@ -350,7 +353,7 @@ node parser_parse_case_statement(parser *p, diagnosticContainer *d) {
 
 	sb_free(branches);
 
-	return (node) { caseStatement, textspan_from_bounds(&caseToken, &closeCurly), .data = caseNode, };
+	return (node) { caseStatement, textspan_from_bounds(&caseToken, &closeCurly, p->filename), .data = caseNode, };
 }
 
 node parser_parse_switch_branch(parser *p, diagnosticContainer *d) {
@@ -369,7 +372,7 @@ node parser_parse_switch_branch(parser *p, diagnosticContainer *d) {
 	switchBranchNode *sbNode = arena_malloc(parser_arena, sizeof(switchBranchNode));
 	*sbNode = (switchBranchNode){ caseToken, condition, colon, thenStatement };
 
-	return (node) { switchBranch, textspan_from_bounds(&condition, &thenStatement), .data = sbNode, };
+	return (node) { switchBranch, textspan_from_bounds(&condition, &thenStatement, p->filename), .data = sbNode, };
 }
 
 node parser_parse_switch_statement(parser *p, diagnosticContainer *d) {
@@ -397,7 +400,7 @@ node parser_parse_switch_statement(parser *p, diagnosticContainer *d) {
 
 	sb_free(branches);
 
-	return (node) { switchStatement, textspan_from_bounds(&switchToken, &closeCurly), .data = switchNode, };
+	return (node) { switchStatement, textspan_from_bounds(&switchToken, &closeCurly, p->filename), .data = switchNode, };
 }
 
 node parser_parse_while_loop(parser *p, diagnosticContainer *d) {
@@ -411,7 +414,7 @@ node parser_parse_while_loop(parser *p, diagnosticContainer *d) {
 	whileLoopNode *wnode = arena_malloc(parser_arena, sizeof(whileLoopNode));
 	*wnode = (whileLoopNode){ whileToken, condition, block };
 
-	return (node) { whileLoop, textspan_from_bounds(&whileToken, &block), .data = wnode, };
+	return (node) { whileLoop, textspan_from_bounds(&whileToken, &block, p->filename), .data = wnode, };
 }
 
 node parser_parse_for_loop(parser *p, diagnosticContainer *d) {
@@ -448,7 +451,7 @@ node parser_parse_for_loop(parser *p, diagnosticContainer *d) {
 	forLoopNode *forNode = arena_malloc(parser_arena, sizeof(forLoopNode));
 	*forNode = (forLoopNode){ forToken, openParen, value, comma, key, inToken, range, closeParen, block };
 
-	return (node) { forLoop, textspan_from_bounds(&forToken, &block), .data = forNode, };
+	return (node) { forLoop, textspan_from_bounds(&forToken, &block, p->filename), .data = forNode, };
 }
 
 node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
@@ -478,7 +481,7 @@ node parser_parse_variable_declaration(parser *p, diagnosticContainer *d) {
 	variableDeclarationNode *var = arena_malloc(parser_arena, sizeof(variableDeclarationNode));
 	*var = (variableDeclarationNode){ identifier, colon, type, equals, expression };
 
-	return (node) { variableDeclaration, textspan_from_bounds(&identifier, &expression), .data = var, };
+	return (node) { variableDeclaration, textspan_from_bounds(&identifier, &expression, p->filename), .data = var, };
 }
 
 node parser_parse_array_access(parser *p, diagnosticContainer *d, node identifier) {
@@ -489,7 +492,7 @@ node parser_parse_array_access(parser *p, diagnosticContainer *d, node identifie
 	arrayAccessNode *access = arena_malloc(parser_arena, sizeof(arrayAccessNode));
 	*access = (arrayAccessNode){ identifier, openBracket, index, closeBracket };
 
-	return (node) { arrayAccessExpression, textspan_from_bounds(&identifier, &closeBracket), .data = access };
+	return (node) { arrayAccessExpression, textspan_from_bounds(&identifier, &closeBracket, p->filename), .data = access };
 }
 
 node parser_parse_variable_assignment(parser *p, diagnosticContainer *d, node identifier) {
@@ -504,7 +507,7 @@ node parser_parse_variable_assignment(parser *p, diagnosticContainer *d, node id
 	variableAssignmentNode *assignment = arena_malloc(parser_arena, sizeof(variableAssignmentNode));
 	*assignment = (variableAssignmentNode){ identifier, equals, expression };
 
-	return (node) { variableAssignment, textspan_from_bounds(&identifier, &expression), .data = assignment };
+	return (node) { variableAssignment, textspan_from_bounds(&identifier, &expression, p->filename), .data = assignment };
 }
 
 node parse_function_parameter(parser *p, diagnosticContainer *d) {
@@ -525,7 +528,7 @@ node parse_function_parameter(parser *p, diagnosticContainer *d) {
 	typedIdentifierNode *id = arena_malloc(parser_arena, sizeof(typedIdentifierNode));
 	*id = (typedIdentifierNode){ refNode, identifier, colon, type, equalsNode, initializer };
 
-	return (node) { typedIdentifier, textspan_from_bounds(&identifier, &(initializer.kind ? initializer : type)), .data = id, };
+	return (node) { typedIdentifier, textspan_from_bounds(&identifier, &(initializer.kind ? initializer : type), p->filename), .data = id, };
 }
 
 node* parse_function_parameters(parser *p, diagnosticContainer *d, u16 *paramCount) {
@@ -592,7 +595,7 @@ node parser_parse_function_declaration(parser *p, diagnosticContainer *d) {
 			thinArrow, returnType, thickArrow,
 			block };
 
-	return (node) { functionDeclaration, textspan_from_bounds(&fnToken, &block), .data = fnode, };
+	return (node) { functionDeclaration, textspan_from_bounds(&fnToken, &block, p->filename), .data = fnode, };
 }
 
 node* parse_function_arguments(parser *p, diagnosticContainer *d, u16 *argCount) {
@@ -609,7 +612,7 @@ node* parse_function_arguments(parser *p, diagnosticContainer *d, u16 *argCount)
 
 			namedArgumentNode* argNode = arena_malloc(parser_arena, sizeof(namedArgumentNode));
 			*argNode = (namedArgumentNode){ name, colon, expr };
-			sb_push(arguments, ((node){ namedArgument, textspan_from_bounds(&name, &expr), .data = argNode }));
+			sb_push(arguments, ((node){ namedArgument, textspan_from_bounds(&name, &expr, p->filename), .data = argNode }));
 		} else {
 			sb_push(arguments, parser_parse_expression(p, d));
 		}
@@ -642,7 +645,7 @@ node parser_parse_function_call(parser *p, diagnosticContainer *d) {
 	functionCallNode *call = arena_malloc(parser_arena, sizeof(functionCallNode));
 	*call = (functionCallNode){ identifier,  openParen, argStorage, argCount, closeParen };
 
-	return (node) { callExpression, textspan_from_bounds(&identifier, &closeParen), .data = call };
+	return (node) { callExpression, textspan_from_bounds(&identifier, &closeParen, p->filename), .data = call };
 }
 
 node parser_parse_namespace_declaration(parser *p, diagnosticContainer *d) {
@@ -656,7 +659,7 @@ node parser_parse_namespace_declaration(parser *p, diagnosticContainer *d) {
 	namespaceDeclarationNode *nnode = arena_malloc(parser_arena, sizeof(namespaceDeclarationNode));
 	*nnode = (namespaceDeclarationNode){ namespaceToken, identifier, block };
 
-	return (node) { namespaceDeclaration, textspan_from_bounds(&namespaceToken, &block), .data = nnode, };
+	return (node) { namespaceDeclaration, textspan_from_bounds(&namespaceToken, &block, p->filename), .data = nnode, };
 }
 
 node parser_parse_struct_declaration(parser *p, diagnosticContainer *d) {
@@ -670,7 +673,7 @@ node parser_parse_struct_declaration(parser *p, diagnosticContainer *d) {
 	structDeclarationNode *nnode = arena_malloc(parser_arena, sizeof(structDeclarationNode));
 	*nnode = (structDeclarationNode){ structToken, identifier, block };
 
-	return (node) { structDeclaration, textspan_from_bounds(&structToken, &block), .data = nnode, };
+	return (node) { structDeclaration, textspan_from_bounds(&structToken, &block, p->filename), .data = nnode, };
 }
 
 node parser_parse_enum_declaration(parser *p, diagnosticContainer *d) {
@@ -711,7 +714,7 @@ node parser_parse_enum_declaration(parser *p, diagnosticContainer *d) {
 	enumDeclarationNode *enode = arena_malloc(parser_arena, sizeof(enumDeclarationNode));
 	*enode = (enumDeclarationNode){ enumToken, identifier, openCurly,  enumStorage, enumCount, closeCurly };
 
-	return (node) { enumDeclaration, textspan_from_bounds(&enumToken, &closeCurly), .data = enode, };
+	return (node) { enumDeclaration, textspan_from_bounds(&enumToken, &closeCurly, p->filename), .data = enode, };
 }
 
 node parser_parse_typedef_declaration(parser *p, diagnosticContainer *d) {
@@ -724,7 +727,7 @@ node parser_parse_typedef_declaration(parser *p, diagnosticContainer *d) {
 	typedefDeclarationNode *tnode = arena_malloc(parser_arena, sizeof(typedefDeclarationNode));
 	*tnode = (typedefDeclarationNode){ typedefToken, identifier, colon1, colon2, type};
 
-	return (node) { typedefDeclaration, textspan_from_bounds(&typedefToken, &type), .data = tnode, };
+	return (node) { typedefDeclaration, textspan_from_bounds(&typedefToken, &type, p->filename), .data = tnode, };
 }
 
 node parser_parse_extern_declaration(parser *p, diagnosticContainer *d) {
@@ -741,7 +744,23 @@ node parser_parse_extern_declaration(parser *p, diagnosticContainer *d) {
 	externDeclarationNode *enode = arena_malloc(parser_arena, sizeof(externDeclarationNode));
 	*enode = (externDeclarationNode){ externToken, identifier, colon1, colon2, libraryName, body };
 
-	return (node) { externDeclaration, textspan_from_bounds(&externToken, &body), .data = enode, };
+	return (node) { externDeclaration, textspan_from_bounds(&externToken, &body, p->filename), .data = enode, };
+}
+
+node parser_parse_import_declaration(parser *p, diagnosticContainer *d) {
+	node importToken = parser_match_token(p, d, importKeyword);
+	node libraryName = parser_match_token(p, d, stringLiteral);
+
+	enum syntaxKind prevKind = parser_push_context(p, importDeclaration);
+	// load the library here
+	//node content = parser_import_library(p,d, false);
+	node content = {0};
+	parser_pop_context(p,prevKind);
+
+	importDeclarationNode *inode = arena_malloc(parser_arena, sizeof(importDeclarationNode));
+	*inode = (importDeclarationNode){ importToken, libraryName, content };
+
+	return (node) { importDeclaration, textspan_from_bounds(&importToken, &libraryName, p->filename), .data = inode, };
 }
 
 node parser_parse_return_statement(parser *p, diagnosticContainer *d) {
@@ -751,7 +770,7 @@ node parser_parse_return_statement(parser *p, diagnosticContainer *d) {
 	returnStatementNode *rnode = arena_malloc(parser_arena, sizeof(returnStatementNode));
 	*rnode = (returnStatementNode){ returnNode, expression };
 
-	return (node) { returnStatement, textspan_from_bounds(&returnNode, &expression), .data = rnode, };
+	return (node) { returnStatement, textspan_from_bounds(&returnNode, &expression, p->filename), .data = rnode, };
 }
 
 node parser_parse_expression(parser *p, diagnosticContainer *d) { return parser_parse_binary_expression(p, d,-2); }
@@ -765,7 +784,7 @@ node parser_parse_ternary_expression(parser *p, diagnosticContainer *d, node *co
 	ternaryExpressionNode *ternaryNode = arena_malloc(parser_arena, sizeof(ternaryExpressionNode));
 	*ternaryNode = (ternaryExpressionNode){ *condition, questionmark, thenStatement, colon, elseStatement };
 
-	return (node) { ternaryExpression, textspan_from_bounds(condition, &elseStatement), .data = ternaryNode, };
+	return (node) { ternaryExpression, textspan_from_bounds(condition, &elseStatement, p->filename), .data = ternaryNode, };
 }
 
 node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parentPrecedence) {
@@ -801,7 +820,7 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 			unaryExpressionNode *unaryNode = arena_malloc(parser_arena, sizeof(unaryExpressionNode));
 			*unaryNode = (unaryExpressionNode){ unaryOp, left, unaryOnLeft };
 
-			left = (node) { unaryExpression, textspan_from_bounds(&unaryOp, &left), .data = unaryNode, };
+			left = (node) { unaryExpression, textspan_from_bounds(&unaryOp, &left, p->filename), .data = unaryNode, };
 		}
 
 		if (precedence == -1 || precedence <= parentPrecedence) {
@@ -817,7 +836,7 @@ node parser_parse_binary_expression(parser *p, diagnosticContainer *d, i8 parent
 		binaryExpressionNode *binaryNode = arena_malloc(parser_arena, sizeof(binaryExpressionNode));
 		*binaryNode = (binaryExpressionNode){ left, operator, right, };
 
-		left = (node) { binaryExpression, textspan_from_bounds(&left, &right), .data = binaryNode, };
+		left = (node) { binaryExpression, textspan_from_bounds(&left, &right, p->filename), .data = binaryNode, };
 	}
 
 	return left;
@@ -834,7 +853,7 @@ node parser_parse_range_expression(parser *p, diagnosticContainer *d, bool allow
 	rangeExpressionNode *rangeNode = arena_malloc(parser_arena, sizeof(rangeExpressionNode));
 	*rangeNode = (rangeExpressionNode){ from, dotDot, to };
 
-	return (node) { rangeExpression, textspan_from_bounds(&from, &to), .data = rangeNode, };
+	return (node) { rangeExpression, textspan_from_bounds(&from, &to, p->filename), .data = rangeNode, };
 }
 
 node parser_parse_symbol_reference(parser *p, diagnosticContainer *d, bool isIdentifier) {
@@ -853,7 +872,7 @@ node parser_parse_symbol_reference(parser *p, diagnosticContainer *d, bool isIde
 	binaryExpressionNode *binaryNode = arena_malloc(parser_arena, sizeof(binaryExpressionNode));
 	*binaryNode = (binaryExpressionNode){ left, dotNode, right, };
 
-	return (node) { symbolReferenceExpression, textspan_from_bounds(&left, &right), .data = binaryNode, };
+	return (node) { symbolReferenceExpression, textspan_from_bounds(&left, &right, p->filename), .data = binaryNode, };
 }
 
 node parser_parse_array_literal(parser *p, diagnosticContainer *d) {
@@ -888,7 +907,7 @@ node parser_parse_array_literal(parser *p, diagnosticContainer *d) {
 	arrayLiteralNode *anode = arena_malloc(parser_arena, sizeof(arrayLiteralNode));
 	*anode = (arrayLiteralNode){ openBracket, valueStorage, valueCount, closeBracket };
 
-	return (node) { arrayLiteral, textspan_from_bounds(&openBracket, &closeBracket), .data = anode, };
+	return (node) { arrayLiteral, textspan_from_bounds(&openBracket, &closeBracket, p->filename), .data = anode, };
 }
 
 node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
@@ -926,7 +945,7 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 		parenthesizedExpressionNode *parenNode = arena_malloc(parser_arena, sizeof(parenthesizedExpressionNode));
 		*parenNode = (parenthesizedExpressionNode){ openParen, expr, closeParen };
 
-		return (node) { parenthesizedExpression, textspan_from_bounds(&current, &closeParen), .data = parenNode, };
+		return (node) { parenthesizedExpression, textspan_from_bounds(&current, &closeParen, p->filename), .data = parenNode, };
 	}
 	default: 
 		if (current.kind != badToken) report_diagnostic(d, illegalPrimaryExpressionDiagnostic, current.span, current.kind, 0, 0);
@@ -936,7 +955,7 @@ node parser_parse_primary_expression(parser *p, diagnosticContainer *d) {
 
 int create_syntaxtree(char* text, u64 length, parser* p, diagnosticContainer* d)  {
 
-	p->lexer = (lexer){ .text = text, .text_length = length, .index = 0 };
+	p->lexer = (lexer){ .text = text, .text_length = length, .index = 0, .filename = p->filename };
 
 	string_arena = arena_create();
 	if (string_arena == NULL) panic("memory allocation for string_arena failed\n");

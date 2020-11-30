@@ -4,6 +4,7 @@ typedef struct lexer {
 	char *text;
 	u16 text_length;
 	u32 index;
+	char* filename;
 } lexer;
 
 static inline bool isWhitespace(char c) { return c == ' ' || c == '\t'; }
@@ -54,14 +55,14 @@ char lexer_move_next(lexer *l) {
 char lexer_match(lexer *l, diagnosticContainer *d,  char expected) {
 	if (l->index >= l->text_length) return '\0';
 	char matched = l->text[l->index++];
-	if (matched != expected) report_diagnostic(d, unexpectedCharacterDiagnostic, textspan_create(l->index - 1, 1), matched, expected, 0);
+	if (matched != expected) report_diagnostic(d, unexpectedCharacterDiagnostic, textspan_create(l->index - 1, 1, l->filename), matched, expected, 0);
 	return matched;
 }
 
 static inline node lex_basic_token(lexer *l, enum syntaxKind kind, u8 length) {
 	node t = {
 		.kind = kind,
-		.span = textspan_create(l->index, length),
+		.span = textspan_create(l->index, length, l->filename),
 		.data = 0,
 	};
 
@@ -94,7 +95,7 @@ node lexer_lex_number_token(lexer *l, diagnosticContainer *d) {
 		int leadingZeroCount=1;
 		while(lexer_peek(l,leadingZeroCount) == '0') leadingZeroCount++;
 
-		report_diagnostic(d, leadingZerosOnBase10NumberDiagnostic, textspan_create(l->index,leadingZeroCount), 0, 0, 0);
+		report_diagnostic(d, leadingZerosOnBase10NumberDiagnostic, textspan_create(l->index,leadingZeroCount, l->filename), 0, 0, 0);
 		t.kind=badToken;
 	}
 
@@ -129,7 +130,7 @@ node lexer_lex_number_token(lexer *l, diagnosticContainer *d) {
 				u8 v = parse_hexadecimal_char(nextNum);
 				if (!foundIllegalCharacter && nextNum != '0' && v == 0) {
 					foundIllegalCharacter=true;
-					report_diagnostic(d, invalidHexadecimalNumberDiagnostic, textspan_create(l->index-1,1), 0, 0, 0);
+					report_diagnostic(d, invalidHexadecimalNumberDiagnostic, textspan_create(l->index-1,1, l->filename), 0, 0, 0);
 					t.kind=badToken;
 				}
 				value = (value << 4) + v; 
@@ -137,14 +138,14 @@ node lexer_lex_number_token(lexer *l, diagnosticContainer *d) {
 			case BASE2: {
 				if (!foundIllegalCharacter && nextNum != '0' && nextNum != '1') {
 					foundIllegalCharacter=true;
-					report_diagnostic(d, invalidBinaryNumberDiagnostic, textspan_create(l->index-1,1), 0, 0, 0);
+					report_diagnostic(d, invalidBinaryNumberDiagnostic, textspan_create(l->index-1,1, l->filename), 0, 0, 0);
 					t.kind=badToken;
 				}
 				value = (value << 1) + parse_binary_char(nextNum); 
 			} break;
 		}
 	}
-	t.span = textspan_create(start, l->index - start);
+	t.span = textspan_create(start, l->index - start, l->filename);
 
 	if (decimalDivisor != -1) {
 		t.kind = floatLiteral;
@@ -168,7 +169,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			t.kind = singleLineComment;
 			start =  l->index;
 			while (!isNewline(lexer_current(l)) && lexer_current(l) != '\0') lexer_move_next(l);
-			t.span = textspan_create(start, l->index - start);
+			t.span = textspan_create(start, l->index - start, l->filename);
 		} else if (lexer_peek(l,1) == '*') {
 			// multi line comment
 			t.kind = multiLineComment;
@@ -183,7 +184,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 				char current = lexer_current(l);
 				char lookahead = lexer_peek(l,1);
 				if (current == '\0') {
-					report_diagnostic(d, unterminatedCommentDiagnostic, textspan_create(start, l->index - start), 0, 0, 0);
+					report_diagnostic(d, unterminatedCommentDiagnostic, textspan_create(start, l->index - start, l->filename), 0, 0, 0);
 					break;
 				} else if (current == '/' && lookahead == '*') {
 					nestLevel++;
@@ -201,7 +202,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 					lexer_move_next(l);
 				}
 			}
-			t.span = textspan_create(start, l->index - start);
+			t.span = textspan_create(start, l->index - start, l->filename);
 		} else if (lexer_peek(l,1) == '=') return lex_basic_token(l, slashEqualsToken, 2);
 		else return lex_basic_token(l, divisionOperator, 1);
 
@@ -301,7 +302,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 		end:
 
 		lexer_match(l, d, startEndChar);
-		t.span = textspan_create(start, l->index - start);
+		t.span = textspan_create(start, l->index - start, l->filename);
 
 		int len = sb_count(sb);
 
@@ -323,7 +324,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 		t.kind = whitespaceToken;
 		start =  l->index;
 		while (isWhitespace(lexer_current(l))) lexer_move_next(l);
-		t.span = textspan_create(start, l->index - start);
+		t.span = textspan_create(start, l->index - start, l->filename);
 		break;
 	case '\r':
 		if (lexer_peek(l,1) == '\n') {
@@ -338,9 +339,9 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			t.kind = identifierToken;
 			start =  l->index;
 			while (isIdentifier(lexer_current(l))) lexer_move_next(l);
-			t.span = textspan_create(start, l->index - start);
+			t.span = textspan_create(start, l->index - start, l->filename);
 
-			for (int i = trueKeyword; i <= externKeyword; i++) {
+			for (int i = trueKeyword; i <= importKeyword; i++) {
 				if (span_compare(l->text, t.span, syntaxKindText[i])) {
 					t.kind = i;
 					if (i == trueKeyword) t.boolValue = true;
@@ -350,7 +351,7 @@ node lexer_lex_token(lexer *l, diagnosticContainer *d) {
 			break;
 		}
 		t.kind = badToken;
-		t.span = textspan_create(l->index, 1);
+		t.span = textspan_create(l->index, 1, l->filename);
 		lexer_move_next(l);
 		report_diagnostic(d, badTokenDiagnostic, t.span, 0, 0, 0);
 		break;

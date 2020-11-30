@@ -1,0 +1,6 @@
+/*
+    This is a library
+    It can be imported by other files
+*/
+
+fn greet(name: string = "world") => print("Hello %s!", name)
